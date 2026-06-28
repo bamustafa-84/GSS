@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GSS | Rejoignez nos agents de sécurité</title>
+    <script src="./tailwind/tailwind.min.js"></script>
+  </head>
+  <body class="min-h-screen bg-white text-[#042F8D] font-sans">
+    <div class="mx-auto max-w-7xl px-5 py-7 sm:px-6 lg:px-8">
+      <div class="mb-4 flex justify-end">
+        <div class="inline-flex gap-2 rounded-full border border-slate-200 bg-white p-1.5 shadow-sm" role="group" aria-label="Language switcher">
+          <button type="button" class="rounded-full px-3 py-2 font-bold transition-all duration-200" data-lang="fr">FR</button>
+          <button type="button" class="rounded-full px-3 py-2 font-bold transition-all duration-200" data-lang="en">EN</button>
+        </div>
+      </div>
+
+      <section class="relative overflow-hidden grid gap-6 rounded-[28px] border border-slate-200 bg-white p-7 shadow-[0_20px_70px_rgba(4,47,141,0.16)] lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+        <!-- Watermark -->
+        <img src="./img/security.png" alt="" aria-hidden="true"
+             class="pointer-events-none select-none absolute inset-0 w-full h-full object-contain"
+             style="opacity:0.06; z-index:0;" />
+        <div style="position:relative;z-index:1;">
+          <div class="mb-3 inline-block rounded-full bg-[#042F8D]/10 px-3 py-2 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-[#042F8D]" data-i18n="eyebrow">Sécurité professionnelle</div>
+          <h1 class="mb-3 text-4xl font-bold leading-tight sm:text-5xl" data-i18n="heroTitle">Rejoignez une formation d’exception pour devenir agent de sécurité.</h1>
+          <p class="mb-6 max-w-2xl text-base leading-7 text-slate-600" data-i18n="heroText">Un parcours structuré, un encadrement sérieux et une procédure d’inscription simplifiée pour démarrer votre aventure avec GSS.</p>
+          <div class="flex flex-wrap gap-3">
+            <button type="button" class="rounded-full bg-[#042F8D] px-4 py-3 font-bold text-white shadow-[0_10px_24px_rgba(4,47,141,0.2)]" id="openFormBtn" data-i18n="openBtn">Remplir le formulaire</button>
+            <button class="rounded-full border border-slate-200 bg-white px-4 py-3 font-bold text-[#042F8D]" type="button" data-i18n="conditionsBtn">Consulter les conditions</button>
+          </div>
+          <div class="mt-6 grid gap-4 md:grid-cols-3">
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <strong class="mb-1 block text-xl font-bold text-[#042F8D]">+250</strong>
+              <span class="text-sm text-slate-600" data-i18n="stat1">candidats formés</span>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <strong class="mb-1 block text-xl font-bold text-[#042F8D]">100%</strong>
+              <span class="text-sm text-slate-600" data-i18n="stat2">encadrement personnalisé</span>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <strong class="mb-1 block text-xl font-bold text-[#042F8D]">24/7</strong>
+              <span class="text-sm text-slate-600" data-i18n="stat3">support administratif</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="rounded-[24px] border border-slate-200 bg-slate-50 p-5" style="position:relative;z-index:1;">
+          <h3 class="mb-3 text-lg font-semibold text-[#042F8D]" data-i18n="whyTitle">Pourquoi choisir GSS ?</h3>
+          <ul class="space-y-3 text-slate-600">
+            <li class="flex items-center gap-2"><span class="text-[#042F8D]">✦</span><span data-i18n="benefit1">Formation reconnue et professionnelle</span></li>
+            <li class="flex items-center gap-2"><span class="text-[#042F8D]">✦</span><span data-i18n="benefit2">Module pratique et théorique</span></li>
+            <li class="flex items-center gap-2"><span class="text-[#042F8D]">✦</span><span data-i18n="benefit3">Procédure d’inscription rapide</span></li>
+            <li class="flex items-center gap-2"><span class="text-[#042F8D]">✦</span><span data-i18n="benefit4">Équipe disponible à chaque étape</span></li>
+          </ul>
+        </div>
+      </section>
+    </div>
+
+    <!-- ═══════════════════════ MODAL ═══════════════════════ -->
+    <div class="fixed inset-0 z-[1000] hidden items-center justify-center bg-[rgba(1,7,16,0.7)] p-3 sm:p-5" id="formModal" aria-hidden="true">
+      <div class="flex w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.35)]" style="max-height:92vh" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+
+        <!-- ── Header ── -->
+        <div class="flex shrink-0 items-center justify-between bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-6 py-4 text-white">
+          <div>
+            <h2 id="modalTitle" class="text-lg font-semibold" data-i18n="modalTitle">Application Process</h2>
+            <div class="text-sm text-blue-200">GSS Security Services</div>
+          </div>
+          <button class="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/25" id="closeModalBtn" type="button" data-i18n="closeBtn">Close</button>
+        </div>
+
+        <!-- ── Tab Bar ── -->
+        <div class="shrink-0 overflow-x-auto border-b border-slate-200 bg-white" id="gssTabBar">
+          <div class="flex min-w-max">
+            <button type="button" class="gss-tab-btn group flex min-w-0 items-center gap-2.5 border-b-2 border-transparent px-5 py-3.5 text-sm font-semibold text-slate-500 transition-all duration-200 hover:bg-slate-50 hover:text-[#042F8D]" data-tab="registration" id="tab-btn-registration">
+              <span class="gss-tab-dot flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white transition-all duration-200" style="background:#94a3b8">1</span>
+              <span data-i18n="tabRegistration">Registration</span>
+            </button>
+            <button type="button" class="gss-tab-btn group flex min-w-0 items-center gap-2.5 border-b-2 border-transparent px-5 py-3.5 text-sm font-semibold text-slate-500 transition-all duration-200 hover:bg-slate-50 hover:text-[#042F8D]" data-tab="conditions" id="tab-btn-conditions">
+              <span class="gss-tab-dot flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white transition-all duration-200" style="background:#94a3b8">2</span>
+              <span data-i18n="tabConditions">Conditions</span>
+            </button>
+            <button type="button" class="gss-tab-btn group flex min-w-0 items-center gap-2.5 border-b-2 border-transparent px-5 py-3.5 text-sm font-semibold text-slate-500 transition-all duration-200 hover:bg-slate-50 hover:text-[#042F8D]" data-tab="reglement" id="tab-btn-reglement">
+              <span class="gss-tab-dot flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white transition-all duration-200" style="background:#94a3b8">3</span>
+              <span data-i18n="tabReglement">Rules</span>
+            </button>
+            <button type="button" class="gss-tab-btn group flex min-w-0 items-center gap-2.5 border-b-2 border-transparent px-5 py-3.5 text-sm font-semibold text-slate-500 transition-all duration-200 hover:bg-slate-50 hover:text-[#042F8D]" data-tab="engagement" id="tab-btn-engagement">
+              <span class="gss-tab-dot flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white transition-all duration-200" style="background:#94a3b8">4</span>
+              <span data-i18n="tabEngagement">Commitment</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ── Tab Content ── -->
+        <div class="flex-1 overflow-y-auto bg-slate-50" id="formContent">
+          <!-- ══════════════════════════════════════════════════ -->
+          <!-- PANEL 1 · Registration Form                       -->
+          <!-- ══════════════════════════════════════════════════ -->
+          <div id="panel-registration" class="gss-tab-panel p-4 sm:p-6">
+            <div class="relative overflow-hidden rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm sm:p-6 lg:p-7">
+            <!-- <img src="./img/security.png" alt="" aria-hidden="true" 
+            class="pointer-events-none select-none absolute inset-0 w-full h-full object-contain 
+            opacity-[0.06]" /> -->
+            <div class="mb-6 flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-5">
+              <div>
+                <p class="text-sm font-semibold uppercase tracking-[0.2em] text-[#042F8D]">Registration form</p>
+                <h3 class="mt-2 text-3xl font-bold text-slate-800">GSS Application</h3>
+                <p class="mt-2 max-w-2xl text-sm leading-7 text-slate-600">Fill out this form carefully to complete your registration and prepare your training journey.</p>
+              </div>
+              <div class="rounded-full bg-[#042F8D]/10 px-3 py-1 text-sm font-semibold text-[#042F8D]">Secure</div>
+            </div>
+
+            <form id="inscriptionForm" novalidate class="space-y-6">
+              <section class="rounded-[20px] border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                <h4 class="mb-4 text-lg font-semibold text-[#042F8D]">Personal information</h4>
+                <div class="grid gap-4 md:grid-cols-2">
+                  <div class="flex flex-col gap-1.5">
+                    <label for="dossier" class="text-sm font-semibold text-slate-700">File number</label>
+                    <input id="dossier" name="dossier" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" placeholder="0001" />
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <label for="dateInscription" class="text-sm font-semibold text-slate-700">Registration date</label>
+                    <input id="dateInscription" name="dateInscription" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" placeholder="____ / ____ / ______" />
+                  </div>
+                  <div class="flex flex-col gap-1.5 md:col-span-2">
+                    <label for="nom" class="text-sm font-semibold text-slate-700">Full name</label>
+                    <input id="nom" name="nom" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" required />
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <label for="telephone1" class="text-sm font-semibold text-slate-700">Phone (1)</label>
+                    <input id="telephone1" name="telephone1" type="tel" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" required />
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <label for="telephone2" class="text-sm font-semibold text-slate-700">Phone (2)</label>
+                    <input id="telephone2" name="telephone2" type="tel" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <label for="pere" class="text-sm font-semibold text-slate-700">Father's name</label>
+                    <input id="pere" name="pere" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <label for="mere" class="text-sm font-semibold text-slate-700">Mother's name</label>
+                    <input id="mere" name="mere" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <label for="emailForm" class="text-sm font-semibold text-slate-700">Email</label>
+                    <input id="emailForm" name="email" type="email" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <label for="dateNaissance" class="text-sm font-semibold text-slate-700">Date of birth</label>
+                    <input id="dateNaissance" name="dateNaissance" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" placeholder="____ / ____ / ______" />
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <label for="lieuNaissance" class="text-sm font-semibold text-slate-700">Place of birth</label>
+                    <input id="lieuNaissance" name="lieuNaissance" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <label for="nationalite" class="text-sm font-semibold text-slate-700">Nationality</label>
+                    <input id="nationalite" name="nationalite" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                  </div>
+                  <div class="md:col-span-2 flex flex-col gap-2">
+                    <label class="text-sm font-semibold text-slate-700">Gender</label>
+                    <div class="flex flex-wrap gap-2">
+                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="sexe" value="Male" /> Male</label>
+                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="sexe" value="Female" /> Female</label>
+                    </div>
+                  </div>
+                  <div class="md:col-span-2 flex flex-col gap-2">
+                    <label class="text-sm font-semibold text-slate-700">Marital status</label>
+                    <div class="flex flex-wrap gap-2">
+                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="etatCivil" value="Single" /> Single</label>
+                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="etatCivil" value="Married" /> Married</label>
+                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="etatCivil" value="Divorced" /> Divorced</label>
+                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="etatCivil" value="Widowed" /> Widowed</label>
+                    </div>
+                  </div>
+                  <div class="md:col-span-2 flex flex-col gap-1.5">
+                    <label for="adresse" class="text-sm font-semibold text-slate-700">Full address</label>
+                    <textarea id="adresse" name="adresse" rows="3" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"></textarea>
+                  </div>
+                </div>
+              </section>
+
+              <section class="rounded-[20px] border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                <h4 class="mb-4 text-lg font-semibold text-[#042F8D]">Education level and experience</h4>
+                <div class="grid gap-4">
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-semibold text-slate-700">Education level</label>
+                    <div class="flex flex-wrap gap-2">
+                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="niveauEtudes" value="Primary" /> Primary</label>
+                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="niveauEtudes" value="Secondary" /> Secondary</label>
+                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="niveauEtudes" value="University" /> University</label>
+                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="niveauEtudes" value="Other" /> Other</label>
+                    </div>
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-semibold text-slate-700">Can you read and write in French?</label>
+                    <div class="flex flex-wrap gap-2">
+                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="francais" value="Yes" /> Yes</label>
+                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="francais" value="No" /> No</label>
+                    </div>
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-semibold text-slate-700">Do you have experience in the security field?</label>
+                    <div class="flex flex-wrap gap-2">
+                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="experience" value="Yes" /> Yes</label>
+                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="experience" value="No" /> No</label>
+                    </div>
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <label for="precisionExperience" class="text-sm font-semibold text-slate-700">If yes, specify</label>
+                    <textarea id="precisionExperience" name="precisionExperience" rows="3" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"></textarea>
+                  </div>
+                </div>
+              </section>
+
+              <section class="rounded-[20px] border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                <h4 class="mb-4 text-lg font-semibold text-[#042F8D]">Health and documents</h4>
+                <div class="grid gap-4">
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-semibold text-slate-700">Do you have a medical condition that could affect your work?</label>
+                    <div class="flex flex-wrap gap-2">
+                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="sante" value="Yes" /> Yes</label>
+                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="sante" value="No" /> No</label>
+                    </div>
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <label for="precisionSante" class="text-sm font-semibold text-slate-700">If yes, specify</label>
+                    <textarea id="precisionSante" name="precisionSante" rows="3" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"></textarea>
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-semibold text-slate-700">Documents to provide</label>
+                    <div class="space-y-2">
+                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="checkbox" name="documents" value="Copy of ID card or passport" /> Copy of ID card or passport</label>
+                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="checkbox" name="documents" value="Two recent identity photos" /> Two recent identity photos</label>
+                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="checkbox" name="documents" value="Other documents" /> Other documents if needed</label>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="rounded-[20px] border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                <h4 class="mb-4 text-lg font-semibold text-[#042F8D]">Fees and declaration</h4>
+                <div class="space-y-4">
+                  <p class="text-sm leading-7 text-slate-600">I acknowledge that I am informed about the payment of <span class="font-semibold text-slate-800">25,000 CDF</span> covering syllabus fees.</p>
+                  <div class="flex flex-wrap gap-2">
+                    <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="paiement" value="Paid" /> Paid</label>
+                    <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="paiement" value="Not paid" /> Not paid</label>
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <label for="candidat" class="text-sm font-semibold text-slate-700">Candidate name</label>
+                    <input id="candidat" name="candidat" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                  </div>
+                  <div class="grid gap-4 md:grid-cols-2">
+                    <div class="flex flex-col gap-1.5">
+                      <label for="signature" class="text-sm font-semibold text-slate-700">Signature</label>
+                      <input id="signature" name="signature" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                      <label for="dateSignature" class="text-sm font-semibold text-slate-700">Date</label>
+                      <input id="dateSignature" name="dateSignature" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" placeholder="____ / ____ / ______" />
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="rounded-[20px] border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                <h4 class="mb-4 text-lg font-semibold text-[#042F8D]">Administration</h4>
+                <div class="grid gap-4">
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-semibold text-slate-700">Interview result</label>
+                    <div class="flex flex-wrap gap-2">
+                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="resultat" value="Accepted" /> Accepted</label>
+                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="resultat" value="Rejected" /> Rejected</label>
+                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="resultat" value="Pending" /> Pending</label>
+                    </div>
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <label for="observations" class="text-sm font-semibold text-slate-700">Observations</label>
+                    <textarea id="observations" name="observations" rows="3" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"></textarea>
+                  </div>
+                  <div class="grid gap-4 md:grid-cols-2">
+                    <div class="flex flex-col gap-1.5">
+                      <label for="responsable" class="text-sm font-semibold text-slate-700">Responsible person's name</label>
+                      <input id="responsable" name="responsable" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                      <label for="cachet" class="text-sm font-semibold text-slate-700">Signature and stamp</label>
+                      <input id="cachet" name="cachet" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <div class="flex flex-wrap justify-end gap-3">
+                <button type="reset" class="rounded-full border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700">Clear</button>
+                <button type="submit" class="rounded-full bg-[#042F8D] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(4,47,141,0.2)]">Submit form</button>
+              </div>
+
+              <p id="formStatus" class="min-h-6 text-sm font-semibold text-slate-600" aria-live="polite"></p>
+            </form>
+          </div><!-- /rounded card -->
+          </div><!-- /panel-registration -->
+
+          <!-- ══════════════════════════════════════════════════ -->
+          <!-- PANEL 2 · Conditions d'Inscription                -->
+          <!-- ══════════════════════════════════════════════════ -->
+          <div id="panel-conditions" class="gss-tab-panel hidden p-4 sm:p-6">
+            <div class="relative overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
+              <img src="./img/security.png" alt="" aria-hidden="true" class="pointer-events-none select-none absolute inset-0 w-full h-full object-contain opacity-[0.06]" />
+              <div class="bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-6 py-5 text-white">
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-200">Document 02</p>
+                <h3 class="mt-1 text-lg font-bold leading-snug">Conditions d'Inscription</h3>
+                <p class="mt-0.5 text-sm text-blue-200">Formation des Agents de Sécurité — GSS</p>
+              </div>
+              <div class="space-y-6 p-5 sm:p-7">
+                <p class="text-sm leading-7 text-slate-600">GSS Security Services annonce l'ouverture des inscriptions à la formation des agents de sécurité. Tout candidat souhaitant participer doit remplir les conditions suivantes.</p>
+
+                <section>
+                  <h4 class="mb-3 text-base font-bold text-[#042F8D]">A. Conditions d'inscription</h4>
+                  <ul class="space-y-2">
+                    <li class="flex items-start gap-2.5 text-sm text-slate-700"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#042F8D]/10 text-xs font-bold text-[#042F8D]">✓</span>Être de bonne moralité et avoir une bonne conduite.</li>
+                    <li class="flex items-start gap-2.5 text-sm text-slate-700"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#042F8D]/10 text-xs font-bold text-[#042F8D]">✓</span>Être âgé(e) d'au moins 18 ans.</li>
+                    <li class="flex items-start gap-2.5 text-sm text-slate-700"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#042F8D]/10 text-xs font-bold text-[#042F8D]">✓</span>Être physiquement et médicalement apte.</li>
+                    <li class="flex items-start gap-2.5 text-sm text-slate-700"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#042F8D]/10 text-xs font-bold text-[#042F8D]">✓</span>Ne pas avoir de condamnation incompatible avec la fonction.</li>
+                    <li class="flex items-start gap-2.5 text-sm text-slate-700"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#042F8D]/10 text-xs font-bold text-[#042F8D]">✓</span>Réussir l'entretien de sélection.</li>
+                    <li class="flex items-start gap-2.5 text-sm text-slate-700"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#042F8D]/10 text-xs font-bold text-[#042F8D]">✓</span>Fournir une pièce d'identité valide.</li>
+                    <li class="flex items-start gap-2.5 text-sm text-slate-700"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#042F8D]/10 text-xs font-bold text-[#042F8D]">✓</span>Fournir deux photos d'identité récentes.</li>
+                    <li class="flex items-start gap-2.5 text-sm text-slate-700"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#042F8D]/10 text-xs font-bold text-[#042F8D]">✓</span>Remplir le formulaire d'inscription.</li>
+                    <li class="flex items-start gap-2.5 text-sm text-slate-700"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#042F8D]/10 text-xs font-bold text-[#042F8D]">✓</span>Savoir lire et écrire en français.</li>
+                    <li class="flex items-start gap-2.5 text-sm text-slate-700"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#042F8D]/10 text-xs font-bold text-[#042F8D]">✓</span>Respecter le règlement de la formation.</li>
+                    <li class="flex items-start gap-2.5 text-sm text-slate-700"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#042F8D]/10 text-xs font-bold text-[#042F8D]">✓</span>Payer <strong>25 000 CDF</strong> pour les frais de syllabus.</li>
+                  </ul>
+                  <p class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600">L'inscription est définitive après dépôt des documents et paiement. Les candidats qui réussissent l'examen final seront éligibles à un emploi d'agent de sécurité au sein de GSS.</p>
+                </section>
+
+                <section>
+                  <h4 class="mb-3 text-base font-bold text-[#042F8D]">B. Obligations du candidat</h4>
+                  <ul class="space-y-2">
+                    <li class="flex items-start gap-2.5 text-sm text-slate-700"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#042F8D]/10 text-xs font-bold text-[#042F8D]">✓</span>Respecter les formateurs et le règlement.</li>
+                    <li class="flex items-start gap-2.5 text-sm text-slate-700"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#042F8D]/10 text-xs font-bold text-[#042F8D]">✓</span>Assurer une présence régulière.</li>
+                    <li class="flex items-start gap-2.5 text-sm text-slate-700"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#042F8D]/10 text-xs font-bold text-[#042F8D]">✓</span>Préserver la confidentialité des informations de l'entreprise.</li>
+                  </ul>
+                </section>
+
+                <section>
+                  <h4 class="mb-3 text-base font-bold text-[#042F8D]">C. Absences et exclusion</h4>
+                  <ul class="space-y-2">
+                    <li class="flex items-start gap-2.5 text-sm text-slate-700"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-700">!</span>Toute absence de trois (3) jours consécutifs sans justification valable entraîne l'exclusion définitive sans remboursement.</li>
+                    <li class="flex items-start gap-2.5 text-sm text-slate-700"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-700">!</span>GSS peut exclure tout candidat ayant un comportement inapproprié.</li>
+                  </ul>
+                </section>
+
+                <section>
+                  <h4 class="mb-3 text-base font-bold text-[#042F8D]">D. Évaluation finale</h4>
+                  <ul class="space-y-2">
+                    <li class="flex items-start gap-2.5 text-sm text-slate-700"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#042F8D]/10 text-xs font-bold text-[#042F8D]">✓</span>Évaluation théorique et pratique.</li>
+                    <li class="flex items-start gap-2.5 text-sm text-slate-700"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#042F8D]/10 text-xs font-bold text-[#042F8D]">✓</span>Les décisions du jury sont définitives.</li>
+                  </ul>
+                </section>
+
+                <section>
+                  <h4 class="mb-3 text-base font-bold text-[#042F8D]">E. Opportunité d'emploi</h4>
+                  <p class="text-sm leading-7 text-slate-600">La réussite à l'examen final permet au candidat d'être considéré parmi les candidats éligibles au recrutement, selon les besoins de l'entreprise.</p>
+                </section>
+
+                <section class="rounded-[16px] border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                  <h4 class="mb-4 text-sm font-bold uppercase tracking-wider text-slate-500">Déclaration du candidat</h4>
+                  <div class="grid gap-4 md:grid-cols-2">
+                    <div class="flex flex-col gap-1.5">
+                      <label for="cond-nom" class="text-sm font-semibold text-slate-700">Nom</label>
+                      <input id="cond-nom" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                      <label for="cond-date" class="text-sm font-semibold text-slate-700">Date</label>
+                      <input id="cond-date" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" placeholder="____ / ____ / ______" />
+                    </div>
+                    <div class="flex flex-col gap-1.5 md:col-span-2">
+                      <label for="cond-signature" class="text-sm font-semibold text-slate-700">Signature</label>
+                      <input id="cond-signature" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                    </div>
+                  </div>
+                </section>
+
+                <div class="rounded-[16px] border border-green-200 bg-green-50 p-4">
+                  <label class="flex cursor-pointer items-start gap-3">
+                    <input type="checkbox" id="ack-conditions" class="gss-ack-check mt-0.5 h-4 w-4 rounded accent-green-600" data-tab="conditions" />
+                    <span class="text-sm leading-6 text-slate-700">J'ai lu, compris et j'accepte les <strong>Conditions d'Inscription</strong> de GSS Security Services.</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div><!-- /panel-conditions -->
+
+          <!-- ══════════════════════════════════════════════════ -->
+          <!-- PANEL 3 · Règlement Intérieur                     -->
+          <!-- ══════════════════════════════════════════════════ -->
+          <div id="panel-reglement" class="gss-tab-panel hidden p-4 sm:p-6">
+            <div class="relative overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
+              <!-- <img src="./img/security.png" alt="" aria-hidden="true" class="pointer-events-none 
+              select-none absolute inset-0 w-full h-full object-contain opacity-[0.06]" /> -->
+              <div class="bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-6 py-5 text-white">
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-200">Document 03</p>
+                <h3 class="mt-1 text-lg font-bold leading-snug">Règlement Intérieur</h3>
+                <p class="mt-0.5 text-sm text-blue-200">Formation des Agents de Sécurité — GSS</p>
+              </div>
+              <div class="space-y-4 p-5 sm:p-7">
+                <div class="grid gap-3">
+                  <div class="rounded-[14px] border border-slate-200 bg-slate-50 p-4">
+                    <h4 class="mb-1.5 text-sm font-bold text-[#042F8D]">Article 1 — Objet</h4>
+                    <p class="text-sm leading-6 text-slate-600">Le présent règlement intérieur a pour objet de définir les règles d'organisation, de discipline et de fonctionnement de la formation.</p>
+                  </div>
+                  <div class="rounded-[14px] border border-slate-200 bg-slate-50 p-4">
+                    <h4 class="mb-1.5 text-sm font-bold text-[#042F8D]">Article 2 — Respect des horaires</h4>
+                    <p class="text-sm leading-6 text-slate-600">Les candidats sont tenus de respecter les horaires fixés.</p>
+                  </div>
+                  <div class="rounded-[14px] border border-slate-200 bg-slate-50 p-4">
+                    <h4 class="mb-1.5 text-sm font-bold text-[#042F8D]">Article 3 — Présence obligatoire</h4>
+                    <p class="text-sm leading-6 text-slate-600">La présence à tous les cours et évaluations est obligatoire.</p>
+                  </div>
+                  <div class="rounded-[14px] border border-slate-200 bg-slate-50 p-4">
+                    <h4 class="mb-1.5 text-sm font-bold text-[#042F8D]">Article 4 — Tenue vestimentaire</h4>
+                    <p class="text-sm leading-6 text-slate-600">Le port d'une chemise blanche ou d'un polo blanc sans inscription, logo ou graffiti, accompagné d'un pantalon noir, est obligatoire pendant toute la durée de la prestation.</p>
+                  </div>
+                  <div class="rounded-[14px] border border-slate-200 bg-slate-50 p-4">
+                    <h4 class="mb-1.5 text-sm font-bold text-[#042F8D]">Article 5 — Discipline</h4>
+                    <p class="text-sm leading-6 text-slate-600">Les candidats doivent respecter les formateurs et les autres participants.</p>
+                  </div>
+                  <div class="rounded-[14px] border border-slate-200 bg-slate-50 p-4">
+                    <h4 class="mb-1.5 text-sm font-bold text-[#042F8D]">Article 6 — Téléphone</h4>
+                    <p class="text-sm leading-6 text-slate-600">L'utilisation du téléphone est interdite pendant les cours.</p>
+                  </div>
+                  <div class="rounded-[14px] border border-slate-200 bg-slate-50 p-4">
+                    <h4 class="mb-1.5 text-sm font-bold text-[#042F8D]">Article 7 — Confidentialité</h4>
+                    <p class="text-sm leading-6 text-slate-600">Les candidats doivent préserver la confidentialité des informations de GSS.</p>
+                  </div>
+                  <div class="rounded-[14px] border border-amber-100 bg-amber-50 p-4">
+                    <h4 class="mb-1.5 text-sm font-bold text-amber-800">Article 8 — Absences</h4>
+                    <p class="text-sm leading-6 text-amber-900">Trois absences consécutives non justifiées entraînent l'exclusion définitive sans remboursement.</p>
+                  </div>
+                  <div class="rounded-[14px] border border-amber-100 bg-amber-50 p-4">
+                    <h4 class="mb-1.5 text-sm font-bold text-amber-800">Article 9 — Faute grave</h4>
+                    <p class="text-sm leading-6 text-amber-900">Toute faute grave peut entraîner une exclusion immédiate.</p>
+                  </div>
+                  <div class="rounded-[14px] border border-slate-200 bg-slate-50 p-4">
+                    <h4 class="mb-1.5 text-sm font-bold text-[#042F8D]">Article 10 — Matériel</h4>
+                    <p class="text-sm leading-6 text-slate-600">Les équipements doivent être utilisés avec soin.</p>
+                  </div>
+                  <div class="rounded-[14px] border border-slate-200 bg-slate-50 p-4">
+                    <h4 class="mb-1.5 text-sm font-bold text-[#042F8D]">Article 11 — Sanctions</h4>
+                    <p class="text-sm leading-6 text-slate-600">Avertissement verbal, avertissement écrit, exclusion temporaire ou exclusion définitive.</p>
+                  </div>
+                  <div class="rounded-[14px] border border-slate-200 bg-slate-50 p-4">
+                    <h4 class="mb-1.5 text-sm font-bold text-[#042F8D]">Article 12 — Pouvoir de décision</h4>
+                    <p class="text-sm leading-6 text-slate-600">La Direction se réserve le droit de prendre toute décision nécessaire.</p>
+                  </div>
+                </div>
+
+                <div class="rounded-[16px] border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                  <div class="mb-4 text-center">
+                    <p class="font-bold text-slate-800">GUARDE SECURITY SERVICE</p>
+                    <p class="text-sm text-slate-500">Centre de formation</p>
+                  </div>
+                  <div class="grid gap-4 md:grid-cols-2">
+                    <div class="flex flex-col gap-1.5">
+                      <label for="regl-nom" class="text-sm font-semibold text-slate-700">Nom du candidat</label>
+                      <input id="regl-nom" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                      <label for="regl-date" class="text-sm font-semibold text-slate-700">Date</label>
+                      <input id="regl-date" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" placeholder="____ / ____ / ______" />
+                    </div>
+                    <div class="flex flex-col gap-1.5 md:col-span-2">
+                      <label for="regl-signature" class="text-sm font-semibold text-slate-700">Signature</label>
+                      <input id="regl-signature" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="rounded-[16px] border border-green-200 bg-green-50 p-4">
+                  <label class="flex cursor-pointer items-start gap-3">
+                    <input type="checkbox" id="ack-reglement" class="gss-ack-check mt-0.5 h-4 w-4 rounded accent-green-600" data-tab="reglement" />
+                    <span class="text-sm leading-6 text-slate-700">J'ai lu, compris et j'accepte le <strong>Règlement Intérieur</strong> de GSS Security Services.</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div><!-- /panel-reglement -->
+
+          <!-- ══════════════════════════════════════════════════ -->
+          <!-- PANEL 4 · Engagement de Confidentialité           -->
+          <!-- ══════════════════════════════════════════════════ -->
+          <div id="panel-engagement" class="gss-tab-panel hidden p-4 sm:p-6">
+            <div class="relative overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
+              <img src="./img/security.png" alt="" aria-hidden="true" class="pointer-events-none select-none absolute inset-0 w-full h-full object-contain opacity-[0.06]" />
+              <div class="bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-6 py-5 text-white">
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-200">Document 04</p>
+                <h3 class="mt-1 text-lg font-bold leading-snug">Engagement de Confidentialité</h3>
+                <p class="mt-0.5 text-sm text-blue-200">Protection des Documents Administratifs — GSS</p>
+              </div>
+              <div class="space-y-6 p-5 sm:p-7">
+                <section>
+                  <h4 class="mb-4 text-sm font-bold uppercase tracking-wider text-slate-500">Identité du signataire</h4>
+                  <div class="grid gap-4 md:grid-cols-2">
+                    <div class="flex flex-col gap-1.5 md:col-span-2">
+                      <label for="eng-nom" class="text-sm font-semibold text-slate-700">Je soussigné(e)</label>
+                      <input id="eng-nom" name="eng-nom" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                      <label for="eng-naissance" class="text-sm font-semibold text-slate-700">Né(e) le</label>
+                      <input id="eng-naissance" name="eng-naissance" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" placeholder="____ / ____ / ______" />
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                      <label for="eng-telephone" class="text-sm font-semibold text-slate-700">Téléphone</label>
+                      <input id="eng-telephone" name="eng-telephone" type="tel" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                    </div>
+                    <div class="flex flex-col gap-1.5 md:col-span-2">
+                      <label for="eng-piece" class="text-sm font-semibold text-slate-700">Numéro de la pièce d'identité</label>
+                      <input id="eng-piece" name="eng-piece" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                    </div>
+                  </div>
+                </section>
+
+                <p class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-7 text-slate-600">Reconnais avoir reçu ou avoir accès à certains documents et données administratives appartenant à <strong>GSS Security Services</strong>.</p>
+
+                <section>
+                  <h4 class="mb-3 text-base font-bold text-[#042F8D]">Je m'engage à :</h4>
+                  <ol class="space-y-3">
+                    <li class="flex items-start gap-3"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#042F8D] text-xs font-bold text-white">1</span><span class="text-sm leading-6 text-slate-700">Préserver la confidentialité de tous les documents administratifs, dossiers, données, formulaires et informations mis à ma disposition.</span></li>
+                    <li class="flex items-start gap-3"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#042F8D] text-xs font-bold text-white">2</span><span class="text-sm leading-6 text-slate-700">Ne pas remettre, partager, copier, reproduire, photographier ou transmettre ces documents à une tierce personne sans autorisation écrite préalable de GSS Security Services.</span></li>
+                    <li class="flex items-start gap-3"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#042F8D] text-xs font-bold text-white">3</span><span class="text-sm leading-6 text-slate-700">Utiliser ces documents uniquement dans le cadre autorisé par l'entreprise.</span></li>
+                    <li class="flex items-start gap-3"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#042F8D] text-xs font-bold text-white">4</span><span class="text-sm leading-6 text-slate-700">Protéger les informations contre toute perte, divulgation ou utilisation non autorisée.</span></li>
+                    <li class="flex items-start gap-3"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#042F8D] text-xs font-bold text-white">5</span><span class="text-sm leading-6 text-slate-700">Restituer immédiatement tout document appartenant à l'entreprise à la demande de celle-ci.</span></li>
+                  </ol>
+                </section>
+
+                <div class="rounded-[14px] border border-amber-100 bg-amber-50 p-4 text-sm leading-7 text-amber-900">Je reconnais qu'en cas de violation du présent engagement, GSS Security Services se réserve le droit d'engager toute procédure administrative ou judiciaire nécessaire conformément aux lois en vigueur, ainsi que de réclamer réparation pour tout préjudice subi.</div>
+
+                <section class="rounded-[16px] border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                  <h4 class="mb-4 text-sm font-bold uppercase tracking-wider text-slate-500">Signature</h4>
+                  <div class="grid gap-4 md:grid-cols-2">
+                    <div class="flex flex-col gap-1.5">
+                      <label for="eng-fait-a" class="text-sm font-semibold text-slate-700">Fait à</label>
+                      <input id="eng-fait-a" name="eng-fait-a" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                      <label for="eng-date-sig" class="text-sm font-semibold text-slate-700">Le</label>
+                      <input id="eng-date-sig" name="eng-date-sig" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" placeholder="____ / ____ / ______" />
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                      <label for="eng-nom-complet" class="text-sm font-semibold text-slate-700">Nom complet</label>
+                      <input id="eng-nom-complet" name="eng-nom-complet" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                      <label for="eng-signature" class="text-sm font-semibold text-slate-700">Signature</label>
+                      <input id="eng-signature" name="eng-signature" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                    </div>
+                    <div class="flex flex-col gap-1.5 md:col-span-2">
+                      <label for="eng-cachet-gss" class="text-sm font-semibold text-slate-700">Signature et cachet de GSS</label>
+                      <input id="eng-cachet-gss" name="eng-cachet-gss" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                    </div>
+                  </div>
+                </section>
+
+                <div class="rounded-[16px] border border-green-200 bg-green-50 p-4">
+                  <label class="flex cursor-pointer items-start gap-3">
+                    <input type="checkbox" id="ack-engagement" class="gss-ack-check mt-0.5 h-4 w-4 rounded accent-green-600" data-tab="engagement" />
+                    <span class="text-sm leading-6 text-slate-700">Je m'engage librement à respecter le présent <strong>Engagement de Confidentialité</strong>, qui prend effet à compter de sa date de signature.</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div><!-- /panel-engagement -->
+
+        </div><!-- /formContent -->
+      </div><!-- /dialog card -->
+    </div><!-- /formModal -->
+
+    <script src="./js/tc.js"></script>
+    <script src="./js/formulaire-inscription.js"></script>
+  </body>
+</html>
