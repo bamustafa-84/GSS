@@ -171,7 +171,7 @@ const translations = {
 const modal = document.getElementById('formModal');
 const openFormBtn = document.getElementById('openFormBtn');
 const closeModalBtn = document.getElementById('closeModalBtn');
-const langButtons = document.querySelectorAll('[data-lang]');
+const langButtons = Array.from(document.querySelectorAll('[data-lang]')).slice(0, 2); //document.querySelectorAll('[data-lang]');
 
 // ── Tab state ──────────────────────────────────────────────
 const tabState = { registration: false, conditions: false, reglement: false, engagement: false };
@@ -360,7 +360,7 @@ const applyLanguage = (lang) => {
 
   langButtons.forEach((button) => {
     const isActive = button.getAttribute('data-lang') === lang;
-    // button.classList.toggle(`bg-[${TAB_ACTIVE_BG}]`, isActive);
+    button.classList.toggle(`bg-[${TAB_ACTIVE_BG}]`, isActive);
     button.classList.toggle('text-white', isActive);
     button.classList.toggle(`text-[${TAB_ACTIVE_BG}]`, !isActive);
     button.classList.toggle('bg-white', !isActive);
