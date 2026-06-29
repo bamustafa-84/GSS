@@ -32,6 +32,7 @@ const translations = {
     lbTel1: 'Téléphone (1)', lbTel2: 'Téléphone (2)', lbPere: 'Nom du père', lbMere: 'Nom de la mère',
     lbEmail: 'E-mail', lbDateNaissance: 'Date de naissance', lbLieuNaissance: 'Lieu de naissance',
     lbNationalite: 'Nationalité', lbSexe: 'Sexe', lbEtatCivil: 'État civil', lbAdresse: 'Adresse complète',
+    optSelectCountry: 'Sélectionnez votre pays', optSelectCity: 'Sélectionnez votre ville', optSelectCountryFirst: 'Sélectionnez d\'abord le pays',
     optMale: ' Masculin', optFemale: ' Féminin',
     optSingle: ' Célibataire', optMarried: ' Marié(e)', optDivorced: ' Divorcé(e)', optWidowed: ' Veuf(ve)',
     // education labels
@@ -53,6 +54,7 @@ const translations = {
     optPaid: ' Payé', optNotPaid: ' Non payé',
     declText: 'Je certifie que les informations fournies sont exactes et m\'engage à respecter le règlement de la formation.',
     lbCandidatName: 'Nom du candidat', lbSignature: 'Signature', lbDate: 'Date',
+    sigHint: 'Signez dans le cadre', sigClear: 'Effacer',
     // admin labels
     lbResultat: 'Résultat de l\'entretien',
     optAccepted: ' Accepté', optRejected: ' Refusé', optPending: ' En attente',
@@ -115,6 +117,7 @@ const translations = {
     lbTel1: 'Phone (1)', lbTel2: 'Phone (2)', lbPere: "Father's Name", lbMere: "Mother's Name",
     lbEmail: 'Email', lbDateNaissance: 'Date of Birth', lbLieuNaissance: 'Place of Birth',
     lbNationalite: 'Nationality', lbSexe: 'Gender', lbEtatCivil: 'Marital Status', lbAdresse: 'Full Address',
+    optSelectCountry: 'Select your country', optSelectCity: 'Select your city', optSelectCountryFirst: 'Select a country first',
     optMale: ' Male', optFemale: ' Female',
     optSingle: ' Single', optMarried: ' Married', optDivorced: ' Divorced', optWidowed: ' Widowed',
     // education labels
@@ -136,6 +139,7 @@ const translations = {
     optPaid: ' Paid', optNotPaid: ' Unpaid',
     declText: 'I certify that the information provided is accurate and undertake to comply with the training regulations.',
     lbCandidatName: "Applicant's Name", lbSignature: 'Signature', lbDate: 'Date',
+    sigHint: 'Sign within the box', sigClear: 'Clear',
     // admin labels
     lbResultat: 'Interview Result',
     optAccepted: ' Accepted', optRejected: ' Rejected', optPending: ' Pending',
