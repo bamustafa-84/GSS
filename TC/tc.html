@@ -19,7 +19,7 @@
         <!-- Watermark -->
         <img src="./img/security.svg" alt="" aria-hidden="true"
              class="pointer-events-none select-none absolute inset-0 w-full h-full object-contain"
-             style="opacity:0.06; z-index:0;" /> 
+             style="opacity:0.08; z-index:5;" /> 
         <div style="position:relative;z-index:1;">
           <div class="mb-3 inline-block rounded-full bg-[#042F8D]/10 px-3 py-2 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-[#042F8D]" data-i18n="eyebrow">Sécurité professionnelle</div>
           <h1 class="mb-3 text-4xl font-bold leading-tight sm:text-5xl" data-i18n="heroTitle">Rejoignez une formation d’exception pour devenir agent de sécurité.</h1>
@@ -45,6 +45,17 @@
         </div>
 
         <div class="rounded-[24px] border border-slate-200 bg-slate-50 p-5" style="position:relative;z-index:1;">
+          <!-- Brand logo -->
+          <div class="mb-5 flex flex-col items-center">
+            <div class="relative">
+              <span class="pointer-events-none absolute -inset-3 rounded-[30px] bg-gradient-to-tr from-[#042F8D]/30 via-[#0b4dc2]/20 to-transparent blur-2xl"></span>
+              <div class="relative rounded-[24px] bg-white p-4 shadow-[0_18px_50px_rgba(4,47,141,0.22)] ring-1 ring-slate-200 transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_24px_60px_rgba(4,47,141,0.30)]">
+                <img src="./img/logo.jpeg" alt="Guarde Security Service" class="mx-auto h-36 w-36 object-contain sm:h-44 sm:w-44" />
+              </div>
+            </div>
+            <p class="mt-4 text-center text-sm font-semibold uppercase tracking-[0.22em] text-[#042F8D]">Guarde Security Service</p>
+            <span class="mt-1 h-1 w-12 rounded-full bg-gradient-to-r from-[#042F8D] to-[#0b4dc2]"></span>
+          </div>
           <h3 class="mb-3 text-lg font-semibold text-[#042F8D]" data-i18n="whyTitle">Pourquoi choisir GSS ?</h3>
           <ul class="space-y-3 text-slate-600">
             <li class="flex items-center gap-2"><span class="text-[#042F8D]">✦</span><span data-i18n="benefit1">Formation reconnue et professionnelle</span></li>
@@ -97,95 +108,100 @@
           <!-- PANEL 1 · Registration Form                       -->
           <!-- ══════════════════════════════════════════════════ -->
           <div id="panel-registration" class="gss-tab-panel p-4 sm:p-6">
-            <div class="relative overflow-hidden rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm sm:p-6 lg:p-7">
+            <div class="relative overflow-hidden rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_18px_50px_rgba(4,47,141,0.10)] sm:p-6 lg:p-7">
+            <span class="pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#042F8D] via-[#0b4dc2] to-[#042F8D]"></span>
             <!-- <img src="./img/security.svg" alt="" aria-hidden="true" 
             class="pointer-events-none select-none absolute inset-0 w-full h-full object-contain 
             opacity-[0.06]" /> -->
             <div class="mb-6 flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-5">
               <div>
                 <p class="text-sm font-semibold uppercase tracking-[0.2em] text-[#042F8D]" data-i18n="formTag">Registration Form</p>
-                <h3 class="mt-2 text-3xl font-bold text-slate-800" data-i18n="formTitle">GSS Application</h3>
+                <h3 class="mt-2 text-3xl font-bold text-[#042F8D]" data-i18n="formTitle">GSS Application</h3>
                 <p class="mt-2 max-w-2xl text-sm leading-7 text-slate-600" data-i18n="formDesc">Fill out this form carefully to complete your registration and prepare your training journey.</p>
               </div>
-              <div class="rounded-full bg-[#042F8D]/10 px-3 py-1 text-sm font-semibold text-[#042F8D]" data-i18n="formBadge">Secure</div>
+              <div class="inline-flex items-center gap-1.5 rounded-full bg-[#042F8D] px-3 py-1 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(4,47,141,0.25)]" data-i18n="formBadge">Secure</div>
             </div>
 
             <form id="inscriptionForm" novalidate class="space-y-6">
-              <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-slate-50 p-4 sm:p-5">
-                <legend class="flex items-center gap-2 rounded-lg border border-[#042F8D]/20 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-[#042F8D] shadow-sm">
+              <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
+                <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                   <span data-i18n="secPersonal">PERSONAL INFORMATION</span>
                 </legend>
                 <div class="mt-4 grid gap-4 md:grid-cols-2">
                   <div class="flex flex-col gap-1.5">
                     <label for="dossier" class="text-sm font-semibold text-slate-700" data-i18n="lbDossier">File No.</label>
-                    <input id="dossier" name="dossier" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" placeholder="0001" />
+                    <input id="dossier" name="dossier" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" placeholder="0001" />
                   </div>
                   <div class="flex flex-col gap-1.5">
                     <label for="dateInscription" class="text-sm font-semibold text-slate-700" data-i18n="lbDateInscription">Registration Date</label>
-                    <input id="dateInscription" name="dateInscription" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" placeholder="____ / ____ / ______" />
+                    <input id="dateInscription" name="dateInscription" type="date" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                   </div>
                   <div class="flex flex-col gap-1.5 md:col-span-2">
                     <label for="nom" class="text-sm font-semibold text-slate-700" data-i18n="lbNom">Full Name</label>
-                    <input id="nom" name="nom" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" required />
+                    <input id="nom" name="nom" type="text" autocomplete="name" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" required />
                   </div>
                   <div class="flex flex-col gap-1.5">
                     <label for="telephone1" class="text-sm font-semibold text-slate-700" data-i18n="lbTel1">Phone (1)</label>
-                    <input id="telephone1" name="telephone1" type="tel" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" required />
+                    <input id="telephone1" name="telephone1" type="tel" inputmode="tel" autocomplete="tel" pattern="^\+?[0-9\s().-]{7,20}$" placeholder="+243 999 000 000" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" required />
                   </div>
                   <div class="flex flex-col gap-1.5">
                     <label for="telephone2" class="text-sm font-semibold text-slate-700" data-i18n="lbTel2">Phone (2)</label>
-                    <input id="telephone2" name="telephone2" type="tel" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                    <input id="telephone2" name="telephone2" type="tel" inputmode="tel" autocomplete="tel" pattern="^\+?[0-9\s().-]{7,20}$" placeholder="+243 999 000 000" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                   </div>
                   <div class="flex flex-col gap-1.5">
                     <label for="pere" class="text-sm font-semibold text-slate-700" data-i18n="lbPere">Father's Name</label>
-                    <input id="pere" name="pere" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                    <input id="pere" name="pere" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                   </div>
                   <div class="flex flex-col gap-1.5">
                     <label for="mere" class="text-sm font-semibold text-slate-700" data-i18n="lbMere">Mother's Name</label>
-                    <input id="mere" name="mere" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                    <input id="mere" name="mere" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                   </div>
                   <div class="flex flex-col gap-1.5">
                     <label for="emailForm" class="text-sm font-semibold text-slate-700" data-i18n="lbEmail">Email</label>
-                    <input id="emailForm" name="email" type="email" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                    <input id="emailForm" name="email" type="email" inputmode="email" autocomplete="email" placeholder="name@example.com" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                   </div>
                   <div class="flex flex-col gap-1.5">
                     <label for="dateNaissance" class="text-sm font-semibold text-slate-700" data-i18n="lbDateNaissance">Date of Birth</label>
-                    <input id="dateNaissance" name="dateNaissance" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" placeholder="____ / ____ / ______" />
-                  </div>
-                  <div class="flex flex-col gap-1.5">
-                    <label for="lieuNaissance" class="text-sm font-semibold text-slate-700" data-i18n="lbLieuNaissance">Place of Birth</label>
-                    <input id="lieuNaissance" name="lieuNaissance" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                    <input id="dateNaissance" name="dateNaissance" type="date" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                   </div>
                   <div class="flex flex-col gap-1.5">
                     <label for="nationalite" class="text-sm font-semibold text-slate-700" data-i18n="lbNationalite">Nationality</label>
-                    <input id="nationalite" name="nationalite" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                    <select id="nationalite" name="nationalite" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+                      <option value="" data-i18n="optSelectCountry">Select your country</option>
+                    </select>
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <label for="lieuNaissance" class="text-sm font-semibold text-slate-700" data-i18n="lbLieuNaissance">Place of Birth</label>
+                    <select id="lieuNaissance" name="lieuNaissance" disabled class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400">
+                      <option value="" data-i18n="optSelectCountryFirst">Select a country first</option>
+                    </select>
                   </div>
                   <div class="md:col-span-2 flex flex-col gap-2">
                     <label class="text-sm font-semibold text-slate-700" data-i18n="lbSexe">Gender</label>
                     <div class="flex flex-wrap gap-2">
-                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="sexe" value="Male" /><span data-i18n="optMale"> Male</span></label>
-                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="sexe" value="Female" /><span data-i18n="optFemale"> Female</span></label>
+                      <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="radio" name="sexe" value="Male" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="optMale"> Male</span></label>
+                      <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="radio" name="sexe" value="Female" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="optFemale"> Female</span></label>
                     </div>
                   </div>
                   <div class="md:col-span-2 flex flex-col gap-2">
                     <label class="text-sm font-semibold text-slate-700" data-i18n="lbEtatCivil">Marital Status</label>
                     <div class="flex flex-wrap gap-2">
-                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="etatCivil" value="Single" /><span data-i18n="optSingle"> Single</span></label>
-                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="etatCivil" value="Married" /><span data-i18n="optMarried"> Married</span></label>
-                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="etatCivil" value="Divorced" /><span data-i18n="optDivorced"> Divorced</span></label>
-                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="etatCivil" value="Widowed" /><span data-i18n="optWidowed"> Widowed</span></label>
+                      <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="radio" name="etatCivil" value="Single" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="optSingle"> Single</span></label>
+                      <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="radio" name="etatCivil" value="Married" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="optMarried"> Married</span></label>
+                      <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="radio" name="etatCivil" value="Divorced" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="optDivorced"> Divorced</span></label>
+                      <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="radio" name="etatCivil" value="Widowed" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="optWidowed"> Widowed</span></label>
                     </div>
                   </div>
                   <div class="md:col-span-2 flex flex-col gap-1.5">
                     <label for="adresse" class="text-sm font-semibold text-slate-700" data-i18n="lbAdresse">Full Address</label>
-                    <textarea id="adresse" name="adresse" rows="3" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"></textarea>
+                    <textarea id="adresse" name="adresse" rows="3" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10"></textarea>
                   </div>
                 </div>
               </fieldset>
 
-              <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-slate-50 p-4 sm:p-5">
-                <legend class="flex items-center gap-2 rounded-lg border border-[#042F8D]/20 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-[#042F8D] shadow-sm">
+              <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
+                <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
                   <span data-i18n="secEducation">EDUCATION LEVEL AND EXPERIENCE</span>
                 </legend>
@@ -193,35 +209,35 @@
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-semibold text-slate-700" data-i18n="lbNiveauEtudes">Education Level</label>
                     <div class="flex flex-wrap gap-2">
-                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="niveauEtudes" value="Primary" /><span data-i18n="optPrimary"> Primary</span></label>
-                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="niveauEtudes" value="Secondary" /><span data-i18n="optSecondary"> Secondary</span></label>
-                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="niveauEtudes" value="University" /><span data-i18n="optUniversity"> University</span></label>
-                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="niveauEtudes" value="Other" /><span data-i18n="optOther"> Other</span></label>
+                      <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="radio" name="niveauEtudes" value="Primary" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="optPrimary"> Primary</span></label>
+                      <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="radio" name="niveauEtudes" value="Secondary" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="optSecondary"> Secondary</span></label>
+                      <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="radio" name="niveauEtudes" value="University" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="optUniversity"> University</span></label>
+                      <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="radio" name="niveauEtudes" value="Other" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="optOther"> Other</span></label>
                     </div>
                   </div>
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-semibold text-slate-700" data-i18n="lbFrancais">Can you read and write in French?</label>
                     <div class="flex flex-wrap gap-2">
-                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="francais" value="Yes" /><span data-i18n="optYes"> Yes</span></label>
-                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="francais" value="No" /><span data-i18n="optNo"> No</span></label>
+                      <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="radio" name="francais" value="Yes" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="optYes"> Yes</span></label>
+                      <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="radio" name="francais" value="No" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="optNo"> No</span></label>
                     </div>
                   </div>
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-semibold text-slate-700" data-i18n="lbExperience">Do you have experience in the security field?</label>
                     <div class="flex flex-wrap gap-2">
-                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="experience" value="Yes" /><span data-i18n="optYes"> Yes</span></label>
-                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="experience" value="No" /><span data-i18n="optNo"> No</span></label>
+                      <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="radio" name="experience" value="Yes" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="optYes"> Yes</span></label>
+                      <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="radio" name="experience" value="No" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="optNo"> No</span></label>
                     </div>
                   </div>
                   <div class="flex flex-col gap-1.5">
                     <label for="precisionExperience" class="text-sm font-semibold text-slate-700" data-i18n="lbPrecisionExp">If yes, please specify</label>
-                    <textarea id="precisionExperience" name="precisionExperience" rows="3" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"></textarea>
+                    <textarea id="precisionExperience" name="precisionExperience" rows="3" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10"></textarea>
                   </div>
                 </div>
               </fieldset>
 
-              <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-slate-50 p-4 sm:p-5">
-                <legend class="flex items-center gap-2 rounded-lg border border-[#042F8D]/20 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-[#042F8D] shadow-sm">
+              <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
+                <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                   <span data-i18n="secHealth">HEALTH STATUS</span>
                 </legend>
@@ -229,41 +245,41 @@
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-semibold text-slate-700" data-i18n="lbSante">Do you suffer from any illness that could affect your work?</label>
                     <div class="flex flex-wrap gap-2">
-                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="sante" value="Yes" /><span data-i18n="optYes"> Yes</span></label>
-                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="sante" value="No" /><span data-i18n="optNo"> No</span></label>
+                      <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="radio" name="sante" value="Yes" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="optYes"> Yes</span></label>
+                      <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="radio" name="sante" value="No" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="optNo"> No</span></label>
                     </div>
                   </div>
                   <div class="flex flex-col gap-1.5">
                     <label for="precisionSante" class="text-sm font-semibold text-slate-700" data-i18n="lbPrecisionSante">If yes, please specify</label>
-                    <textarea id="precisionSante" name="precisionSante" rows="3" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"></textarea>
+                    <textarea id="precisionSante" name="precisionSante" rows="3" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10"></textarea>
                   </div>
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-semibold text-slate-700" data-i18n="lbDocuments">REQUIRED DOCUMENTS</label>
                     <div class="space-y-2">
-                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="checkbox" name="documents" value="Copy of ID card or passport" /><span data-i18n="docIdCard"> Copy of National ID Card or Passport</span></label>
-                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="checkbox" name="documents" value="Two recent identity photos" /><span data-i18n="docPhotos"> Two Recent Passport Photos</span></label>
-                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="checkbox" name="documents" value="Other documents" /><span data-i18n="docOther"> Other Documents (if required)</span></label>
+                      <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="checkbox" name="documents" value="Copy of ID card or passport" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="docIdCard"> Copy of National ID Card or Passport</span></label>
+                      <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="checkbox" name="documents" value="Two recent identity photos" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="docPhotos"> Two Recent Passport Photos</span></label>
+                      <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="checkbox" name="documents" value="Other documents" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="docOther"> Other Documents (if required)</span></label>
                     </div>
                   </div>
                 </div>
               </fieldset>
 
-              <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-slate-50 p-4 sm:p-5">
-                <legend class="flex items-center gap-2 rounded-lg border border-[#042F8D]/20 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-[#042F8D] shadow-sm">
+              <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
+                <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
                   <span data-i18n="secFees">REGISTRATION FEES</span>
                 </legend>
                 <div class="mt-4 space-y-4">
                   <p class="text-sm leading-7 text-slate-600" data-i18n-html="feesText">I acknowledge that I have been informed of the payment of <span class="font-semibold text-slate-800">25,000 CDF</span> covering the cost of the training syllabus.</p>
                   <div class="flex flex-wrap gap-2">
-                    <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="paiement" value="Paid" /><span data-i18n="optPaid"> Paid</span></label>
-                    <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="paiement" value="Unpaid" /><span data-i18n="optNotPaid"> Unpaid</span></label>
+                    <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="radio" name="paiement" value="Paid" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="optPaid"> Paid</span></label>
+                    <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="radio" name="paiement" value="Unpaid" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="optNotPaid"> Unpaid</span></label>
                   </div>
                 </div>
               </fieldset>
 
-              <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-slate-50 p-4 sm:p-5">
-                <legend class="flex items-center gap-2 rounded-lg border border-[#042F8D]/20 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-[#042F8D] shadow-sm">
+              <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
+                <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                   <span data-i18n="secDecl">APPLICANT'S DECLARATION</span>
                 </legend>
@@ -271,23 +287,28 @@
                   <p class="text-sm leading-7 text-slate-600" data-i18n="declText">I certify that the information provided is accurate and undertake to comply with the training regulations.</p>
                   <div class="flex flex-col gap-1.5">
                     <label for="candidat" class="text-sm font-semibold text-slate-700" data-i18n="lbCandidatName">Applicant's Name</label>
-                    <input id="candidat" name="candidat" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                    <input id="candidat" name="candidat" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                   </div>
                   <div class="grid gap-4 md:grid-cols-2">
-                    <div class="flex flex-col gap-1.5">
-                      <label for="signature" class="text-sm font-semibold text-slate-700" data-i18n="lbSignature">Signature</label>
-                      <input id="signature" name="signature" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                    <div class="flex flex-col gap-1.5 md:col-span-2">
+                      <label for="signaturePad" class="text-sm font-semibold text-slate-700" data-i18n="lbSignature">Signature</label>
+                      <div class="gss-sign group relative w-full overflow-hidden rounded-xl border-[1.5px] border-[#dbe2f0] bg-white/40 transition focus-within:border-[#042F8D] focus-within:ring-4 focus-within:ring-[#042F8D]/10">
+                        <canvas id="signaturePad" class="gss-sign-canvas block h-44 w-full touch-none cursor-crosshair bg-transparent"></canvas>
+                        <span class="gss-sign-hint pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-slate-400" data-i18n="sigHint">Sign within the box</span>
+                        <button type="button" class="gss-sign-clear absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-[#042F8D] hover:text-[#042F8D]" data-i18n="sigClear">Clear</button>
+                        <input id="signature" name="signature" class="gss-sign-input" type="hidden" />
+                      </div>
                     </div>
-                    <div class="flex flex-col gap-1.5">
+                    <div class="flex flex-col gap-1.5 md:col-span-2">
                       <label for="dateSignature" class="text-sm font-semibold text-slate-700" data-i18n="lbDate">Date</label>
-                      <input id="dateSignature" name="dateSignature" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" placeholder="____ / ____ / ______" />
+                      <input id="dateSignature" name="dateSignature" type="date" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                   </div>
                 </div>
               </fieldset>
 
-              <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-slate-50 p-4 sm:p-5">
-                <legend class="flex items-center gap-2 rounded-lg border border-[#042F8D]/20 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-[#042F8D] shadow-sm">
+              <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
+                <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                   <span data-i18n="secAdmin">FOR ADMINISTRATION USE ONLY</span>
                 </legend>
@@ -295,31 +316,31 @@
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-semibold text-slate-700" data-i18n="lbResultat">Interview Result</label>
                     <div class="flex flex-wrap gap-2">
-                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="resultat" value="Accepted" /><span data-i18n="optAccepted"> Accepted</span></label>
-                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="resultat" value="Rejected" /><span data-i18n="optRejected"> Rejected</span></label>
-                      <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-sm"><input type="radio" name="resultat" value="Pending" /><span data-i18n="optPending"> Pending</span></label>
+                      <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="radio" name="resultat" value="Accepted" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="optAccepted"> Accepted</span></label>
+                      <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="radio" name="resultat" value="Rejected" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="optRejected"> Rejected</span></label>
+                      <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="radio" name="resultat" value="Pending" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="optPending"> Pending</span></label>
                     </div>
                   </div>
                   <div class="flex flex-col gap-1.5">
                     <label for="observations" class="text-sm font-semibold text-slate-700" data-i18n="lbObservations">Remarks</label>
-                    <textarea id="observations" name="observations" rows="3" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"></textarea>
+                    <textarea id="observations" name="observations" rows="3" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10"></textarea>
                   </div>
                   <div class="grid gap-4 md:grid-cols-2">
                     <div class="flex flex-col gap-1.5">
                       <label for="responsable" class="text-sm font-semibold text-slate-700" data-i18n="lbResponsable">Name of the Officer in Charge</label>
-                      <input id="responsable" name="responsable" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                      <input id="responsable" name="responsable" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                     <div class="flex flex-col gap-1.5">
                       <label for="cachet" class="text-sm font-semibold text-slate-700" data-i18n="lbCachet">Signature and Official Stamp</label>
-                      <input id="cachet" name="cachet" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                      <input id="cachet" name="cachet" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                   </div>
                 </div>
               </fieldset>
 
               <div class="flex flex-wrap justify-end gap-3">
-                <button type="reset" class="rounded-full border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700" data-i18n="btnClear">Clear</button>
-                <button type="submit" class="rounded-full bg-[#042F8D] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(4,47,141,0.2)]" data-i18n="btnSubmit">Submit form</button>
+                <button type="reset" class="rounded-full border-[1.5px] border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" data-i18n="btnClear">Clear</button>
+                <button type="submit" class="rounded-full bg-[#042F8D] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(4,47,141,0.2)] transition hover:-translate-y-px hover:shadow-[0_14px_30px_rgba(4,47,141,0.34)]" data-i18n="btnSubmit">Submit form</button>
               </div>
 
               <p id="formStatus" class="min-h-6 text-sm font-semibold text-slate-600" aria-live="polite"></p>
@@ -442,15 +463,20 @@
                   <div class="grid gap-4 md:grid-cols-2">
                     <div class="flex flex-col gap-1.5">
                       <label for="cond-nom" class="text-sm font-semibold text-slate-700" data-i18n="condLbNom">Name</label>
-                      <input id="cond-nom" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                      <input id="cond-nom" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                     <div class="flex flex-col gap-1.5">
                       <label for="cond-date" class="text-sm font-semibold text-slate-700" data-i18n="condLbDate">Date</label>
-                      <input id="cond-date" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" placeholder="____ / ____ / ______" />
+                      <input id="cond-date" type="date" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                     <div class="flex flex-col gap-1.5 md:col-span-2">
                       <label for="cond-signature" class="text-sm font-semibold text-slate-700" data-i18n="condLbSig">Signature</label>
-                      <input id="cond-signature" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                      <div class="gss-sign group relative w-full overflow-hidden rounded-xl border-[1.5px] border-[#dbe2f0] bg-white/40 transition focus-within:border-[#042F8D] focus-within:ring-4 focus-within:ring-[#042F8D]/10">
+                        <canvas id="cond-signature" class="gss-sign-canvas block h-44 w-full touch-none cursor-crosshair bg-transparent"></canvas>
+                        <span class="gss-sign-hint pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-slate-400" data-i18n="sigHint">Sign within the box</span>
+                        <button type="button" class="gss-sign-clear absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-[#042F8D] hover:text-[#042F8D]" data-i18n="sigClear">Clear</button>
+                        <input id="cond-signature-data" name="cond-signature" class="gss-sign-input" type="hidden" />
+                      </div>
                     </div>
                   </div>
                 </section>
@@ -524,15 +550,20 @@
                   <div class="grid gap-4 md:grid-cols-2">
                     <div class="flex flex-col gap-1.5">
                       <label for="regl-nom" class="text-sm font-semibold text-slate-700" data-i18n="reglLbNomCandidat">Candidate's Name</label>
-                      <input id="regl-nom" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                      <input id="regl-nom" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                     <div class="flex flex-col gap-1.5">
                       <label for="regl-date" class="text-sm font-semibold text-slate-700" data-i18n="reglLbDate">Date</label>
-                      <input id="regl-date" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" placeholder="____ / ____ / ______" />
+                      <input id="regl-date" type="date" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                     <div class="flex flex-col gap-1.5 md:col-span-2">
                       <label for="regl-signature" class="text-sm font-semibold text-slate-700" data-i18n="reglLbSig">Signature</label>
-                      <input id="regl-signature" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                      <div class="gss-sign group relative w-full overflow-hidden rounded-xl border-[1.5px] border-[#dbe2f0] bg-white/40 transition focus-within:border-[#042F8D] focus-within:ring-4 focus-within:ring-[#042F8D]/10">
+                        <canvas id="regl-signature" class="gss-sign-canvas block h-44 w-full touch-none cursor-crosshair bg-transparent"></canvas>
+                        <span class="gss-sign-hint pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-slate-400" data-i18n="sigHint">Sign within the box</span>
+                        <button type="button" class="gss-sign-clear absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-[#042F8D] hover:text-[#042F8D]" data-i18n="sigClear">Clear</button>
+                        <input id="regl-signature-data" name="regl-signature" class="gss-sign-input" type="hidden" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -566,19 +597,19 @@
                   <div class="grid gap-4 md:grid-cols-2">
                     <div class="flex flex-col gap-1.5 md:col-span-2">
                       <label for="eng-nom" class="text-sm font-semibold text-slate-700" data-i18n="engLbNom">I, the undersigned</label>
-                      <input id="eng-nom" name="eng-nom" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                      <input id="eng-nom" name="eng-nom" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                     <div class="flex flex-col gap-1.5">
                       <label for="eng-naissance" class="text-sm font-semibold text-slate-700" data-i18n="engLbNaissance">Born on</label>
-                      <input id="eng-naissance" name="eng-naissance" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" placeholder="____ / ____ / ______" />
+                      <input id="eng-naissance" name="eng-naissance" type="date" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                     <div class="flex flex-col gap-1.5">
                       <label for="eng-telephone" class="text-sm font-semibold text-slate-700" data-i18n="engLbTelephone">Phone Number</label>
-                      <input id="eng-telephone" name="eng-telephone" type="tel" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                      <input id="eng-telephone" name="eng-telephone" type="tel" inputmode="tel" autocomplete="tel" pattern="^\+?[0-9\s().-]{7,20}$" placeholder="+243 999 000 000" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                     <div class="flex flex-col gap-1.5 md:col-span-2">
                       <label for="eng-piece" class="text-sm font-semibold text-slate-700" data-i18n="engLbPiece">ID Card / Passport Number</label>
-                      <input id="eng-piece" name="eng-piece" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                      <input id="eng-piece" name="eng-piece" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                   </div>
                 </section>
@@ -621,23 +652,28 @@
                   <div class="grid gap-4 md:grid-cols-2">
                     <div class="flex flex-col gap-1.5">
                       <label for="eng-fait-a" class="text-sm font-semibold text-slate-700" data-i18n="engLbFaitA">Done at</label>
-                      <input id="eng-fait-a" name="eng-fait-a" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                      <input id="eng-fait-a" name="eng-fait-a" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                     <div class="flex flex-col gap-1.5">
                       <label for="eng-date-sig" class="text-sm font-semibold text-slate-700" data-i18n="engLbLe">Date</label>
-                      <input id="eng-date-sig" name="eng-date-sig" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" placeholder="____ / ____ / ______" />
+                      <input id="eng-date-sig" name="eng-date-sig" type="date" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                     <div class="flex flex-col gap-1.5">
                       <label for="eng-nom-complet" class="text-sm font-semibold text-slate-700" data-i18n="engLbNomComplet">Full Name</label>
-                      <input id="eng-nom-complet" name="eng-nom-complet" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                      <input id="eng-nom-complet" name="eng-nom-complet" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
-                    <div class="flex flex-col gap-1.5">
+                    <div class="flex flex-col gap-1.5 md:col-span-2">
                       <label for="eng-signature" class="text-sm font-semibold text-slate-700" data-i18n="engLbSig">Signature</label>
-                      <input id="eng-signature" name="eng-signature" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                      <div class="gss-sign group relative w-full overflow-hidden rounded-xl border-[1.5px] border-[#dbe2f0] bg-white/40 transition focus-within:border-[#042F8D] focus-within:ring-4 focus-within:ring-[#042F8D]/10">
+                        <canvas id="eng-signature" class="gss-sign-canvas block h-44 w-full touch-none cursor-crosshair bg-transparent"></canvas>
+                        <span class="gss-sign-hint pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-slate-400" data-i18n="sigHint">Sign within the box</span>
+                        <button type="button" class="gss-sign-clear absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-[#042F8D] hover:text-[#042F8D]" data-i18n="sigClear">Clear</button>
+                        <input id="eng-signature-data" name="eng-signature" class="gss-sign-input" type="hidden" />
+                      </div>
                     </div>
                     <div class="flex flex-col gap-1.5 md:col-span-2">
                       <label for="eng-cachet-gss" class="text-sm font-semibold text-slate-700" data-i18n="engLbCachet">Signature and GSS Official Stamp</label>
-                      <input id="eng-cachet-gss" name="eng-cachet-gss" type="text" class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+                      <input id="eng-cachet-gss" name="eng-cachet-gss" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                   </div>
                 </section>
@@ -657,6 +693,7 @@
     </div><!-- /formModal -->
 
     <script src="./js/tc.js"></script>
+    <script src="./js/locations.js"></script>
     <script src="./js/formulaire-inscription.js"></script>
   </body>
 </html>
