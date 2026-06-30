@@ -6,6 +6,22 @@
    - Marks each roster member present or absent
    ========================================================================= */
 
+// ---- 0. CANVAS PERF PATCH ---------------------------------------------------
+
+// face-api reads pixels back from 2D canvases a lot (getImageData). Browsers
+// warn that this is slow unless the context is created with
+// willReadFrequently. Default that flag on so we silence the warning and get
+// the faster read path (matters on the wasm/cpu fallback backends).
+(() => {
+  const orig = HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = function (type, attrs) {
+    if (type === "2d") {
+      attrs = Object.assign({ willReadFrequently: true }, attrs);
+    }
+    return orig.call(this, type, attrs);
+  };
+})();
+
 // ---- 1. CONFIG --------------------------------------------------------------
 
 // Models are loaded from the local models/ folder (downloaded, no CDN).
@@ -25,13 +41,8 @@ const MATCH_THRESHOLD = 0.55;
 
 const statusEl       = document.getElementById("status");
 const fileInput      = document.getElementById("fileInput");
-const webcamBtn      = document.getElementById("webcamBtn");
-const captureBtn     = document.getElementById("captureBtn");
-const sampleBtn      = document.getElementById("sampleBtn");
 const overlay        = document.getElementById("overlay");
 const placeholder    = document.getElementById("placeholder");
-const webcam         = document.getElementById("webcam");
-const sampleVideo    = document.getElementById("sampleVideo");
 const attendanceList = document.getElementById("attendanceList");
 const presentCountEl = document.getElementById("presentCount");
 const totalCountEl   = document.getElementById("totalCount");
@@ -42,7 +53,6 @@ const loaderSub  = document.getElementById("loaderSub");
 const loaderBar  = document.getElementById("loaderBar");
 
 let faceMatcher = null;   // built from the roster
-let webcamStream = null;
 
 // ---- 3. STATUS HELPER -------------------------------------------------------
 
@@ -160,6 +170,13 @@ async function init() {
 
 // Pick a TensorFlow backend: WebGL if available, otherwise the local WASM
 // build, otherwise the pure-JS CPU backend (slow but always works).
+//
+// face-api/TensorFlow logs its own console.error when a backend fails to
+// initialize (e.g. "WebGL is not supported on this device") *before* our
+// try/catch can swallow it. We can't reliably predict whether the WebGL
+// backend will work from a plain canvas probe, so instead we silence
+// console error/warn just while probing, then restore it. Any backend that
+// fails is removed so TensorFlow never auto-initializes it again.
 async function setupBackend() {
   const tf = faceapi.tf;
 
@@ -168,13 +185,27 @@ async function setupBackend() {
     tf.setWasmPaths("vendor/wasm/");
   }
 
-  for (const backend of ["webgl", "wasm", "cpu"]) {
-    try {
-      await tf.setBackend(backend);
-      await tf.ready();
-      if (tf.getBackend() === backend) return backend;
-    } catch (_) { /* try the next backend */ }
+  const realError = console.error;
+  const realWarn = console.warn;
+  console.error = () => {};
+  console.warn = () => {};
+
+  try {
+    for (const backend of ["webgl", "wasm", "cpu"]) {
+      try {
+        await tf.setBackend(backend);
+        await tf.ready();
+        if (tf.getBackend() === backend) return backend;
+      } catch (_) {
+        // Drop the broken backend so tf.ready()/setBackend won't retry it.
+        try { tf.removeBackend(backend); } catch (_) { /* ignore */ }
+      }
+    }
+  } finally {
+    console.error = realError;
+    console.warn = realWarn;
   }
+
   throw new Error("No usable TensorFlow backend (webgl/wasm/cpu all failed).");
 }
 
@@ -324,11 +355,12 @@ function padImage(img, pad = 0.4) {
 async function processImage(input) {
   if (!faceMatcher) return;
   setStatus("Detecting faces…", "working");
-  placeholder.hidden = true;
+  placeholder.style.display = "none";
+  overlay.hidden = false;
 
   // Draw the source onto the overlay canvas at its natural size.
-  const width  = input.videoWidth || input.naturalWidth || input.width;
-  const height = input.videoHeight || input.naturalHeight || input.height;
+  const width  = input.naturalWidth || input.width;
+  const height = input.naturalHeight || input.height;
   overlay.width = width;
   overlay.height = height;
   const ctx = overlay.getContext("2d");
@@ -388,60 +420,13 @@ function renderAttendance(presentLabels) {
 
 // ---- 7. INPUT SOURCES -------------------------------------------------------
 
-// (a) Upload a photo
+// Upload a photo
 fileInput.addEventListener("change", () => {
   const file = fileInput.files[0];
   if (!file) return;
-  stopWebcam();
   const img = new Image();
   img.onload = () => processImage(img);
   img.src = URL.createObjectURL(file);
-});
-
-// (b) Webcam
-webcamBtn.addEventListener("click", async () => {
-  try {
-    webcamStream = await navigator.mediaDevices.getUserMedia({ video: true });
-    webcam.srcObject = webcamStream;
-    webcam.hidden = false;
-    overlay.hidden = true;
-    placeholder.hidden = true;
-    captureBtn.hidden = false;
-    setStatus("Webcam on. Frame the class, then press Capture.", "working");
-  } catch (e) {
-    setStatus("Could not access webcam: " + e.message, "error");
-  }
-});
-
-captureBtn.addEventListener("click", async () => {
-  overlay.hidden = false;
-  webcam.hidden = true;
-  await processImage(webcam);
-  stopWebcam();
-  captureBtn.hidden = true;
-});
-
-function stopWebcam() {
-  if (webcamStream) {
-    webcamStream.getTracks().forEach(t => t.stop());
-    webcamStream = null;
-  }
-  webcam.hidden = true;
-  captureBtn.hidden = true;
-}
-
-// (c) Sample frame from the bundled video
-sampleBtn.addEventListener("click", () => {
-  stopWebcam();
-  setStatus("Loading sample video frame…", "working");
-  sampleVideo.currentTime = 2; // grab a frame a couple seconds in
-  sampleVideo.addEventListener("seeked", function onSeeked() {
-    sampleVideo.removeEventListener("seeked", onSeeked);
-    processImage(sampleVideo);
-  });
-  // Some browsers need a load nudge.
-  sampleVideo.load();
-  sampleVideo.addEventListener("loadeddata", () => { sampleVideo.currentTime = 2; }, { once: true });
 });
 
 // ---- 8. GO ------------------------------------------------------------------
