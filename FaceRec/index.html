@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Face Attendance Demo</title>
+  <script src="tailwind/tailwindcss.js"></script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
+
+  <header class="text-center pt-8 pb-2 px-4">
+    <h1 class="text-2xl font-bold">🎓 Class Attendance — Face Recognition</h1>
+    <p class="text-slate-400 mt-1">Take or upload a class photo. Each known face is detected and ticked as present.</p>
+  </header>
+
+  <main class="max-w-5xl mx-auto p-4">
+
+    <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-4">
+      <div id="status" class="text-sm px-4 py-2.5 rounded-xl mb-3 bg-yellow-500/10 text-yellow-300">Loading face-recognition models…</div>
+
+      <div class="flex flex-wrap gap-2.5">
+        <label class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl text-sm cursor-pointer transition">
+          📁 Upload class photo
+          <input type="file" id="fileInput" accept="image/*" hidden />
+        </label>
+        <button class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl text-sm cursor-pointer transition" id="webcamBtn">📷 Use webcam</button>
+        <button class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl text-sm cursor-pointer transition" id="captureBtn" hidden>📸 Capture</button>
+        <button class="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2.5 rounded-xl text-sm cursor-pointer transition" id="sampleBtn">🎬 Use sample video frame</button>
+      </div>
+    </section>
+
+    <section class="grid gap-4 md:grid-cols-[1fr_320px]">
+      <div class="relative bg-slate-950 border border-slate-800 rounded-2xl min-h-[320px] flex items-center justify-center overflow-hidden">
+        <video id="webcam" class="max-w-full block rounded-lg" autoplay muted playsinline hidden></video>
+        <canvas id="overlay" class="max-w-full block rounded-lg"></canvas>
+        <p id="placeholder" class="text-slate-400">No photo loaded yet.</p>
+
+        <!-- First-run loader: shown while models load + roster is built -->
+        <div id="loader" class="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-950/80 backdrop-blur-sm">
+          <div class="h-10 w-10 rounded-full border-4 border-slate-700 border-t-blue-500 animate-spin"></div>
+          <div class="text-center">
+            <p id="loaderText" class="text-slate-200 text-sm font-medium">Preparing face recognition…</p>
+            <p id="loaderSub" class="text-slate-500 text-xs mt-1">This only happens the first time.</p>
+          </div>
+          <div class="w-48 h-1.5 rounded-full bg-slate-800 overflow-hidden">
+            <div id="loaderBar" class="h-full w-0 bg-blue-500 transition-all duration-300"></div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+        <h2 class="text-lg font-semibold mb-2">Attendance</h2>
+        <div class="text-slate-400 text-sm mb-3">
+          <span id="presentCount" class="text-green-400 font-bold text-lg">0</span> present /
+          <span id="totalCount" class="text-slate-100 font-bold">0</span> total
+        </div>
+        <ul id="attendanceList" class="list-none m-0 p-0 space-y-2"></ul>
+      </aside>
+    </section>
+  </main>
+
+  <video id="sampleVideo" src="media/bbt.mp4" crossorigin="anonymous" hidden></video>
+
+  <!-- face-api.js (downloaded locally, no CDN) -->
+  <script src="vendor/face-api.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
