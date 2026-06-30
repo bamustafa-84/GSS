@@ -83,7 +83,39 @@ const translations = {
     engLbFaitA: 'Fait à', engLbLe: 'Le',
     engLbNomComplet: 'Nom complet', engLbSig: 'Signature',
     engLbCachet: 'Signature et cachet de GSS',
-    ackEngagement: 'Je m\'engage librement à respecter le présent <strong>Engagement de Confidentialité</strong>, qui prend effet à compter de sa date de signature.'
+    ackEngagement: 'Je m\'engage librement à respecter le présent <strong>Engagement de Confidentialité</strong>, qui prend effet à compter de sa date de signature.',
+    // ── Panel 5 · Rapport de Présences ───────────────────────
+    tabPresences: 'Présences',
+    presTitle: 'Rapport Individuel de Présence',
+    presSubtitle: 'Suivi de présence — GSS',
+    presSecInfo: 'INFORMATIONS DU CANDIDAT',
+    presLbNumCandidat: 'N° Candidat',
+    presLbNom: 'Nom et Prénom',
+    presLbNumFormation: 'N° Formation',
+    presLbIntitule: 'Intitulé de la formation',
+    presLbFormateur: 'Formateur',
+    presLbPeriodeDu: 'Du',
+    presLbPeriodeAu: 'Au',
+    presSecTable: 'HISTORIQUE DES PRÉSENCES',
+    presColDate: 'Date',
+    presColJour: 'Jour',
+    presColStatut: 'Statut',
+    presColArrivee: 'Heure d\'arrivée',
+    presColDepart: 'Heure de départ',
+    presColObs: 'Observations',
+    presBtnAddRow: 'Ajouter une ligne',
+    presBtnRemove: 'Supprimer',
+    presSecSummary: 'RÉSUMÉ',
+    presLbNbJours: 'Nombre de jours',
+    presLbAH: 'Arrivé à l\'heure (AH)',
+    presLbAR: 'Arrivé en retard (AR)',
+    presLbABS: 'Absent (ABS)',
+    presLbEX: 'Exclu (EX)',
+    presLbTaux: 'Taux de présence',
+    presSecSig: 'SIGNATURES',
+    presLbCachet: 'Cachet du Centre de Formation',
+    presLbVisa: 'Visa de la Direction',
+    ackPresences: 'Je certifie l\'exactitude des informations du présent <strong>Rapport de Présence</strong>.'
   },
   en: {
     // ── Hero / page ──────────────────────────────────────────
@@ -168,7 +200,39 @@ const translations = {
     engLbFaitA: 'Done at', engLbLe: 'Date',
     engLbNomComplet: 'Full Name', engLbSig: 'Signature',
     engLbCachet: 'Signature and GSS Official Stamp',
-    ackEngagement: 'I freely undertake to comply with this <strong>Confidentiality Agreement</strong>, which takes effect from the date of signature.'
+    ackEngagement: 'I freely undertake to comply with this <strong>Confidentiality Agreement</strong>, which takes effect from the date of signature.',
+    // ── Panel 5 · Rapport de Présences ───────────────────────
+    tabPresences: 'Attendance',
+    presTitle: 'Individual Attendance Report',
+    presSubtitle: 'Attendance tracking — GSS',
+    presSecInfo: 'CANDIDATE INFORMATION',
+    presLbNumCandidat: 'Candidate No.',
+    presLbNom: 'Full Name',
+    presLbNumFormation: 'Training No.',
+    presLbIntitule: 'Training Title',
+    presLbFormateur: 'Trainer',
+    presLbPeriodeDu: 'From',
+    presLbPeriodeAu: 'To',
+    presSecTable: 'ATTENDANCE HISTORY',
+    presColDate: 'Date',
+    presColJour: 'Day',
+    presColStatut: 'Status',
+    presColArrivee: 'Arrival Time',
+    presColDepart: 'Departure Time',
+    presColObs: 'Observations',
+    presBtnAddRow: 'Add row',
+    presBtnRemove: 'Remove',
+    presSecSummary: 'SUMMARY',
+    presLbNbJours: 'Number of days',
+    presLbAH: 'Arrived on time (AH)',
+    presLbAR: 'Arrived late (AR)',
+    presLbABS: 'Absent (ABS)',
+    presLbEX: 'Excluded (EX)',
+    presLbTaux: 'Attendance rate',
+    presSecSig: 'SIGNATURES',
+    presLbCachet: 'Training Centre Stamp',
+    presLbVisa: "Director's Visa",
+    ackPresences: 'I certify the accuracy of the information in this <strong>Attendance Report</strong>.'
   }
 };
 
@@ -178,7 +242,7 @@ const closeModalBtn = document.getElementById('closeModalBtn');
 const langButtons = Array.from(document.querySelectorAll('[data-lang]')).slice(0, 2); //document.querySelectorAll('[data-lang]');
 
 // ── Tab state ──────────────────────────────────────────────
-const tabState = { registration: false, conditions: false, reglement: false, engagement: false };
+const tabState = { registration: false, conditions: false, reglement: false, engagement: false, presences: false };
 
 const TAB_ACTIVE_BG   = '#042F8D';
 const TAB_DONE_BG     = '#16a34a';
@@ -208,6 +272,7 @@ const setTabIndicator = (tabId, state) => {
 };
 
 let currentTab = 'registration';
+let currentLang = 'en';
 
 const switchTab = (tabId) => {
   // Hide all panels, reset all tab styles
@@ -305,11 +370,8 @@ document.querySelectorAll('.gss-ack-check').forEach(checkbox => {
       const dot = document.querySelector(`#tab-btn-${tabId} .gss-tab-dot`);
       if (dot) {
         dot.style.background = currentTab === tabId ? TAB_ACTIVE_BG : TAB_PENDING_BG;
-        dot.textContent = currentTab === tabId
-          ? document.querySelector(`#tab-btn-${tabId}`).dataset.tab === 'conditions' ? '2'
-          : document.querySelector(`#tab-btn-${tabId}`).dataset.tab === 'reglement' ? '3' : '4'
-          : document.querySelector(`#tab-btn-${tabId}`).dataset.tab === 'conditions' ? '2'
-          : document.querySelector(`#tab-btn-${tabId}`).dataset.tab === 'reglement' ? '3' : '4';
+        const TAB_NUMS = { registration: '1', conditions: '2', reglement: '3', engagement: '4', presences: '5' };
+        dot.textContent = TAB_NUMS[tabId] || '?';
       }
     }
   });
@@ -357,10 +419,16 @@ const applyLanguage = (lang) => {
     }
   });
 
+  currentLang = lang;
+
   // Show/hide language-specific content blocks (FR / EN document panels)
   document.querySelectorAll('.lang-content').forEach((el) => {
     el.classList.toggle('hidden', el.dataset.lang !== lang);
   });
+
+  // Update presences panel language-dependent elements
+  if (typeof updatePresStatusOptions === 'function') updatePresStatusOptions();
+  if (typeof updatePresDayCells === 'function') updatePresDayCells();
 
   langButtons.forEach((button) => {
     const isActive = button.getAttribute('data-lang') === lang;
@@ -371,8 +439,147 @@ const applyLanguage = (lang) => {
   });
 };
 
+// ── Panel 5 · Rapport Individuel de Présences — constants ─
+const PRES_DAY_NAMES = {
+  fr: ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'],
+  en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+};
+
+const PRES_STATUS_OPTS = {
+  fr: [
+    { value: 'AH', text: 'AH — À l\'heure' },
+    { value: 'AR', text: 'AR — En retard' },
+    { value: 'ABS', text: 'ABS — Absent' },
+    { value: 'EX', text: 'EX — Exclu' }
+  ],
+  en: [
+    { value: 'AH', text: 'AH — On time' },
+    { value: 'AR', text: 'AR — Late' },
+    { value: 'ABS', text: 'ABS — Absent' },
+    { value: 'EX', text: 'EX — Excluded' }
+  ]
+};
+
+let presRowCounter = 0;
+
 langButtons.forEach((button) => {
   button.addEventListener('click', () => applyLanguage(button.getAttribute('data-lang')));
 });
 
 applyLanguage('en');
+
+// ── Panel 5 · Rapport Individuel de Présences — functions ──
+
+function getPresDayName(dateValue) {
+  if (!dateValue) return '';
+  const d = new Date(dateValue + 'T00:00:00');
+  const names = PRES_DAY_NAMES[currentLang] || PRES_DAY_NAMES.en;
+  return names[d.getDay()];
+}
+
+function updatePresenceSummary() {
+  const rows = document.querySelectorAll('#presences-tbody tr');
+  let ah = 0, ar = 0, abs = 0, ex = 0;
+  rows.forEach(row => {
+    const sel = row.querySelector('.pres-status-select');
+    if (!sel) return;
+    if (sel.value === 'AH') ah++;
+    else if (sel.value === 'AR') ar++;
+    else if (sel.value === 'ABS') abs++;
+    else if (sel.value === 'EX') ex++;
+  });
+  const total = rows.length;
+  const present = ah + ar;
+  const rate = total > 0 ? ((present / total) * 100).toFixed(1) : '0.0';
+
+  const el = (id) => document.getElementById(id);
+  if (el('pres-nb-jours'))  el('pres-nb-jours').textContent  = total;
+  if (el('pres-count-ah'))  el('pres-count-ah').textContent  = ah;
+  if (el('pres-count-ar'))  el('pres-count-ar').textContent  = ar;
+  if (el('pres-count-abs')) el('pres-count-abs').textContent = abs;
+  if (el('pres-count-ex'))  el('pres-count-ex').textContent  = ex;
+  if (el('pres-taux'))      el('pres-taux').textContent      = rate + ' %';
+}
+
+function updatePresStatusOptions() {
+  const opts = PRES_STATUS_OPTS[currentLang] || PRES_STATUS_OPTS.en;
+  document.querySelectorAll('.pres-status-select').forEach(sel => {
+    const currentVal = sel.value;
+    sel.innerHTML = opts.map(o => `<option value="${o.value}">${o.text}</option>`).join('');
+    sel.value = currentVal;
+  });
+}
+
+function updatePresDayCells() {
+  document.querySelectorAll('#presences-tbody tr').forEach(row => {
+    const dateInput = row.querySelector('.pres-date-input');
+    const dayCell   = row.querySelector('.pres-day-cell');
+    if (dateInput && dayCell && dateInput.value) {
+      dayCell.value = getPresDayName(dateInput.value);
+    }
+  });
+}
+
+function addPresenceRow() {
+  presRowCounter++;
+  const tbody = document.getElementById('presences-tbody');
+  if (!tbody) return;
+
+  const opts = PRES_STATUS_OPTS[currentLang] || PRES_STATUS_OPTS.en;
+  const optsHTML = opts.map(o => `<option value="${o.value}">${o.text}</option>`).join('');
+  const inputCls = 'w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-2 py-1.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10';
+  const removeLbl = translations[currentLang]?.presBtnRemove || 'Remove';
+
+  const tr = document.createElement('tr');
+  tr.className = 'border-b border-slate-100 hover:bg-slate-50/50';
+  tr.innerHTML = `
+    <td class="p-2 align-middle">
+      <input type="date" class="pres-date-input ${inputCls} min-w-[130px]" />
+    </td>
+    <td class="p-2 align-middle">
+      <input type="text" readonly class="pres-day-cell ${inputCls} min-w-[100px] cursor-default bg-slate-50 text-slate-500" />
+    </td>
+    <td class="p-2 align-middle">
+      <select class="pres-status-select ${inputCls} min-w-[150px]">${optsHTML}</select>
+    </td>
+    <td class="p-2 align-middle">
+      <input type="time" class="pres-arrival-input ${inputCls} min-w-[110px]" />
+    </td>
+    <td class="p-2 align-middle">
+      <input type="time" class="pres-depart-input ${inputCls} min-w-[110px]" />
+    </td>
+    <td class="p-2 align-middle">
+      <input type="text" class="pres-obs-input ${inputCls} min-w-[130px]" />
+    </td>
+    <td class="p-2 align-middle text-center">
+      <button type="button" class="pres-remove-btn inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 transition hover:border-red-400 hover:bg-red-100">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <span data-i18n="presBtnRemove">${removeLbl}</span>
+      </button>
+    </td>`;
+
+  // Auto-fill day name when date is picked
+  const dateInput = tr.querySelector('.pres-date-input');
+  const dayCell   = tr.querySelector('.pres-day-cell');
+  dateInput.addEventListener('change', () => {
+    dayCell.value = getPresDayName(dateInput.value);
+    updatePresenceSummary();
+  });
+
+  tr.querySelector('.pres-status-select').addEventListener('change', updatePresenceSummary);
+
+  tr.querySelector('.pres-remove-btn').addEventListener('click', () => {
+    tr.remove();
+    updatePresenceSummary();
+  });
+
+  tbody.appendChild(tr);
+  updatePresenceSummary();
+}
+
+// Wire up add-row button and add one initial row
+(function initPresencesPanel() {
+  const addRowBtn = document.getElementById('pres-add-row-btn');
+  if (addRowBtn) addRowBtn.addEventListener('click', addPresenceRow);
+  addPresenceRow(); // start with one empty row
+}());
