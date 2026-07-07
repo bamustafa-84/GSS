@@ -22,7 +22,6 @@ const openModal = () => {
 openFormBtn.addEventListener('click', openModal);
 //#endregion
 
-
 //#region SWITCH TABS
 let currentTab = 'registration';
 
@@ -41,8 +40,6 @@ const switchTab = (tabId) => {
   panel?.classList.remove('hidden');
   panel?.classList.add('overflow-auto');
 
-  const dot = document.querySelector(`#tab-btn-${tabId} .gss-tab-dot`);
-
   // Restore tab indicators
   Object.keys(tabState).forEach(id => {
     const dot = document.querySelector(`#tab-btn-${id} .gss-tab-dot`);
@@ -55,10 +52,6 @@ const switchTab = (tabId) => {
        currentTab = tabId;
     } else dot.classList.add(TAB_PENDING_BG);
   });
-
-  // Activate current tab
-  // if(currentTab)
-  //   return;
 
   const activeBtn = document.getElementById(`tab-btn-${tabId}`);
   if (activeBtn) {
@@ -81,7 +74,7 @@ const switchTab = (tabId) => {
   // Scroll to top
   document.getElementById('formContent')?.scrollTo({
     top: 0,
-    behavior: 'smooth' // optional
+    behavior: 'smooth'
   });
 
   currentTab = tabId;
@@ -94,12 +87,8 @@ const markTab = (tabId, dot, bgColor = TAB_DONE_BG, text = '✓') => {
 }
 //#endregion
 
-
-
+//#region CLOSE MODAL
 const closeModal = () => {
-  // if (modal.classList.contains('flex') && document.activeElement && modal.contains(document.activeElement)) {
-  //   openFormBtn.focus();
-  // }
   modal.classList.remove('flex');
   modal.classList.add('hidden');
   modal.setAttribute('aria-hidden', 'true');
@@ -117,7 +106,7 @@ document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') 
     closeModal();
 });
-
+//#endregion
 
 
 
@@ -144,43 +133,7 @@ document.querySelectorAll('.gss-ack-check').forEach(checkbox => {
   });
 });
 
-// ── Tab 1: mark done on successful form submission ─────────
-document.addEventListener('DOMContentLoaded', () => {
-  // const status = document.getElementById('formStatus');
 
-  function evaluateRegistrationTab() {
-    if (
-      status &&
-      !status.classList.contains('text-red-600') &&
-      status.textContent.trim() !== ''
-    ) {
-      markTab(currentTab, document.querySelector(`#tab-btn-${currentTab} .gss-tab-dot`));
-    }
-  }
-
-  // run once on load
-  evaluateRegistrationTab();
-
-  // watch changes in status
-  // if (status) {
-  //   const observer = new MutationObserver(evaluateRegistrationTab);
-
-  //   observer.observe(status, {
-  //     childList: true,
-  //     characterData: true,
-  //     subtree: true,
-  //     attributes: true
-  //   });
-  // }
-
-  // also on submit
-  // const form = document.getElementById('inscriptionForm');
-  // if (form) {
-  //   form.addEventListener('submit', () => {
-  //     setTimeout(evaluateRegistrationTab, 100);
-  //   });
-  // }
-});
 
 let presRowCounter = 0;
 
@@ -302,119 +255,38 @@ function addPresenceRow() {
 
 // ── Panel 6 · Fiche d'Évaluation Individuelle — functions ──
 
-function getEvalAppreciation(obtained, max) {
-  if (max <= 0 || obtained === '' || obtained === null) return '—';
-  const pct = (parseFloat(obtained) / parseFloat(max)) * 100;
-  const t = translations[currentLang] || translations.en;
-  if (pct >= 80) return t.evalApprecTB;
-  if (pct >= 65) return t.evalApprecB;
-  if (pct >= 50) return t.evalApprecAB;
-  return t.evalApprecI;
-}
-
-function getEvalApprecColor(obtained, max) {
-  if (max <= 0 || obtained === '' || obtained === null) return 'text-slate-400';
-  const pct = (parseFloat(obtained) / parseFloat(max)) * 100;
-  if (pct >= 80) return 'text-[#042F8D]';
-  if (pct >= 65) return 'text-green-600';
-  if (pct >= 50) return 'text-amber-600';
-  return 'text-red-600';
-}
-
 function updateEvalSummary() {
   const rows = document.querySelectorAll('#eval-tbody tr');
-  let totalMax = 0, totalObt = 0;
+  let totalObt = 0;
+  let hasAny = false;
   rows.forEach(row => {
-    const maxInput = row.querySelector('.eval-note-max');
     const obtInput = row.querySelector('.eval-note-obt');
-    const appreci  = row.querySelector('.eval-apprec-cell');
-    const maxVal   = parseFloat(maxInput?.value) || 0;
-    const obtVal   = obtInput?.value !== '' ? parseFloat(obtInput?.value) : NaN;
-    totalMax += maxVal;
-    if (!isNaN(obtVal)) totalObt += obtVal;
-    if (appreci) {
-      const apprTxt = (isNaN(obtVal) || maxVal === 0) ? '—' : getEvalAppreciation(obtVal, maxVal);
-      appreci.textContent = apprTxt;
-      appreci.className = `eval-apprec-cell text-sm font-semibold ${(isNaN(obtVal) || maxVal === 0) ? 'text-slate-400' : getEvalApprecColor(obtVal, maxVal)}`;
-    }
+    const val = obtInput?.value !== '' ? parseFloat(obtInput?.value) : NaN;
+    if (!isNaN(val)) { totalObt += val; hasAny = true; }
   });
-  const moyenne = totalMax > 0 ? ((totalObt / totalMax) * 100).toFixed(1) : '0.0';
-  const apprecGen = totalMax > 0 ? getEvalAppreciation(totalObt, totalMax) : '—';
-  const apprecColor = totalMax > 0 ? getEvalApprecColor(totalObt, totalMax) : 'text-slate-500';
 
   const el = (id) => document.getElementById(id);
-  if (el('eval-total-max'))  el('eval-total-max').textContent  = totalMax;
-  if (el('eval-total-obt'))  el('eval-total-obt').textContent  = isNaN(totalObt) ? '—' : totalObt;
-  if (el('eval-moyenne'))    el('eval-moyenne').textContent    = moyenne + ' %';
-  if (el('eval-apprec-gen')) {
-    el('eval-apprec-gen').textContent = apprecGen;
-    el('eval-apprec-gen').className   = `mb-1 block text-xl font-bold ${apprecColor}`;
+  if (el('eval-total-obt')) el('eval-total-obt').textContent = hasAny ? totalObt : '—';
+
+  const t = translations[currentLang] || translations.en;
+  let cat = '—', catColor = 'text-slate-500';
+  if (hasAny) {
+    if (totalObt >= 85)      { cat = t.evalOptExcellent      || 'Excellent (85–100)';      catColor = 'text-[#042F8D]'; }
+    else if (totalObt >= 70) { cat = t.evalOptVeryGood       || 'Very Good (70–84)';       catColor = 'text-green-600'; }
+    else if (totalObt >= 60) { cat = t.evalOptAcceptable     || 'Acceptable (60–69)';      catColor = 'text-amber-600'; }
+    else                     { cat = t.evalOptNotRecommended || 'Not Recommended (<60)';   catColor = 'text-red-600'; }
+  }
+  if (el('eval-result-cat')) {
+    el('eval-result-cat').textContent = cat;
+    el('eval-result-cat').className = `mb-1 block text-base font-bold ${catColor}`;
   }
 }
 
-function updateEvalAppreciations() {
-  updateEvalSummary();
-}
-
-let evalRowCounter = 0;
-
-function addEvalRow(moduleName) {
-  evalRowCounter++;
-  const tbody = document.getElementById('eval-tbody');
-  if (!tbody) return;
-
-  const inputCls = 'w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-2 py-1.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10';
-  const t = translations[currentLang] || translations.en;
-  const removeLbl = t.evalBtnRemove || 'Remove';
-  const name = moduleName || '';
-
-  const tr = document.createElement('tr');
-  tr.className = 'border-b border-slate-100 hover:bg-slate-50/50';
-  tr.innerHTML = `
-    <td class="p-2 align-middle">
-      <input type="text" value="${name.replace(/"/g, '&quot;')}" class="eval-module-input ${inputCls} min-w-[180px]" />
-    </td>
-    <td class="p-2 align-middle">
-      <input type="number" value="20" min="1" max="100" class="eval-note-max ${inputCls} min-w-[70px] text-center" />
-    </td>
-    <td class="p-2 align-middle">
-      <input type="number" value="" min="0" max="100" step="0.5" class="eval-note-obt ${inputCls} min-w-[80px] text-center" />
-    </td>
-    <td class="p-2 align-middle">
-      <span class="eval-apprec-cell text-sm font-semibold text-slate-400">—</span>
-    </td>
-    <td class="p-2 align-middle">
-      <input type="text" class="eval-obs-input ${inputCls} min-w-[130px]" />
-    </td>
-    <td class="p-2 align-middle text-center">
-      <button type="button" class="eval-remove-btn inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 transition hover:border-red-400 hover:bg-red-100">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        <span data-i18n="evalBtnRemove">${removeLbl}</span>
-      </button>
-    </td>`;
-
-  tr.querySelector('.eval-note-max').addEventListener('input', updateEvalSummary);
-  tr.querySelector('.eval-note-obt').addEventListener('input', updateEvalSummary);
-  tr.querySelector('.eval-remove-btn').addEventListener('click', () => {
-    tr.remove();
-    updateEvalSummary();
-  });
-
-  tbody.appendChild(tr);
-  updateEvalSummary();
-}
-
 (function initEvaluationPanel() {
-  const addRowBtn = document.getElementById('eval-add-row-btn');
-  if (addRowBtn) addRowBtn.addEventListener('click', () => addEvalRow(''));
-
-  // Pre-populate with default modules
-  const t = translations[currentLang] || translations.en;
-  const defaults = t.evalDefaultModules || [];
-  defaults.forEach(mod => addEvalRow(mod));
+  document.querySelectorAll('#eval-tbody .eval-note-obt').forEach(inp => {
+    inp.addEventListener('input', updateEvalSummary);
+  });
+  updateEvalSummary();
 }());
 
-// ── Panel 7 · Résultat Individuel de l'Examen — init ──
-(function initExamPanel() {
-  // No dynamic rows; the form is static.
-}());
+
