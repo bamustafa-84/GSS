@@ -5,6 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GSS | Rejoignez nos agents de sécurité</title>
     <script src="./tailwind/tailwind.min.js"></script>
+    <script>
+      // Make every Tailwind text-* utility fluid/responsive using clamp().
+      // Each entry is [clamp(min, preferred, max), { lineHeight }].
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontSize: {
+              xs: ["clamp(0.7rem, 0.66rem + 0.2vw, 0.75rem)", { lineHeight: "1rem" }],
+              sm: ["clamp(0.8rem, 0.75rem + 0.25vw, 0.875rem)", { lineHeight: "1.25rem" }],
+              base: ["clamp(0.9rem, 0.85rem + 0.3vw, 1rem)", { lineHeight: "1.5rem" }],
+              lg: ["clamp(1rem, 0.93rem + 0.35vw, 1.125rem)", { lineHeight: "1.75rem" }],
+              xl: ["clamp(1.1rem, 1rem + 0.4vw, 1.25rem)", { lineHeight: "1.75rem" }],
+              "2xl": ["clamp(1.3rem, 1.15rem + 0.6vw, 1.5rem)", { lineHeight: "2rem" }],
+              "3xl": ["clamp(1.5rem, 1.3rem + 0.9vw, 1.875rem)", { lineHeight: "2.25rem" }],
+              "4xl": ["clamp(1.8rem, 1.5rem + 1.4vw, 2.25rem)", { lineHeight: "2.5rem" }],
+              "5xl": ["clamp(2.2rem, 1.7rem + 2.2vw, 3rem)", { lineHeight: "1" }],
+              "6xl": ["clamp(2.6rem, 2rem + 3vw, 3.75rem)", { lineHeight: "1" }],
+              "7xl": ["clamp(3rem, 2.3rem + 3.6vw, 4.5rem)", { lineHeight: "1" }],
+            },
+          },
+        },
+      };
+    </script>
   </head>
   <body class="min-h-screen bg-white text-[#042F8D] font-sans">
     <div class="mx-auto max-w-7xl px-5 py-7 sm:px-6 lg:px-8">
@@ -21,7 +44,7 @@
              class="pointer-events-none select-none absolute inset-0 w-full h-full object-contain"
              style="opacity:0.08; z-index:5;" /> 
         <div style="position:relative;z-index:1;">
-          <div class="mb-3 inline-block rounded-full bg-[#042F8D]/10 px-3 py-2 text-[0.8rem] font-semibold uppercase tracking-[0.14em] text-[#042F8D]" data-i18n="eyebrow">Sécurité professionnelle</div>
+          <div class="mb-3 inline-block rounded-full bg-[#042F8D]/10 px-3 py-2 text-[clamp(0.75rem,0.7rem+0.25vw,0.8rem)] font-semibold uppercase tracking-[0.14em] text-[#042F8D]" data-i18n="eyebrow">Sécurité professionnelle</div>
           <h1 class="mb-3 text-4xl font-bold leading-tight sm:text-5xl" data-i18n="heroTitle">Rejoignez une formation d’exception pour devenir agent de sécurité.</h1>
           <p class="mb-6 max-w-2xl text-base leading-7 text-slate-600" data-i18n="heroText">Un parcours structuré, un encadrement sérieux et une procédure d’inscription simplifiée pour démarrer votre aventure avec GSS.</p>
           <div class="flex flex-wrap gap-3">
@@ -137,7 +160,7 @@
           <!-- ══════════════════════════════════════════════════ -->
           <!-- PANEL 1 · Registration Form                        -->
           <!-- ══════════════════════════════════════════════════ -->
-          <div id="panel-registration" class="gss-tab-panel p-4 sm:p-6">
+          <div id="panel-registration" class="gss-tab-panel p-[clamp(1rem,0.8rem+1vw,1.5rem)]">
             <div class="relative overflow-hidden rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_18px_50px_rgba(4,47,141,0.10)] sm:p-6 lg:p-7">
             <span class="pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#042F8D] via-[#0b4dc2] to-[#042F8D]"></span>
             <!-- <img src="./img/security.svg" alt="" aria-hidden="true" 
@@ -442,7 +465,7 @@
           <!-- ══════════════════════════════════════════════════ -->
           <!-- PANEL 2 · Conditions d'Inscription                 -->
           <!-- ══════════════════════════════════════════════════ -->
-          <div id="panel-conditions" class="gss-tab-panel hidden p-4 sm:p-6">
+          <div id="panel-conditions" class="gss-tab-panel hidden p-[clamp(1rem,0.8rem+1vw,1.5rem)]">
             <div class="relative overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
               <img src="./img/security.svg" alt="" aria-hidden="true" class="pointer-events-none select-none absolute inset-0 w-full h-full object-contain opacity-[0.06]" />
               <div class="bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-6 py-5 text-white">
@@ -540,7 +563,7 @@
           <!-- ══════════════════════════════════════════════════ -->
           <!-- PANEL 3 · Règlement Intérieur                     -->
           <!-- ══════════════════════════════════════════════════ -->
-          <div id="panel-reglement" class="gss-tab-panel hidden p-4 sm:p-6">
+          <div id="panel-reglement" class="gss-tab-panel hidden p-[clamp(1rem,0.8rem+1vw,1.5rem)]">
             <div class="relative overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
               <!-- <img src="./img/security.svg" alt="" aria-hidden="true" class="pointer-events-none 
               select-none absolute inset-0 w-full h-full object-contain opacity-[0.06]" /> -->
@@ -609,7 +632,7 @@
           <!-- ══════════════════════════════════════════════════ -->
           <!-- PANEL 4 · Engagement de Confidentialité           -->
           <!-- ══════════════════════════════════════════════════ -->
-          <div id="panel-engagement" class="gss-tab-panel hidden p-4 sm:p-6">
+          <div id="panel-engagement" class="gss-tab-panel hidden p-[clamp(1rem,0.8rem+1vw,1.5rem)]">
             <div class="relative overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
               <img src="./img/security.svg" alt="" aria-hidden="true" class="pointer-events-none select-none absolute inset-0 w-full h-full object-contain opacity-[0.06]" />
               <div class="bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-6 py-5 text-white">
@@ -706,7 +729,7 @@
           <!-- ══════════════════════════════════════════════════ -->
           <!-- PANEL 5 · Rapport Individuel de Présences         -->
           <!-- ══════════════════════════════════════════════════ -->
-          <div id="panel-presences" class="gss-tab-panel hidden p-4 sm:p-6">
+          <div id="panel-presences" class="gss-tab-panel hidden p-[clamp(1rem,0.8rem+1vw,1.5rem)]">
             <div class="relative overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
               <img src="./img/security.svg" alt="" aria-hidden="true" class="pointer-events-none select-none absolute inset-0 w-full h-full object-contain opacity-[0.06]" />
               <div class="bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-6 py-5 text-white">
@@ -864,7 +887,7 @@
           <!-- ══════════════════════════════════════════════════ -->
           <!-- PANEL 6 · Résultat d'Examen Individuel           -->
           <!-- ══════════════════════════════════════════════════ -->
-          <div id="panel-exam" class="gss-tab-panel hidden p-4 sm:p-6">
+          <div id="panel-exam" class="gss-tab-panel hidden p-[clamp(1rem,0.8rem+1vw,1.5rem)]">
             <div class="relative overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
               <img src="./img/security.svg" alt="" aria-hidden="true" class="pointer-events-none select-none absolute inset-0 w-full h-full object-contain opacity-[0.06]" />
               <div class="bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-6 py-5 text-white">
@@ -1029,7 +1052,7 @@
           <!-- ══════════════════════════════════════════════════ -->
           <!-- PANEL 7 · Fiche d'Évaluation Individuelle         -->
           <!-- ══════════════════════════════════════════════════ -->
-          <div id="panel-evaluation" class="gss-tab-panel hidden p-4 sm:p-6">
+          <div id="panel-evaluation" class="gss-tab-panel hidden p-[clamp(1rem,0.8rem+1vw,1.5rem)]">
             <div class="relative overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
               <img src="./img/security.svg" alt="" aria-hidden="true" class="pointer-events-none select-none absolute inset-0 w-full h-full object-contain opacity-[0.06]" />
               <div class="bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-6 py-5 text-white">
@@ -1238,7 +1261,7 @@
           <!-- ══════════════════════════════════════════════════ -->
           <!-- PANEL 8 · Fiche de Mensuration et Infos Compl.   -->
           <!-- ══════════════════════════════════════════════════ -->
-          <div id="panel-mensuration" class="gss-tab-panel hidden p-4 sm:p-6">
+          <div id="panel-mensuration" class="gss-tab-panel hidden p-[clamp(1rem,0.8rem+1vw,1.5rem)]">
             <div class="relative overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
               <img src="./img/security.svg" alt="" aria-hidden="true" class="pointer-events-none select-none absolute inset-0 w-full h-full object-contain opacity-[0.06]" />
               <div class="bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-6 py-5 text-white">
@@ -1430,7 +1453,7 @@
           <!-- ════════════════════════════════════════════════════ -->
           <!-- PANEL 9 · Lettre d'Engagement avec Période d'Essai  -->
           <!-- ════════════════════════════════════════════════════ -->
-          <div id="panel-lettre" class="gss-tab-panel hidden p-4 sm:p-6">
+          <div id="panel-lettre" class="gss-tab-panel hidden p-[clamp(1rem,0.8rem+1vw,1.5rem)]">
             <div class="relative overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
               <img src="./img/security.svg" alt="" aria-hidden="true" class="pointer-events-none select-none absolute inset-0 w-full h-full object-contain opacity-[0.06]" />
               <div class="bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-6 py-5 text-white">
@@ -1565,7 +1588,7 @@
           <!-- ════════════════════════════════════════════════════ -->
           <!-- PANEL 10 · Engagement Remise Effets d'Uniforme       -->
           <!-- ════════════════════════════════════════════════════ -->
-          <div id="panel-uniforme" class="gss-tab-panel hidden p-4 sm:p-6">
+          <div id="panel-uniforme" class="gss-tab-panel hidden p-[clamp(1rem,0.8rem+1vw,1.5rem)]">
             <div class="relative overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
               <img src="./img/security.svg" alt="" aria-hidden="true" class="pointer-events-none select-none absolute inset-0 w-full h-full object-contain opacity-[0.06]" />
               <div class="bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-6 py-5 text-white">
@@ -1696,7 +1719,7 @@
           <!-- ════════════════════════════════════════════════════ -->
           <!-- PANEL 11 · Dossier Individuel du Candidat           -->
           <!-- ════════════════════════════════════════════════════ -->
-          <div id="panel-dossier" class="gss-tab-panel hidden p-4 sm:p-6">
+          <div id="panel-dossier" class="gss-tab-panel hidden p-[clamp(1rem,0.8rem+1vw,1.5rem)]">
             <div class="relative overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
               <img src="./img/security.svg" alt="" aria-hidden="true" class="pointer-events-none select-none absolute inset-0 w-full h-full object-contain opacity-[0.06]" />
               <div class="bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-6 py-5 text-white">
