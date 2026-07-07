@@ -787,11 +787,121 @@ const translations = {
   }
 };
 
+// ── Login page translations (consumed by login.js) ─────────
+const loginTranslations = {
+  en: {
+    title: 'GSS | Login',
+    loginEyebrow: 'Secure area',
+    loginHeroTitle: 'Welcome to your GSS portal.',
+    loginHeroText:
+      'Sign in to manage registrations, training and the follow-up of security agents in complete confidentiality.',
+    loginFeat1: 'Encrypted and protected access',
+    loginFeat2: 'Centralized file management',
+    loginFeat3: '24/7 administrative support',
+    brandSub: 'Security Service',
+    loginRights: 'All rights reserved.',
+    loginTitle: 'Login',
+    loginSubtitle: 'Enter your credentials to access your dashboard.',
+    loginEmailLabel: 'Email address',
+    loginEmailPh: 'name@example.com',
+    loginPasswordLabel: 'Password',
+    loginForgot: 'Forgot password?',
+    loginRemember: 'Remember me',
+    loginSubmit: 'Sign in',
+    loginOr: 'or',
+    loginNoAccount: "Don't have an account yet?",
+    loginCreate: 'Create an account',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
+    errRequired: 'Please fill in all fields.',
+    errEmail: 'Invalid email address.',
+    signingIn: 'Signing in…',
+    // ── Sign up modal ──
+    signupTitle: 'Create your account',
+    signupSubtitle: 'Fill in your details to get started with GSS.',
+    signupNameLabel: 'Full name',
+    signupNamePh: 'John Doe',
+    signupEmailLabel: 'Email address',
+    signupEmailPh: 'name@example.com',
+    signupPhoneLabel: 'Phone number',
+    signupPhonePh: '+243 999 000 000',
+    signupPasswordLabel: 'Password',
+    signupPasswordPh: 'At least 8 characters',
+    signupConfirmLabel: 'Confirm password',
+    signupConfirmPh: 'Re-enter your password',
+    signupTerms: 'I agree to the Terms of Service and Privacy Policy.',
+    signupSubmit: 'Create account',
+    signupHaveAccount: 'Already have an account?',
+    signupLogin: 'Sign in',
+    signupErrName: 'Please enter your full name.',
+    signupErrEmail: 'Please enter a valid email address.',
+    signupErrPwShort: 'Password must be at least 8 characters.',
+    signupErrPwMatch: 'Passwords do not match.',
+    signupErrTerms: 'Please accept the Terms to continue.',
+    signupSuccess: 'Account created! You can now sign in.',
+  },
+  fr: {
+    title: 'GSS | Connexion',
+    loginEyebrow: 'Espace sécurisé',
+    loginHeroTitle: 'Bienvenue sur votre portail GSS.',
+    loginHeroText:
+      'Connectez-vous pour gérer les inscriptions, les formations et le suivi des agents de sécurité en toute confidentialité.',
+    loginFeat1: 'Accès chiffré et protégé',
+    loginFeat2: 'Gestion centralisée des dossiers',
+    loginFeat3: 'Support administratif 24/7',
+    brandSub: 'Security Service',
+    loginRights: 'Tous droits réservés.',
+    loginTitle: 'Connexion',
+    loginSubtitle: 'Entrez vos identifiants pour accéder à votre tableau de bord.',
+    loginEmailLabel: 'Adresse e-mail',
+    loginEmailPh: 'nom@exemple.com',
+    loginPasswordLabel: 'Mot de passe',
+    loginForgot: 'Mot de passe oublié ?',
+    loginRemember: 'Se souvenir de moi',
+    loginSubmit: 'Se connecter',
+    loginOr: 'ou',
+    loginNoAccount: 'Pas encore de compte ?',
+    loginCreate: 'Créer un compte',
+    showPassword: 'Afficher le mot de passe',
+    hidePassword: 'Masquer le mot de passe',
+    errRequired: 'Veuillez remplir tous les champs.',
+    errEmail: 'Adresse e-mail invalide.',
+    signingIn: 'Connexion en cours…',
+    // ── Sign up modal ──
+    signupTitle: 'Créer votre compte',
+    signupSubtitle: 'Renseignez vos informations pour démarrer avec GSS.',
+    signupNameLabel: 'Nom complet',
+    signupNamePh: 'Jean Dupont',
+    signupEmailLabel: 'Adresse e-mail',
+    signupEmailPh: 'nom@exemple.com',
+    signupPhoneLabel: 'Numéro de téléphone',
+    signupPhonePh: '+243 999 000 000',
+    signupPasswordLabel: 'Mot de passe',
+    signupPasswordPh: 'Au moins 8 caractères',
+    signupConfirmLabel: 'Confirmer le mot de passe',
+    signupConfirmPh: 'Ressaisissez votre mot de passe',
+    signupTerms: 'J\'accepte les Conditions d\'utilisation et la Politique de confidentialité.',
+    signupSubmit: 'Créer le compte',
+    signupHaveAccount: 'Vous avez déjà un compte ?',
+    signupLogin: 'Se connecter',
+    signupErrName: 'Veuillez saisir votre nom complet.',
+    signupErrEmail: 'Veuillez saisir une adresse e-mail valide.',
+    signupErrPwShort: 'Le mot de passe doit comporter au moins 8 caractères.',
+    signupErrPwMatch: 'Les mots de passe ne correspondent pas.',
+    signupErrTerms: 'Veuillez accepter les Conditions pour continuer.',
+    signupSuccess: 'Compte créé ! Vous pouvez maintenant vous connecter.',
+  },
+};
+
 // ── Language state ─────────────────────────────────────────
 const langButtons = Array.from(document.querySelectorAll('[data-lang]')).slice(0, 2);
 
-
-let currentLang = 'en';
+// Shared across all pages/panels (set on the login page). Default: English.
+const GSS_LANG_KEY = 'gss-lang';
+let currentLang = (() => {
+  const saved = localStorage.getItem(GSS_LANG_KEY);
+  return saved === 'fr' || saved === 'en' ? saved : 'en';
+})();
 
 // ── Panel 5 · Rapport Individuel de Présences — language constants ─
 const PRES_DAY_NAMES = {
@@ -844,6 +954,9 @@ const applyLanguage = (lang) => {
 
   currentLang = lang;
 
+  // Persist so every other page/panel keeps the same language.
+  localStorage.setItem(GSS_LANG_KEY, lang);
+
   // Show/hide language-specific content blocks (FR / EN document panels)
   document.querySelectorAll('.lang-content').forEach((el) => {
     el.classList.toggle('hidden', el.dataset.lang !== lang);
@@ -869,9 +982,11 @@ const applyLanguage = (lang) => {
   });
 };
 
-// ── Language switcher wiring ───────────────────────────────
-langButtons.forEach((button) => {
-  button.addEventListener('click', () => applyLanguage(button.getAttribute('data-lang')));
-});
+// ── Language switcher wiring (tc.html only; login.js handles login) ──
+if (document.getElementById('gssTabBar')) {
+  langButtons.forEach((button) => {
+    button.addEventListener('click', () => applyLanguage(button.getAttribute('data-lang')));
+  });
 
-applyLanguage(currentLang);
+  applyLanguage(currentLang);
+}
