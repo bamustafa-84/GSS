@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GSS | Login</title>
+    <script src="./tailwind/tailwind.min.js"></script>
+    <script>
+      // Make every Tailwind text-* utility fluid/responsive using clamp().
+      // Each entry is [clamp(min, preferred, max), { lineHeight }].
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontSize: {
+              xs: ["clamp(0.7rem, 0.66rem + 0.2vw, 0.75rem)", { lineHeight: "1rem" }],
+              sm: ["clamp(0.8rem, 0.75rem + 0.25vw, 0.875rem)", { lineHeight: "1.25rem" }],
+              base: ["clamp(0.9rem, 0.85rem + 0.3vw, 1rem)", { lineHeight: "1.5rem" }],
+              lg: ["clamp(1rem, 0.93rem + 0.35vw, 1.125rem)", { lineHeight: "1.75rem" }],
+              xl: ["clamp(1.1rem, 1rem + 0.4vw, 1.25rem)", { lineHeight: "1.75rem" }],
+              "2xl": ["clamp(1.3rem, 1.15rem + 0.6vw, 1.5rem)", { lineHeight: "2rem" }],
+              "3xl": ["clamp(1.5rem, 1.3rem + 0.9vw, 1.875rem)", { lineHeight: "2.25rem" }],
+              "4xl": ["clamp(1.8rem, 1.5rem + 1.4vw, 2.25rem)", { lineHeight: "2.5rem" }],
+              "5xl": ["clamp(2.2rem, 1.7rem + 2.2vw, 3rem)", { lineHeight: "1" }],
+              "6xl": ["clamp(2.6rem, 2rem + 3vw, 3.75rem)", { lineHeight: "1" }],
+              "7xl": ["clamp(3rem, 2.3rem + 3.6vw, 4.5rem)", { lineHeight: "1" }],
+            },
+            keyframes: {
+              floaty: {
+                "0%, 100%": { transform: "translateY(0) scale(1)" },
+                "50%": { transform: "translateY(-18px) scale(1.05)" },
+              },
+              shine: {
+                "0%": { transform: "translateX(-120%)" },
+                "60%, 100%": { transform: "translateX(220%)" },
+              },
+              spinSlow: {
+                "from": { transform: "rotate(0deg)" },
+                "to": { transform: "rotate(360deg)" },
+              },
+              pulseRing: {
+                "0%, 100%": { transform: "scale(1)", opacity: "0.35" },
+                "50%": { transform: "scale(1.06)", opacity: "0.15" },
+              },
+            },
+            animation: {
+              floaty: "floaty 9s ease-in-out infinite",
+              shine: "shine 6s ease-in-out infinite",
+              "spin-slow": "spinSlow 40s linear infinite",
+              "spin-reverse": "spinSlow 60s linear infinite reverse",
+              "spin-shine": "spinSlow 4.5s linear infinite",
+              "pulse-ring": "pulseRing 7s ease-in-out infinite",
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+
+  <body class="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#031f5e] via-[#042F8D] to-[#0b4dc2] font-sans text-[#042F8D]">
+    <!-- ═══════════ Decorative background ═══════════ -->
+    <div class="pointer-events-none absolute inset-0 select-none" aria-hidden="true">
+      <span class="absolute -left-24 -top-24 h-80 w-80 rounded-full bg-[#0b4dc2] opacity-40 blur-3xl animate-floaty"></span>
+      <span class="absolute -bottom-28 -right-16 h-96 w-96 rounded-full bg-[#1f6bff] opacity-30 blur-3xl animate-floaty [animation-delay:-4s]"></span>
+      <span class="absolute left-1/2 top-1/3 h-72 w-72 -translate-x-1/2 rounded-full bg-white/10 blur-3xl animate-floaty [animation-delay:-2s]"></span>
+    </div>
+
+    <main class="relative z-10 flex min-h-screen items-center justify-center p-4 sm:p-6">
+      <div class="relative grid w-full max-w-5xl overflow-hidden rounded-[28px] border border-white/20 bg-white/95 shadow-[0_40px_120px_rgba(2,15,49,0.55)] backdrop-blur-xl lg:grid-cols-[1.05fr_0.95fr]">
+
+        <!-- ─────────── Language switcher ─────────── -->
+        <div class="absolute right-4 top-4 z-20 inline-flex gap-1.5 rounded-full border border-slate-200 bg-white/90 p-1.5 shadow-sm backdrop-blur" role="group" aria-label="Language switcher">
+          <button type="button" class="rounded-full px-3 py-1.5 text-sm font-bold transition-all duration-200" data-lang="fr">FR</button>
+          <button type="button" class="rounded-full px-3 py-1.5 text-sm font-bold transition-all duration-200" data-lang="en">EN</button>
+        </div>
+
+        <!-- ─────────── Brand / hero side ─────────── -->
+        <section class="relative hidden overflow-hidden bg-gradient-to-br from-[#042F8D] to-[#0b4dc2] p-[clamp(1.5rem,1rem+2vw,2.75rem)] text-white lg:flex lg:flex-col lg:justify-between">
+          <!-- moving sheen (layered light beam) -->
+          <span class="pointer-events-none absolute inset-y-[-20%] -left-1/3 w-2/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/10 to-transparent blur-2xl animate-shine [animation-delay:-2.4s]"></span>
+          <!-- <span class="pointer-events-none absolute inset-y-[-20%] -left-1/3 w-1/2 -skew-x-12 bg-[linear-gradient(105deg,transparent_34%,rgba(255,255,255,0.12)_46%,rgba(255,255,255,0.6)_50%,rgba(255,255,255,0.12)_54%,transparent_66%)] blur-md animate-shine"></span> -->
+
+          <!-- ✨ Circulating logo watermark ✨ -->
+          <div class="pointer-events-none absolute left-1/2 top-1/2 z-0 grid h-[380px] w-[380px] -translate-x-1/2 -translate-y-1/2 place-items-center" aria-hidden="true">
+            <!-- glow halo -->
+            <span class="col-start-1 row-start-1 h-[360px] w-[360px] rounded-full bg-[radial-gradient(circle,rgba(120,170,255,0.28),transparent_64%)] blur-2xl animate-pulse-ring"></span>
+            <!-- spinning shine wheel -->
+            <span class="col-start-1 row-start-1 h-[350px] w-[350px] rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,rgba(255,255,255,0.55)_25deg,transparent_60deg,transparent_180deg,rgba(255,255,255,0.3)_205deg,transparent_240deg)] [mask:radial-gradient(farthest-side,transparent_calc(100%-3px),#000_calc(100%-2px))] animate-spin-shine"></span>
+            <!-- dashed rim -->
+            <span class="col-start-1 row-start-1 h-[380px] w-[380px] rounded-full border border-dashed border-white/15 animate-spin-slow"></span>
+            <!-- inner ring -->
+            <span class="col-start-1 row-start-1 h-[300px] w-[300px] rounded-full ring-1 ring-white/10"></span>
+            <!-- orbiting spark -->
+            <span class="relative col-start-1 row-start-1 h-[380px] w-[380px] animate-spin-shine">
+              <span class="absolute left-1/2 top-0 h-2 w-2 -translate-x-1/2 rounded-full bg-white/80 shadow-[0_0_12px_3px_rgba(255,255,255,0.6)]"></span>
+            </span>
+            <!-- enlarged faded logo watermark -->
+            <img src="./img/logo.jpeg" alt="" class="col-start-1 row-start-1 h-[260px] w-[260px] rounded-full object-cover opacity-[0.18] blur-[0.5px]" />
+          </div>
+
+          <div class="relative z-10">
+            <span class="mb-4 inline-block rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]" data-i18n="loginEyebrow">Secure area</span>
+            <h1 class="text-4xl font-bold leading-tight" data-i18n="loginHeroTitle">Welcome to your GSS portal.</h1>
+            <p class="mt-3 max-w-md text-base leading-7 text-blue-100" data-i18n="loginHeroText">Sign in to manage registrations, training and the follow-up of security agents in complete confidentiality.</p>
+
+            <ul class="mt-8 space-y-3 text-blue-50">
+              <li class="flex items-center gap-3"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-white/15 text-sm">✦</span><span class="text-sm" data-i18n="loginFeat1">Encrypted and protected access</span></li>
+              <li class="flex items-center gap-3"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-white/15 text-sm">✦</span><span class="text-sm" data-i18n="loginFeat2">Centralized file management</span></li>
+              <li class="flex items-center gap-3"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-white/15 text-sm">✦</span><span class="text-sm" data-i18n="loginFeat3">24/7 administrative support</span></li>
+            </ul>
+          </div>
+
+          <p class="relative mt-8 text-xs text-blue-200">© <span id="year"></span> Guarde Security Service. <span data-i18n="loginRights">All rights reserved.</span></p>
+        </section>
+
+        <!-- ─────────── Form side ─────────── -->
+        <section class="p-[clamp(1.5rem,1rem+2.5vw,3rem)]">
+          <!-- Mobile brand -->
+          <div class="mb-8 flex items-center gap-3 lg:hidden">
+            <div class="rounded-xl bg-[#042F8D] p-2 shadow-[0_10px_24px_rgba(4,47,141,0.25)]">
+              <img src="./img/logo.jpeg" alt="Guarde Security Service" class="h-10 w-10 rounded-lg object-contain" />
+            </div>
+            <div>
+              <p class="text-sm font-bold uppercase tracking-[0.18em] text-[#042F8D]">GSS</p>
+              <p class="text-xs font-medium text-slate-500" data-i18n="brandSub">Security Service</p>
+            </div>
+          </div>
+
+          <div class="mb-7">
+            <h2 class="text-3xl font-bold text-[#042F8D]" data-i18n="loginTitle">Login</h2>
+            <p class="mt-2 text-sm text-slate-600" data-i18n="loginSubtitle">Enter your credentials to access your dashboard.</p>
+          </div>
+
+          <form id="loginForm" class="space-y-5" novalidate>
+            <!-- Email -->
+            <div class="space-y-1.5">
+              <label for="email" class="text-sm font-semibold text-slate-700" data-i18n="loginEmailLabel">Email address</label>
+              <div class="group relative">
+                <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition group-focus-within:text-[#042F8D]">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+                </span>
+                <input id="email" name="email" type="email" inputmode="email" autocomplete="email" required
+                  placeholder="name@example.com" data-i18n-placeholder="loginEmailPh"
+                  class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white py-3 pl-11 pr-3 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+              </div>
+            </div>
+
+            <!-- Password -->
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between">
+                <label for="password" class="text-sm font-semibold text-slate-700" data-i18n="loginPasswordLabel">Password</label>
+                <a href="#" class="text-xs font-semibold text-[#042F8D] transition hover:underline" data-i18n="loginForgot">Forgot password?</a>
+              </div>
+              <div class="group relative">
+                <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition group-focus-within:text-[#042F8D]">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                </span>
+                <input id="password" name="password" type="password" autocomplete="current-password" required
+                  placeholder="••••••••"
+                  class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white py-3 pl-11 pr-11 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                <button type="button" id="togglePassword" aria-label="Show password"
+                  class="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-[#042F8D]">
+                  <svg id="eyeOpen" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg id="eyeClosed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="hidden h-5 w-5"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19M6.61 6.61A18.5 18.5 0 0 0 2 12s3.5 7 10 7a9.12 9.12 0 0 0 5.17-1.56"/><path d="m2 2 20 20"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Remember me -->
+            <label class="flex cursor-pointer items-center gap-2.5 text-sm text-slate-600">
+              <input type="checkbox" id="remember" class="peer sr-only" />
+              <span class="flex h-5 w-5 items-center justify-center rounded-md border-[1.5px] border-[#dbe2f0] bg-white transition peer-checked:border-[#042F8D] peer-checked:bg-[#042F8D] peer-focus-visible:ring-4 peer-focus-visible:ring-[#042F8D]/10">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" class="h-3 w-3 opacity-0 transition peer-checked:opacity-100"><path d="m20 6-11 11-5-5"/></svg>
+              </span>
+              <span data-i18n="loginRemember">Remember me</span>
+            </label>
+
+            <!-- Submit -->
+            <button type="submit"
+              class="group relative w-full overflow-hidden rounded-full bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-4 py-3.5 text-sm font-bold text-white shadow-[0_14px_30px_rgba(4,47,141,0.34)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_44px_rgba(4,47,141,0.44)] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/25">
+              <span class="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-white/25 transition-transform duration-700 group-hover:translate-x-[420%]"></span>
+              <span class="relative flex items-center justify-center gap-2">
+                <span data-i18n="loginSubmit">Sign in</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4 transition group-hover:translate-x-1"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+              </span>
+            </button>
+
+            <p id="formStatus" class="min-h-5 text-center text-sm font-semibold text-red-600" aria-live="polite"></p>
+          </form>
+
+          <!-- Divider -->
+          <div class="my-6 flex items-center gap-3 text-xs font-medium uppercase tracking-widest text-slate-400">
+            <span class="h-px flex-1 bg-slate-200"></span><span data-i18n="loginOr">or</span><span class="h-px flex-1 bg-slate-200"></span>
+          </div>
+
+          <p class="text-center text-sm text-slate-600">
+            <span data-i18n="loginNoAccount">Don't have an account yet?</span>
+            <a href="#" id="openSignupBtn" class="font-semibold text-[#042F8D] transition hover:underline" data-i18n="loginCreate">Create an account</a>
+          </p>
+        </section>
+      </div>
+    </main>
+
+    <!-- ═══════════════════════ Sign up modal ═══════════════════════ -->
+    <div id="signupModal" class="fixed inset-0 z-[1000] hidden items-center justify-center bg-[rgba(1,7,16,0.7)] p-4 backdrop-blur-sm" aria-hidden="true">
+      <div class="relative w-full max-w-md overflow-hidden rounded-[24px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.4)]" role="dialog" aria-modal="true" aria-labelledby="signupTitle">
+
+        <!-- Header -->
+        <div class="relative overflow-hidden bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-6 py-5 text-white">
+          <span class="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/25 to-transparent blur-md animate-shine"></span>
+          <h2 id="signupTitle" class="relative text-lg font-bold" data-i18n="signupTitle">Create your account</h2>
+          <p class="relative mt-1 text-sm text-blue-100" data-i18n="signupSubtitle">Fill in your details to get started with GSS.</p>
+          <button type="button" id="closeSignupBtn" aria-label="Close"
+            class="absolute right-4 top-4 rounded-full bg-white/15 p-1.5 text-white transition hover:bg-white/25">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+
+        <!-- Form -->
+        <form id="signupForm" class="max-h-[70vh] space-y-4 overflow-y-auto p-6" novalidate>
+          <!-- Full name -->
+          <div class="space-y-1.5">
+            <label for="suName" class="text-sm font-semibold text-slate-700" data-i18n="signupNameLabel">Full name</label>
+            <input id="suName" name="name" type="text" autocomplete="name" required
+              placeholder="John Doe" data-i18n-placeholder="signupNamePh"
+              class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+          </div>
+
+          <!-- Email -->
+          <div class="space-y-1.5">
+            <label for="suEmail" class="text-sm font-semibold text-slate-700" data-i18n="signupEmailLabel">Email address</label>
+            <input id="suEmail" name="email" type="email" inputmode="email" autocomplete="email" required
+              placeholder="name@example.com" data-i18n-placeholder="signupEmailPh"
+              class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+          </div>
+
+          <!-- Phone -->
+          <div class="space-y-1.5">
+            <label for="suPhone" class="text-sm font-semibold text-slate-700" data-i18n="signupPhoneLabel">Phone number</label>
+            <input id="suPhone" name="phone" type="tel" inputmode="tel" autocomplete="tel" pattern="^\+?[0-9\s().-]{7,20}$"
+              placeholder="+243 999 000 000" data-i18n-placeholder="signupPhonePh"
+              class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+          </div>
+
+          <!-- Password -->
+          <div class="space-y-1.5">
+            <label for="suPassword" class="text-sm font-semibold text-slate-700" data-i18n="signupPasswordLabel">Password</label>
+            <div class="relative">
+              <input id="suPassword" name="password" type="password" autocomplete="new-password" required minlength="8"
+                placeholder="At least 8 characters" data-i18n-placeholder="signupPasswordPh"
+                class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 pr-11 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+              <button type="button" id="suTogglePassword" aria-label="Show password"
+                class="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-[#042F8D]">
+                <svg id="suEyeOpen" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg id="suEyeClosed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="hidden h-5 w-5"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19M6.61 6.61A18.5 18.5 0 0 0 2 12s3.5 7 10 7a9.12 9.12 0 0 0 5.17-1.56"/><path d="m2 2 20 20"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Confirm password -->
+          <div class="space-y-1.5">
+            <label for="suConfirm" class="text-sm font-semibold text-slate-700" data-i18n="signupConfirmLabel">Confirm password</label>
+            <input id="suConfirm" name="confirm" type="password" autocomplete="new-password" required minlength="8"
+              placeholder="Re-enter your password" data-i18n-placeholder="signupConfirmPh"
+              class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+          </div>
+
+          <!-- Terms -->
+          <label class="flex cursor-pointer items-start gap-2.5 text-sm text-slate-600">
+            <input type="checkbox" id="suTerms" class="peer sr-only" />
+            <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-[1.5px] border-[#dbe2f0] bg-white transition peer-checked:border-[#042F8D] peer-checked:bg-[#042F8D] peer-focus-visible:ring-4 peer-focus-visible:ring-[#042F8D]/10">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" class="h-3 w-3 opacity-0 transition peer-checked:opacity-100"><path d="m20 6-11 11-5-5"/></svg>
+            </span>
+            <span data-i18n="signupTerms">I agree to the Terms of Service and Privacy Policy.</span>
+          </label>
+
+          <!-- Submit -->
+          <button type="submit"
+            class="group relative w-full overflow-hidden rounded-full bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-4 py-3 text-sm font-bold text-white shadow-[0_14px_30px_rgba(4,47,141,0.34)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_44px_rgba(4,47,141,0.44)] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/25">
+            <span class="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-white/25 transition-transform duration-700 group-hover:translate-x-[420%]"></span>
+            <span class="relative" data-i18n="signupSubmit">Create account</span>
+          </button>
+
+          <p id="signupStatus" class="min-h-5 text-center text-sm font-semibold text-red-600" aria-live="polite"></p>
+        </form>
+
+        <!-- Footer -->
+        <div class="border-t border-slate-200 bg-slate-50 px-6 py-4 text-center text-sm text-slate-600">
+          <span data-i18n="signupHaveAccount">Already have an account?</span>
+          <button type="button" id="signupToLogin" class="font-semibold text-[#042F8D] transition hover:underline" data-i18n="signupLogin">Sign in</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="./js/translation.js"></script>
+    <script src="./js/login.js"></script>
+  </body>
+</html>
