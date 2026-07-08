@@ -30,8 +30,9 @@
     </script>
     <!-- intl-tel-input (fancy phone field with country flags) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.3.1/build/css/intlTelInput.css" />
+
     <style>
-      /* Let the intl-tel-input wrapper fill the field width like the other inputs. */
+          /* Let the intl-tel-input wrapper fill the field width like the other inputs. */
       .iti { width: 100%; }
     </style>
   </head>
@@ -188,7 +189,7 @@
                 <div class="mt-4 grid gap-4 md:grid-cols-2">
                   <div class="flex flex-col gap-1.5">
                     <label for="CandidateNo" class="text-sm font-semibold text-slate-700 after:content-['_*'] after:text-red-500 after:font-bold" data-i18n="lbDossier">Candidat No.</label>
-                    <input id="CandidateNo" name="CandidateNo" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" placeholder="0001" />
+                    <input id="CandidateNo" name="CandidateNo" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" placeholder="000001" />
                   </div>
                   <div class="flex flex-col gap-1.5">
                     <label for="RegistrationDate" class="text-sm font-semibold text-slate-700 after:content-['_*'] after:text-red-500 after:font-bold" data-i18n="lbDateInscription">Registration Date</label>
@@ -247,7 +248,7 @@
                       </label>
                     </div>
                   </div>
-                  <div class="md:col-span-2 flex flex-col gap-2">
+                  <div class="flex flex-col gap-2">
                     <label class="text-sm font-semibold text-slate-700 after:content-['_*'] after:text-red-500 after:font-bold" data-i18n="lbEtatCivil">Marital Status</label>
                     <div class="flex flex-wrap gap-2">
                       <select id="MaritalStatus" name="MaritalStatus" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
@@ -271,7 +272,7 @@
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
                   <span data-i18n="secEducation">EDUCATION LEVEL AND EXPERIENCE</span>
                 </legend>
-                <div class="mt-4 grid gap-4">
+                <div class="mt-4 grid gap-4 md:grid-cols-2">
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-semibold text-slate-700" data-i18n="lbNiveauEtudes">Education Level</label>
                     <div class="flex flex-wrap gap-2">
@@ -284,7 +285,7 @@
                       </select>
                     </div>
                   </div>
-                  <div class="flex flex-col gap-2">
+                  <div class="md:col-span-2 flex flex-col gap-2">
                     <label class="text-sm font-semibold text-slate-700 after:content-['_*'] after:text-red-500 after:font-bold" data-i18n="lbFrancais">Can you read and write in French?</label>
                     <div class="flex flex-wrap gap-2">
                       <label class="inline-flex cursor-pointer items-center gap-2 rounded-full px-3 py-2 text-sm transition has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]">
@@ -298,7 +299,7 @@
                     </div>
                   </div>
 
-                  <div class="flex flex-col gap-2">
+                  <div class="md:col-span-2 flex flex-col gap-2">
                     <label class="text-sm font-semibold text-slate-700 after:content-['_*'] after:text-red-500 after:font-bold" data-i18n="lbExperience">Do you have experience in the security field?</label>
                     <div class="flex flex-wrap gap-2">
                       <label class="inline-flex cursor-pointer items-center gap-2 rounded-full px-3 py-2 text-sm transition has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]">
@@ -312,7 +313,7 @@
                     </div>
                   </div>
 
-                  <div class="flex flex-col gap-1.5">
+                  <div class="md:col-span-2 flex flex-col gap-1.5">
                     <label for="SecurityExperienceDetails" class="text-sm font-semibold text-slate-700" data-i18n="lbPrecisionExp">If yes, please specify</label>
                     <textarea id="SecurityExperienceDetails" name="SecurityExperienceDetails" rows="3" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10"></textarea>
                   </div>
@@ -1586,6 +1587,7 @@
     <script src="./js/validation.js"></script>
     <script src="./js/collapsible.js"></script>
     <script src="./js/formulaire-inscription.js"></script>
+
     <!-- intl-tel-input plugin (bundled with utils for formatting/validation) -->
     <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.3.1/build/js/intlTelInputWithUtils.min.js"></script>
     <script>
