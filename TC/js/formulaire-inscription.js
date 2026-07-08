@@ -42,9 +42,9 @@ const initInscriptionForm = () => {
       element instanceof HTMLTextAreaElement ||
       element instanceof HTMLSelectElement
     ) {
-      const isFilled = element.value.trim() !== '';
-      element.classList.toggle('border-amber-400', isFilled);
-      element.classList.toggle('bg-amber-50', isFilled);
+      // Completed fields stay in the default style (border-[#dbe2f0]);
+      // the amber highlight is intentionally not applied.
+      element.classList.remove('border-amber-400', 'bg-amber-50');
     }
   };
 

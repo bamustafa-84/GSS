@@ -406,7 +406,7 @@ const translations = {
     stat1: 'trainees trained', stat2: 'personalized support', stat3: 'administrative support',
     whyTitle: 'Why choose GSS?',
     benefit1: 'Recognized and professional training', benefit2: 'Practical and theoretical modules',
-    benefit3: 'Fast registration process', benefit4: 'A team available at every step',
+    benefit3: 'Quick registration process', benefit4: 'Team available at every step',
     // ── Modal / tabs ─────────────────────────────────────────
     modalTitle: 'Application Process', closeBtn: 'Close',
     tabRegistration: 'Registration', tabConditions: 'Conditions', tabReglement: 'Rules', tabEngagement: 'Commitment',
@@ -424,11 +424,11 @@ const translations = {
     secDecl: "APPLICANT'S DECLARATION",
     secAdmin: 'FOR ADMINISTRATION USE ONLY',
     // personal labels
-    lbDossier: 'File No.', lbDateInscription: 'Registration Date', lbNom: 'Full Name',
+    lbDossier: 'Candidate No.', lbDateInscription: 'Registration Date', lbNom: 'Full Name',
     lbTel1: 'Phone (1)', lbTel2: 'Phone (2)', lbPere: "Father's Name", lbMere: "Mother's Name",
     lbEmail: 'Email', lbDateNaissance: 'Date of Birth', lbLieuNaissance: 'Place of Birth',
     lbNationalite: 'Nationality', lbSexe: 'Gender', lbEtatCivil: 'Marital Status', lbAdresse: 'Full Address',
-    optSelectCountry: 'Select your country', optSelectCity: 'Select your city', optSelectCountryFirst: 'Select a country first',
+    optSelectCountry: '', optSelectCity: 'Select your city', optSelectCountryFirst: 'Select a Nationality first',
     optMale: ' Male', optFemale: ' Female',
     optSingle: ' Single', optMarried: ' Married', optDivorced: ' Divorced', optWidowed: ' Widowed',
     // education labels
@@ -745,8 +745,8 @@ const translations = {
     uniformeLbSignAgent: 'Agent Signature',
     uniformeLbSignDirection: 'General Management',
     ackUniforme: 'I acknowledge receipt of the listed equipment and accept the terms of this <strong>Uniform Equipment Handover Commitment</strong>.',
-    // ── Panel 11 · Individual Candidate File ──
-    tabDossier: 'File',
+    // ── Panel 9 · Individual Candidate File ──
+    tabDossier: 'CheckList',
     dossierTitle: 'Individual Candidate File',
     dossierSubtitle: 'Training Centre — Guarde Security Service',
     dossierSec1: '1. GENERAL INFORMATION',
