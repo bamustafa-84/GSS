@@ -1,0 +1,129 @@
+ <!-- ════════════════════════════════════════════════════ -->
+          <!-- PANEL 10 · Engagement Remise Effets d'Uniforme       -->
+          <!-- ════════════════════════════════════════════════════ -->
+          <div id="panel-uniforme" class="gss-tab-panel hidden p-[clamp(1rem,0.8rem+1vw,1.5rem)]">
+            <div class="relative overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
+              <div class="bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-6 py-5 text-white">
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-200">Document 10</p>
+                <h3 class="mt-1 text-lg font-bold leading-snug" data-i18n="uniformeTitle">Uniform Equipment Handover Commitment and Salary Deduction Authorization</h3>
+                <p class="mt-0.5 text-sm text-blue-200" data-i18n="uniformeSubtitle">Guarde Security Service</p>
+              </div>
+              <div class="space-y-6 p-5 sm:p-7">
+
+                <!-- Intro -->
+                <p class="text-sm italic text-slate-500" data-i18n="uniformeIntro">I the undersigned,</p>
+
+                <!-- A. Agent identification -->
+                <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
+                  <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <span data-i18n="uniformeSecAgent">AGENT IDENTIFICATION</span>
+                  </legend>
+                  <div class="mt-4 grid gap-4 md:grid-cols-2">
+                    <div class="flex flex-col gap-1.5 md:col-span-2">
+                      <label for="uni-FullName" class="text-sm font-semibold text-slate-700" data-i18n="uniformeLbNom">Full Name</label>
+                      <input id="uni-FullName" name="uni-FullName" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                      <label for="uni-IDPassportNumber" class="text-sm font-semibold text-slate-700" data-i18n="uniformeLbCni">ID Card No.</label>
+                      <input id="uni-IDPassportNumber" name="uni-IDPassportNumber" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                      <label for="uni-Position" class="text-sm font-semibold text-slate-700" data-i18n="uniformeLbFonction">Position</label>
+                      <input id="uni-Position" name="uni-Position" type="text" value="Security Officer" readonly class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-slate-50 px-3 py-2.5 text-sm text-slate-500 focus:outline-none" />
+                    </div>
+                  </div>
+                </fieldset>
+
+                <!-- B. Équipements remis -->
+                <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
+                  <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                    <span data-i18n="uniformeSecEquip">EQUIPMENT RECEIVED</span>
+                  </legend>
+                  <p class="mt-3 text-sm text-slate-600" data-i18n="uniformeEquipIntro">Declares having received from GSS Security Services the following equipment:</p>
+                  <div class="mt-3 flex flex-wrap gap-2.5">
+                    <label class="inline-flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="checkbox" id="uni-Equipment" name="uni-Equipment" value="uniforme" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="uniformeOptUniforme">Uniform</span></label>
+                    <label class="inline-flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="checkbox" id="uni-Equipment" name="uni-Equipment" value="casquette" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="uniformeOptCasquette">Cap</span></label>
+                    <label class="inline-flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="checkbox" id="uni-Equipment" name="uni-Equipment" value="chaussures" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="uniformeOptChaussures">Shoes</span></label>
+                    <label class="inline-flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="checkbox" id="uni-Equipment" name="uni-Equipment" value="ceinture" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="uniformeOptCeinture">Belt</span></label>
+                    <label class="inline-flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]"><input type="checkbox" id="uni-Equipment" name="uni-Equipment" value="badge" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="uniformeOptBadge">Identification Badge</span></label>
+                  </div>
+                  <div class="mt-3 flex flex-wrap items-center gap-2">
+                    <label class="inline-flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm transition hover:border-[#042F8D] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D]"><input type="checkbox" id="uni-Equipment" name="uni-Equipment" value="autres" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="uniformeOptAutres">Other</span></label>
+                    <input id="uni-Others" name="uni-Others" type="text" placeholder="…" class="flex-1 min-w-[10rem] rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                  </div>
+                  <div class="mt-4 flex items-center gap-3">
+                    <label for="uni-TotalEquipmentValue" class="shrink-0 text-sm font-semibold text-slate-700" data-i18n="uniformeLbValeur">Total equipment value</label>
+                    <div class="flex items-center gap-1.5">
+                      <input id="uni-TotalEquipmentValue" name="uni-TotalEquipmentValue" type="number" min="0" step="100" placeholder="0" class="w-36 rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                      <span class="text-sm font-semibold text-slate-600">CDF</span>
+                    </div>
+                  </div>
+                </fieldset>
+
+                <!-- C. Declarations + retenue -->
+                <div class="rounded-[16px] border border-slate-200 bg-white px-5 py-5 shadow-sm space-y-4 text-sm leading-7 text-slate-700">
+                  <p data-i18n="uniformeBodyP1">I acknowledge that this equipment represents a financial value borne by the company.</p>
+                  <p data-i18n="uniformeBodyP2">I authorise GSS Security Services to make a monthly deduction from my salary at the agreed amount until full reimbursement.</p>
+                  <div class="flex flex-wrap items-center gap-3">
+                    <label for="uni-MonthlyDeductionAmount" class="shrink-0 text-sm font-semibold text-slate-700" data-i18n="uniformeLbRetenue">Monthly deduction amount</label>
+                    <div class="flex items-center gap-1.5">
+                      <input id="uni-MonthlyDeductionAmount" name="uni-MonthlyDeductionAmount" type="number" min="0" step="100" placeholder="0" class="w-36 rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                      <span class="text-sm font-semibold text-slate-600">CDF</span>
+                    </div>
+                  </div>
+                  <p data-i18n="uniformeBodyP3">I undertake to take care of the equipment received and to return it upon cessation of my duties in accordance with the internal regulations.</p>
+                </div>
+
+                <!-- D. Lieu & Date -->
+                <div class="grid gap-4 md:grid-cols-2">
+                  <div class="flex flex-col gap-1.5">
+                    <label for="uni-DoneAt" class="text-sm font-semibold text-slate-700" data-i18n="uniformeLbFaitA">Done at</label>
+                    <input id="uni-DoneAt" name="uni-DoneAt" readonly type="text" value="Kinshasa" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-slate-50 px-3 py-2.5 text-sm text-slate-500 focus:outline-none" />
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <label for="uni-Date" class="text-sm font-semibold text-slate-700" data-i18n="uniformeLbLe">Date</label>
+                    <input id="uni-Date" name="uni-Date" type="date" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                  </div>
+                </div>
+
+                <!-- E. Signatures -->
+                <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
+                  <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                    <span data-i18n="uniformeSecSign">SIGNATURES</span>
+                  </legend>
+                  <div class="mt-4 grid gap-5 md:grid-cols-2">
+                    <div class="flex flex-col gap-1.5">
+                      <label class="text-sm font-semibold text-slate-700" data-i18n="uniformeLbSignAgent">Agent Signature</label>
+                      <div class="gss-sign group relative w-full overflow-hidden rounded-xl border-[1.5px] border-[#dbe2f0] bg-white/40 transition focus-within:border-[#042F8D] focus-within:ring-4 focus-within:ring-[#042F8D]/10">
+                        <canvas id="uni-sig-agent" class="gss-sign-canvas block h-40 w-full touch-none cursor-crosshair bg-transparent"></canvas>
+                        <span class="gss-sign-hint pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-slate-400" data-i18n="sigHint">Sign within the box</span>
+                        <button type="button" class="gss-sign-clear absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-[#042F8D] hover:text-[#042F8D]" data-i18n="sigClear">Clear</button>
+                        <input id="uni-sig-agent-data" name="uni-sig-agent" class="gss-sign-input" type="hidden" />
+                      </div>
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                      <label class="text-sm font-semibold text-slate-700" data-i18n="uniformeLbSignDirection">General Management</label>
+                      <div class="gss-sign group relative w-full overflow-hidden rounded-xl border-[1.5px] border-[#dbe2f0] bg-white/40 transition focus-within:border-[#042F8D] focus-within:ring-4 focus-within:ring-[#042F8D]/10">
+                        <canvas id="uni-sig-direction" class="gss-sign-canvas block h-40 w-full touch-none cursor-crosshair bg-transparent"></canvas>
+                        <span class="gss-sign-hint pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-slate-400" data-i18n="sigHint">Sign within the box</span>
+                        <button type="button" class="gss-sign-clear absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-[#042F8D] hover:text-[#042F8D]" data-i18n="sigClear">Clear</button>
+                        <input id="uni-sig-direction-data" name="uni-sig-direction" class="gss-sign-input" type="hidden" />
+                      </div>
+                    </div>
+                  </div>
+                </fieldset>
+
+                <!-- Acknowledgment -->
+                <div class="rounded-[16px] border border-green-200 bg-green-50 p-4">
+                  <label class="flex cursor-pointer items-start gap-3">
+                    <input type="checkbox" id="ack-uniforme" class="gss-ack-check mt-0.5 h-4 w-4 rounded accent-green-600" data-tab="uniforme" />
+                    <span class="text-sm leading-6 text-slate-700" data-i18n-html="ackUniforme">I acknowledge having received the listed equipment and accept the terms of this <strong>Uniform Equipment Handover Commitment</strong>.</span>
+                  </label>
+                </div>
+
+              </div>
+            </div>
+          </div><!-- /panel-uniforme -->
