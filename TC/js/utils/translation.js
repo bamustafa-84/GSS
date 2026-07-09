@@ -401,7 +401,7 @@ const translations = {
     title: 'GSS | Join our security agents',
     eyebrow: 'Professional security',
     heroTitle: 'Join an exceptional training program to become a security officer.',
-    heroText: 'A structured path, serious guidance, and a simplified registration process to begin your journey with GSS.',
+    heroText: 'A structured1 path, serious guidance, and a simplified registration process to begin your journey with GSS.',
     openBtn: 'Fill the form', conditionsBtn: 'View terms',
     stat1: 'trainees trained', stat2: 'personalized support', stat3: 'administrative support',
     whyTitle: 'Why choose GSS?',

@@ -12,7 +12,7 @@
         theme: {
           extend: {
             fontSize: {
-              xs: ["clamp(0.7rem, 0.66rem + 0.2vw, 0.75rem)", { lineHeight: "1rem" }], 
+              xs: ["clamp(0.7rem, 0.66rem + 0.2vw, 0.75rem)", { lineHeight: "1rem" }],
               sm: ["clamp(0.8rem, 0.75rem + 0.25vw, 0.875rem)", { lineHeight: "1.25rem" }],
               base: ["clamp(0.9rem, 0.85rem + 0.3vw, 1rem)", { lineHeight: "1.5rem" }],
               lg: ["clamp(1rem, 0.93rem + 0.35vw, 1.125rem)", { lineHeight: "1.75rem" }],
@@ -1581,12 +1581,16 @@
       </div><!-- /dialog card -->
     </div><!-- /formModal -->
 
-    <script src="./js/translation.js"></script>
+    <script src="./js/utils/translation.js"></script>
     <script src="./js/tc.js"></script>
-    <script src="./js/locations.js"></script>
-    <script src="./js/validation.js"></script>
-    <script src="./js/collapsible.js"></script>
-    <script src="./js/formulaire-inscription.js"></script>
+
+    <script src="./js/utils/locations.js"></script>
+    <script src="./js/utils/validation.js"></script>
+    <script src="./js/utils/collapsible.js"></script>
+
+    <script src="./js/modules/registration.js"></script>
+    <script src="./js/modules/attendance.js"></script>
+    <script src="./js/modules/eval.js"></script>
 
     <!-- intl-tel-input plugin (bundled with utils for formatting/validation) -->
     <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.3.1/build/js/intlTelInputWithUtils.min.js"></script>
