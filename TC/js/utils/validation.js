@@ -1,0 +1,296 @@
+/**
+ * GSS – Panel validation
+ * ------------------------------------------------------------------
+ * Centralised required-field validation for the training-centre form.
+ * Each panel declares its required fields; the same engine can be
+ * reused as more panels are added.
+ *
+ * Field types:
+ *   'input'     – text / date / select / textarea (value must be non-empty)
+ *   'radio'     – radio group referenced by name (one option must be chosen)
+ *   'checkbox'  – single checkbox referenced by name (must be checked)
+ *   'signature' – hidden input fed by a signature pad (must hold data)
+ */
+(() => {
+  'use strict';
+
+  // ── Localised status messages (follow the page language) ──────
+  const messages = {
+    fr: {
+      required: 'Veuillez remplir tous les champs obligatoires mis en évidence.',
+      success: 'Tous les champs obligatoires sont remplis.'
+    },
+    en: {
+      required: 'Please complete all required fields highlighted below.',
+      success: 'All required fields are completed.'
+    }
+  };
+  const t = () => messages[document.documentElement.lang] || messages.en;
+
+  // ── Required-field definitions per panel ──────────────────────
+  const panelRules = {
+    registration: {
+      formId: 'inscriptionForm',
+      statusId: 'formStatus',
+      fields: [
+        // Personal information
+        { key: 'CandidateNo', type: 'input' },
+        { key: 'RegistrationDate', type: 'input' },
+        { key: 'FullName', type: 'input' },
+        { key: 'Phone1', type: 'input' },
+        { key: 'FatherName', type: 'input' },
+        { key: 'MotherName', type: 'input' },
+        { key: 'DateOfBirth', type: 'input' },
+        { key: 'Nationality', type: 'input' },
+        { key: 'PlaceOfBirth', type: 'input' },
+        { key: 'Gender', type: 'radio' },
+        { key: 'MaritalStatus', type: 'input' },
+        { key: 'FullAddress', type: 'input' },
+        // Education & experience
+        { key: 'IsFrenchLiterate', type: 'radio' },
+        { key: 'HasSecurityExperience', type: 'radio' },
+        { key: 'SecurityExperienceDetails', type: 'input', requiredIf: { field: 'HasSecurityExperience', equals: 'Yes' } },
+        // Health & documents
+        { key: 'HasHealthIssues', type: 'radio' },
+        { key: 'HealthIssuesDetails', type: 'input', requiredIf: { field: 'HasHealthIssues', equals: 'Yes' } },
+        { key: 'HasIdOrPassportCopy', type: 'checkbox' },
+        // Fees
+        { key: 'IsPaid', type: 'radio' },
+        // Applicant's declaration
+        { key: 'ApplicantName', type: 'input' },
+        { key: 'ApplicantSignature', type: 'signature' },
+        { key: 'ApplicantDate', type: 'input' },
+        // Administration use
+        { key: 'InterviewResult', type: 'radio' },
+        { key: 'OfficerName', type: 'input' },
+        { key: 'OfficerSignature', type: 'input' }
+      ]
+    }
+  };
+
+  // ── Error highlight helpers ───────────────────────────────────
+  const setError = (element, hasError) => {
+    if (!element) return;
+    const isControl = element.matches && element.matches('input, select, textarea');
+    if (isControl) {
+      element.classList.toggle('border-red-500', hasError);
+      element.classList.toggle('ring-2', hasError);
+      element.classList.toggle('ring-red-300', hasError);
+    } else {
+      // Radio / checkbox group or signature container: a clearly visible box.
+      element.classList.toggle('rounded-lg', hasError);
+      element.classList.toggle('ring-2', hasError);
+      element.classList.toggle('ring-red-400', hasError);
+      element.classList.toggle('ring-offset-2', hasError);
+    }
+  };
+
+  // Locate the element to highlight when a field is invalid.
+  const highlightFor = (form, field, control) => {
+    switch (field.type) {
+      case 'radio': {
+        const first = form.querySelector(`input[name="${field.key}"]`);
+        return (first && first.closest('.flex')) || first;
+      }
+      case 'checkbox':
+        return control ? control.closest('label') || control : null;
+      case 'signature':
+        return control ? control.closest('.gss-sign') || control : null;
+      default:
+        return control || null;
+    }
+  };
+
+  // A field is "active" (subject to validation) unless it declares a requiredIf
+  // condition that is not currently satisfied by its trigger field.
+  const isFieldActive = (form, field) => {
+    if (!field.requiredIf) return true;
+    const { field: triggerName, equals } = field.requiredIf;
+    const radios = form.querySelectorAll(`input[name="${triggerName}"]`);
+    if (radios.length) {
+      return Array.prototype.some.call(radios, (radio) => radio.checked && radio.value === equals);
+    }
+    const control = form.elements[triggerName];
+    return !!control && control.value === equals;
+  };
+
+  // Tailwind classes that render the red required asterisk (same as static ones).
+  const REQUIRED_MARKER_CLASSES = ["after:content-['_*']", 'after:text-red-500', 'after:font-bold'];
+
+  // Show/hide the asterisk on a conditional field's label to match its state.
+  const updateRequiredMarker = (form, field) => {
+    if (!field.requiredIf) return;
+    const label = form.querySelector(`label[for="${field.key}"]`);
+    if (!label) return;
+    const active = isFieldActive(form, field);
+    REQUIRED_MARKER_CLASSES.forEach((cls) => label.classList.toggle(cls, active));
+  };
+
+  // Evaluate a single field: is it filled, and what should be highlighted.
+  const evaluateField = (form, field) => {
+    const control = form.elements[field.key];
+
+    // Conditionally-required fields count as valid until their trigger is met.
+    if (!isFieldActive(form, field)) {
+      return { valid: true, highlight: highlightFor(form, field, control), control };
+    }
+
+    let valid = false;
+
+    switch (field.type) {
+      case 'radio': {
+        const radios = form.querySelectorAll(`input[type="radio"][name="${field.key}"]`);
+        valid = Array.prototype.some.call(radios, (radio) => radio.checked);
+        break;
+      }
+      case 'checkbox': {
+        const box = form.querySelector(`input[type="checkbox"][name="${field.key}"]`) || control;
+        valid = !!box && box.checked === true;
+        break;
+      }
+      case 'signature':
+        valid = !!control && (control.value || '').trim() !== '';
+        break;
+      default:
+        valid = !!control && typeof control.value === 'string' && control.value.trim() !== '';
+    }
+
+    return { valid, highlight: highlightFor(form, field, control), control };
+  };
+
+  // ── Validate an entire panel ──────────────────────────────────
+  const validatePanel = (panelKey) => {
+    const rule = panelRules[panelKey];
+    if (!rule) return true;
+
+    const form = document.getElementById(rule.formId);
+    if (!form) return true;
+
+    let firstInvalid = null;
+    let allValid = true;
+
+    rule.fields.forEach((field) => {
+      const result = evaluateField(form, field);
+      setError(result.highlight, !result.valid);
+      if (!result.valid) {
+        allValid = false;
+        if (!firstInvalid) firstInvalid = result.highlight || result.control;
+      }
+    });
+
+    const status = document.getElementById(rule.statusId);
+    if (status) {
+      const m = t();
+      status.textContent = allValid ? m.success : m.required;
+      status.className =
+        'min-h-6 text-sm font-semibold ' + (allValid ? 'text-emerald-600' : 'text-red-600');
+    }
+
+    if (!allValid && firstInvalid) {
+      // Reveal the section if the first invalid field is inside a collapsed fieldset.
+      if (window.GSSCollapsible && firstInvalid.closest) {
+        window.GSSCollapsible.expand(firstInvalid.closest('fieldset'));
+      }
+      if (typeof firstInvalid.scrollIntoView === 'function') {
+        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      if (typeof firstInvalid.focus === 'function') {
+        try {
+          firstInvalid.focus({ preventScroll: true });
+        } catch (_) {
+          /* focus may be unavailable on non-control containers */
+        }
+      }
+    }
+
+    return allValid;
+  };
+
+  // ── Clear a field's error once the user provides a value ──────
+  const clearFieldError = (form, panelKey, target) => {
+    const rule = panelRules[panelKey];
+    if (!rule) return;
+    rule.fields.forEach((field) => {
+      const isTrigger = target.name === field.key || target.id === field.key;
+      const isDependent =
+        field.requiredIf &&
+        (field.requiredIf.field === target.name || field.requiredIf.field === target.id);
+      if (!isTrigger && !isDependent) return;
+
+      // Keep the conditional asterisk in sync when a trigger changes.
+      if (isDependent) updateRequiredMarker(form, field);
+
+      const result = evaluateField(form, field);
+      if (isTrigger) {
+        // Direct edits reflect the field's live state.
+        setError(result.highlight, !result.valid);
+      } else if (result.valid) {
+        // A trigger change can only relax a dependent field's error, never add it.
+        setError(result.highlight, false);
+      }
+    });
+  };
+
+  // Signature pads write to a hidden input without firing input events,
+  // so re-check signature fields whenever a pad is drawn on.
+  const clearSignatureErrors = (form, panelKey) => {
+    const rule = panelRules[panelKey];
+    if (!rule) return;
+    rule.fields
+      .filter((f) => f.type === 'signature')
+      .forEach((field) => {
+        const result = evaluateField(form, field);
+        setError(result.highlight, !result.valid);
+      });
+  };
+
+  // ── Wire the registration panel ───────────────────────────────
+  const attachRegistration = () => {
+    const rule = panelRules.registration;
+    const form = document.getElementById(rule.formId);
+    if (!form || form.dataset.gssValidationReady) return;
+    form.dataset.gssValidationReady = 'true';
+
+    // Take over submission: block the form when required fields are missing.
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      validatePanel('registration');
+    });
+
+    form.addEventListener('input', (event) => clearFieldError(form, 'registration', event.target), true);
+    form.addEventListener('change', (event) => clearFieldError(form, 'registration', event.target), true);
+
+    // Set the initial state of conditional required asterisks.
+    rule.fields.filter((field) => field.requiredIf).forEach((field) => updateRequiredMarker(form, field));
+
+    form.querySelectorAll('.gss-sign .gss-sign-canvas').forEach((canvas) => {
+      const revalidate = () => clearSignatureErrors(form, 'registration');
+      canvas.addEventListener('mouseup', revalidate);
+      canvas.addEventListener('touchend', revalidate);
+    });
+    form.querySelectorAll('.gss-sign .gss-sign-clear').forEach((button) => {
+      button.addEventListener('click', () => setTimeout(() => clearSignatureErrors(form, 'registration'), 0));
+    });
+  };
+
+  const init = () => {
+    attachRegistration();
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // Expose for reuse / dynamic re-init after modal injection.
+  window.GSSValidation = {
+    rules: panelRules,
+    validatePanel,
+    registerPanel(key, rule) {
+      panelRules[key] = rule;
+    },
+    init
+  };
+})();
