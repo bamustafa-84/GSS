@@ -1,3 +1,4 @@
+// @ts-check
 /* ============================================================
  * GSS · Countries & Cities dataset
  * Exposes window.GSS_LOCATIONS = { countries: [...], cities: { Country: [city,...] } }

@@ -1,8 +1,11 @@
-const modal = document.getElementById('formModal');
+// @ts-check
 
+const modal = document.getElementById('formModal');
+const openFormBtn = document.getElementById('openFormBtn');
 const closeModalBtn = document.getElementById('closeModalBtn');
 
 // ── Tab state ──────────────────────────────────────────────
+/** @type {Record<string, boolean>} */
 const tabState = { registration: true, conditions: false, reglement: false, engagement: false, presences: false, 
                    evaluation: false, exam: false, mensuration: false, 
                    // lettre: false, uniforme: false, 
@@ -12,14 +15,15 @@ let defaultTab = 'registration';
 
 //#region FILL THE FORM BUTTON / OPEN DEFAULT TAB (REGISTRATION FOR NOW)
 const openModal = () => {
-  modal.classList.add('flex');
-  modal.classList.remove('hidden');
+  modal?.classList.add('flex');
+  modal?.classList.remove('hidden');
   switchTab(defaultTab);
 };
-openFormBtn.addEventListener('click', openModal);
+openFormBtn?.addEventListener('click', openModal);
 //#endregion
 
 //#region SWITCH TABS
+/** @param {string} tabName */
 const switchTab = (tabName) => {
   // Hide all panels
   document.querySelectorAll('.gss-tab-panel').forEach(p => p.classList.add('hidden'));
@@ -75,6 +79,12 @@ const switchTab = (tabName) => {
   defaultTab = tabName;
 }
 
+/**
+ * @param {string} tabName
+ * @param {Element} dot
+ * @param {string} [bgColor]
+ * @param {string} [text]
+ */
 const markTab = (tabName, dot, bgColor = TAB_DONE_BG, text = '✓') => {
   tabState[tabName] = true;
   dot.classList.add(bgColor); 
@@ -83,13 +93,14 @@ const markTab = (tabName, dot, bgColor = TAB_DONE_BG, text = '✓') => {
 
 // REGISTER CLICK EVENT OF ALL TABS
 document.querySelectorAll('.gss-tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  const tabBtn = /** @type {HTMLElement} */ (btn);
+  tabBtn.addEventListener('click', () => switchTab(tabBtn.dataset.tab ?? defaultTab));
 });
 //#endregion
 
 //#region CLOSE MODAL
 const closeModal = () => {
-  modal.classList.add('hidden');
+  modal?.classList.add('hidden');
 };
-closeModalBtn.addEventListener('click', closeModal);
+closeModalBtn?.addEventListener('click', closeModal);
 //#endregion

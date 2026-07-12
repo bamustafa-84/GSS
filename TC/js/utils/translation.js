@@ -1,10 +1,9 @@
-const TAB_ACTIVE_BORDER = 'border-b-blue-600';
-const TAB_ACTIVE_TEXT = 'text-blue-600';
+// @ts-check
+/// <reference path="../global.js" />
+/// <reference path="../modules/attendance.js" />
 
-const TAB_DONE_BG = 'bg-green-500';
-const TAB_PENDING_BG = 'bg-gray-300';
-const TAB_ACTIVE_BG = 'bg-blue-800';
-
+// Tab indicator classes (TAB_ACTIVE_BORDER, TAB_DONE_BG, …) and
+// GSS_LANG_KEY now live in js/global.js, which loads before this file.
 
 const translations = {
   fr: {
@@ -893,16 +892,6 @@ const loginTranslations = {
   },
 };
 
-// ── Language state ─────────────────────────────────────────
-const langButtons = Array.from(document.querySelectorAll('[data-lang]')).slice(0, 2);
-
-// Shared across all pages/panels (set on the login page). Default: English.
-const GSS_LANG_KEY = 'gss-lang';
-let currentLang = (() => {
-  const saved = localStorage.getItem(GSS_LANG_KEY);
-  return saved === 'fr' || saved === 'en' ? saved : 'en';
-})();
-
 // ── Panel 5 · Rapport Individuel de Présences — language constants ─
 const PRES_DAY_NAMES = {
   fr: ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'],
@@ -924,31 +913,86 @@ const PRES_STATUS_OPTS = {
   ]
 };
 
+// ── Searchable <select> combobox strings (used by registration.js) ─
+const COMBO_STRINGS = {
+  fr: { search: 'Rechercher…', empty: 'Aucun résultat' },
+  en: { search: 'Search…', empty: 'No results' }
+};
+
+// ── Registration form status messages (used by registration.js) ───
+const REGISTRATION_MESSAGES = {
+  fr: {
+    required: 'Veuillez saisir au moins votre nom complet et votre téléphone principal.',
+    phone: 'Veuillez saisir un numéro de téléphone valide (7 à 15 chiffres).',
+    email: 'Veuillez saisir une adresse e-mail valide.',
+    dobFuture: 'La date de naissance ne peut pas être dans le futur.',
+    dobAge: 'Le candidat doit avoir au moins 18 ans.',
+    dateInvalid: 'Veuillez saisir une date valide.',
+    selectCity: 'Sélectionnez votre ville',
+    selectCountryFirst: "Sélectionnez d'abord le pays",
+    ready: (/** @type {number} */ n) => `Formulaire prêt à être envoyé. ${n} champ(s) complété(s).`
+  },
+  en: {
+    required: 'Please enter at least your full name and primary phone number.',
+    phone: 'Please enter a valid phone number (7 to 15 digits).',
+    email: 'Please enter a valid email address.',
+    dobFuture: 'The date of birth cannot be in the future.',
+    dobAge: 'The applicant must be at least 18 years old.',
+    dateInvalid: 'Please enter a valid date.',
+    selectCity: '',
+    selectCountryFirst: 'Select a country first',
+    ready: (/** @type {number} */ n) => `Form ready to be submitted. ${n} field(s) completed.`
+  }
+};
+
+// ── Panel validation status messages (used by validation.js) ──────
+const VALIDATION_MESSAGES = {
+  fr: {
+    required: 'Veuillez remplir tous les champs obligatoires mis en évidence.',
+    success: 'Tous les champs obligatoires sont remplis.'
+  },
+  en: {
+    required: 'Please complete all required fields highlighted below.',
+    success: 'All required fields are completed.'
+  }
+};
+
+// ── Language state ─────────────────────────────────────────
+const langButtons = Array.from(document.querySelectorAll('[data-lang]')).slice(0, 2);
+
+// Shared across all pages/panels (set on the login page). Default: English.
+// GSS_LANG_KEY is defined in js/global.js.
+let currentLang = /** @type {'fr' | 'en'} */ ((() => {
+  const saved = localStorage.getItem(GSS_LANG_KEY);
+  return saved === 'fr' || saved === 'en' ? saved : 'en';
+})());
+
 
 // ── Apply the selected language across the page ────────────
-const applyLanguage = (lang) => {
+const applyLanguage = (/** @type {'fr' | 'en'} */ lang) => {
+  const dict = /** @type {Record<string, string>} */ (translations[lang]);
   document.documentElement.lang = lang;
-  document.title = translations[lang].title;
+  document.title = dict.title;
 
   document.querySelectorAll('[data-i18n]').forEach((element) => {
     const key = element.getAttribute('data-i18n');
-    if (translations[lang][key]) {
-      element.textContent = translations[lang][key];
+    if (key && dict[key]) {
+      element.textContent = dict[key];
     }
   });
 
   document.querySelectorAll('[data-i18n-placeholder]').forEach((element) => {
     const key = element.getAttribute('data-i18n-placeholder');
-    if (translations[lang][key]) {
-      element.placeholder = translations[lang][key];
+    if (key && dict[key]) {
+      /** @type {HTMLInputElement} */ (element).placeholder = dict[key];
     }
   });
 
   // innerHTML-based translations (for elements containing HTML like <span>)
   document.querySelectorAll('[data-i18n-html]').forEach((element) => {
     const key = element.getAttribute('data-i18n-html');
-    if (translations[lang][key]) {
-      element.innerHTML = translations[lang][key];
+    if (key && dict[key]) {
+      element.innerHTML = dict[key];
     }
   });
 
@@ -959,7 +1003,7 @@ const applyLanguage = (lang) => {
 
   // Show/hide language-specific content blocks (FR / EN document panels)
   document.querySelectorAll('.lang-content').forEach((el) => {
-    el.classList.toggle('hidden', el.dataset.lang !== lang);
+    el.classList.toggle('hidden', /** @type {HTMLElement} */ (el).dataset.lang !== lang);
   });
 
   // Update presences panel language-dependent elements
@@ -967,10 +1011,11 @@ const applyLanguage = (lang) => {
   if (typeof updatePresDayCells === 'function') updatePresDayCells();
 
   // Update evaluation panel language-dependent elements
-  if (typeof updateEvalAppreciations === 'function') updateEvalAppreciations();
+  const updateEvalAppreciationsFn = /** @type {any} */ (globalThis).updateEvalAppreciations;
+  if (typeof updateEvalAppreciationsFn === 'function') updateEvalAppreciationsFn();
   // Update evalBtnRemove labels in dynamically added rows
   document.querySelectorAll('#eval-tbody .eval-remove-btn [data-i18n="evalBtnRemove"]').forEach(el => {
-    if (translations[lang] && translations[lang].evalBtnRemove) el.textContent = translations[lang].evalBtnRemove;
+    if (dict.evalBtnRemove) el.textContent = dict.evalBtnRemove;
   });
 
   langButtons.forEach((button) => {
@@ -985,7 +1030,7 @@ const applyLanguage = (lang) => {
 // ── Language switcher wiring (tc.html only; login.js handles login) ──
 if (document.getElementById('gssTabBar')) {
   langButtons.forEach((button) => {
-    button.addEventListener('click', () => applyLanguage(button.getAttribute('data-lang')));
+    button.addEventListener('click', () => applyLanguage(/** @type {'fr' | 'en'} */ (button.getAttribute('data-lang'))));
   });
 
   applyLanguage(currentLang);

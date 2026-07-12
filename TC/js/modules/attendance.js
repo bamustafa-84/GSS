@@ -1,8 +1,9 @@
+// @ts-check
 let presRowCounter = 0;
 
 // ── Panel 5 · Rapport Individuel de Présences — functions ──
 
-function getPresDayName(dateValue) {
+function getPresDayName(/** @type {string} */ dateValue) {
   if (!dateValue) return '';
   const d = new Date(dateValue + 'T00:00:00');
   const names = PRES_DAY_NAMES[currentLang] || PRES_DAY_NAMES.en;
@@ -13,7 +14,7 @@ function updatePresenceSummary() {
   const rows = document.querySelectorAll('#presences-tbody tr');
   let ah = 0, ar = 0, abs = 0, ex = 0;
   rows.forEach(row => {
-    const sel = row.querySelector('.pres-status-select');
+    const sel = /** @type {HTMLSelectElement | null} */ (row.querySelector('.pres-status-select'));
     if (!sel) return;
     if (sel.value === 'AH') ah++;
     else if (sel.value === 'AR') ar++;
@@ -24,18 +25,19 @@ function updatePresenceSummary() {
   const present = ah + ar;
   const rate = total > 0 ? ((present / total) * 100).toFixed(1) : '0.0';
 
-  const el = (id) => document.getElementById(id);
-  if (el('pres-nb-jours'))  el('pres-nb-jours').textContent  = total;
-  if (el('pres-count-ah'))  el('pres-count-ah').textContent  = ah;
-  if (el('pres-count-ar'))  el('pres-count-ar').textContent  = ar;
-  if (el('pres-count-abs')) el('pres-count-abs').textContent = abs;
-  if (el('pres-count-ex'))  el('pres-count-ex').textContent  = ex;
-  if (el('pres-taux'))      el('pres-taux').textContent      = rate + ' %';
+  const el = (/** @type {string} */ id) => document.getElementById(id);
+  const nbJours = el('pres-nb-jours');   if (nbJours) nbJours.textContent = String(total);
+  const countAh = el('pres-count-ah');   if (countAh) countAh.textContent = String(ah);
+  const countAr = el('pres-count-ar');   if (countAr) countAr.textContent = String(ar);
+  const countAbs = el('pres-count-abs'); if (countAbs) countAbs.textContent = String(abs);
+  const countEx = el('pres-count-ex');   if (countEx) countEx.textContent = String(ex);
+  const taux = el('pres-taux');          if (taux) taux.textContent = rate + ' %';
 }
 
 function updatePresStatusOptions() {
   const opts = PRES_STATUS_OPTS[currentLang] || PRES_STATUS_OPTS.en;
-  document.querySelectorAll('.pres-status-select').forEach(sel => {
+  document.querySelectorAll('.pres-status-select').forEach(el => {
+    const sel = /** @type {HTMLSelectElement} */ (el);
     const currentVal = sel.value;
     sel.innerHTML = opts.map(o => `<option value="${o.value}">${o.text}</option>`).join('');
     sel.value = currentVal;
@@ -44,8 +46,8 @@ function updatePresStatusOptions() {
 
 function updatePresDayCells() {
   document.querySelectorAll('#presences-tbody tr').forEach(row => {
-    const dateInput = row.querySelector('.pres-date-input');
-    const dayCell   = row.querySelector('.pres-day-cell');
+    const dateInput = /** @type {HTMLInputElement | null} */ (row.querySelector('.pres-date-input'));
+    const dayCell   = /** @type {HTMLInputElement | null} */ (row.querySelector('.pres-day-cell'));
     if (dateInput && dayCell && dateInput.value) {
       dayCell.value = getPresDayName(dateInput.value);
     }
@@ -91,16 +93,18 @@ function addPresenceRow() {
     </td>`;
 
   // Auto-fill day name when date is picked
-  const dateInput = tr.querySelector('.pres-date-input');
-  const dayCell   = tr.querySelector('.pres-day-cell');
-  dateInput.addEventListener('change', () => {
-    dayCell.value = getPresDayName(dateInput.value);
-    updatePresenceSummary();
-  });
+  const dateInput = /** @type {HTMLInputElement | null} */ (tr.querySelector('.pres-date-input'));
+  const dayCell   = /** @type {HTMLInputElement | null} */ (tr.querySelector('.pres-day-cell'));
+  if (dateInput && dayCell) {
+    dateInput.addEventListener('change', () => {
+      dayCell.value = getPresDayName(dateInput.value);
+      updatePresenceSummary();
+    });
+  }
 
-  tr.querySelector('.pres-status-select').addEventListener('change', updatePresenceSummary);
+  tr.querySelector('.pres-status-select')?.addEventListener('change', updatePresenceSummary);
 
-  tr.querySelector('.pres-remove-btn').addEventListener('click', () => {
+  tr.querySelector('.pres-remove-btn')?.addEventListener('click', () => {
     tr.remove();
     updatePresenceSummary();
   });

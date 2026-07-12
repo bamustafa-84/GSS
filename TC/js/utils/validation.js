@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * GSS – Panel validation
  * ------------------------------------------------------------------
@@ -14,20 +15,11 @@
 (() => {
   'use strict';
 
-  // ── Localised status messages (follow the page language) ──────
-  const messages = {
-    fr: {
-      required: 'Veuillez remplir tous les champs obligatoires mis en évidence.',
-      success: 'Tous les champs obligatoires sont remplis.'
-    },
-    en: {
-      required: 'Please complete all required fields highlighted below.',
-      success: 'All required fields are completed.'
-    }
-  };
-  const t = () => messages[document.documentElement.lang] || messages.en;
+  // ── Localised status messages live in translation.js (VALIDATION_MESSAGES) ──
+  const t = () => VALIDATION_MESSAGES[/** @type {keyof typeof VALIDATION_MESSAGES} */ (document.documentElement.lang)] || VALIDATION_MESSAGES.en;
 
-  // ── Required-field definitions per panel ──────────────────────
+  // ── Required-field definitions per panel ──────────────────
+  /** @type {Record<string, GSSPanelRule>} */
   const panelRules = {
     registration: {
       formId: 'inscriptionForm',
@@ -69,7 +61,7 @@
   };
 
   // ── Error highlight helpers ───────────────────────────────────
-  const setError = (element, hasError) => {
+  const setError = (/** @type {Element | null} */ element, /** @type {boolean} */ hasError) => {
     if (!element) return;
     const isControl = element.matches && element.matches('input, select, textarea');
     if (isControl) {
@@ -86,7 +78,7 @@
   };
 
   // Locate the element to highlight when a field is invalid.
-  const highlightFor = (form, field, control) => {
+  const highlightFor = (/** @type {HTMLElement} */ form, /** @type {GSSValidationField} */ field, /** @type {any} */ control) => {
     switch (field.type) {
       case 'radio': {
         const first = form.querySelector(`input[name="${field.key}"]`);
@@ -103,14 +95,14 @@
 
   // A field is "active" (subject to validation) unless it declares a requiredIf
   // condition that is not currently satisfied by its trigger field.
-  const isFieldActive = (form, field) => {
+  const isFieldActive = (/** @type {HTMLFormElement} */ form, /** @type {GSSValidationField} */ field) => {
     if (!field.requiredIf) return true;
     const { field: triggerName, equals } = field.requiredIf;
     const radios = form.querySelectorAll(`input[name="${triggerName}"]`);
     if (radios.length) {
       return Array.prototype.some.call(radios, (radio) => radio.checked && radio.value === equals);
     }
-    const control = form.elements[triggerName];
+    const control = /** @type {any} */ (form.elements.namedItem(triggerName));
     return !!control && control.value === equals;
   };
 
@@ -118,7 +110,7 @@
   const REQUIRED_MARKER_CLASSES = ["after:content-['_*']", 'after:text-red-500', 'after:font-bold'];
 
   // Show/hide the asterisk on a conditional field's label to match its state.
-  const updateRequiredMarker = (form, field) => {
+  const updateRequiredMarker = (/** @type {HTMLFormElement} */ form, /** @type {GSSValidationField} */ field) => {
     if (!field.requiredIf) return;
     const label = form.querySelector(`label[for="${field.key}"]`);
     if (!label) return;
@@ -127,8 +119,8 @@
   };
 
   // Evaluate a single field: is it filled, and what should be highlighted.
-  const evaluateField = (form, field) => {
-    const control = form.elements[field.key];
+  const evaluateField = (/** @type {HTMLFormElement} */ form, /** @type {GSSValidationField} */ field) => {
+    const control = /** @type {any} */ (form.elements.namedItem(field.key));
 
     // Conditionally-required fields count as valid until their trigger is met.
     if (!isFieldActive(form, field)) {
@@ -159,13 +151,14 @@
   };
 
   // ── Validate an entire panel ──────────────────────────────────
-  const validatePanel = (panelKey) => {
+  const validatePanel = (/** @type {string} */ panelKey) => {
     const rule = panelRules[panelKey];
     if (!rule) return true;
 
-    const form = document.getElementById(rule.formId);
+    const form = /** @type {HTMLFormElement | null} */ (document.getElementById(rule.formId));
     if (!form) return true;
 
+    /** @type {any} */
     let firstInvalid = null;
     let allValid = true;
 
@@ -207,7 +200,7 @@
   };
 
   // ── Clear a field's error once the user provides a value ──────
-  const clearFieldError = (form, panelKey, target) => {
+  const clearFieldError = (/** @type {HTMLFormElement} */ form, /** @type {string} */ panelKey, /** @type {any} */ target) => {
     const rule = panelRules[panelKey];
     if (!rule) return;
     rule.fields.forEach((field) => {
@@ -233,7 +226,7 @@
 
   // Signature pads write to a hidden input without firing input events,
   // so re-check signature fields whenever a pad is drawn on.
-  const clearSignatureErrors = (form, panelKey) => {
+  const clearSignatureErrors = (/** @type {HTMLFormElement} */ form, /** @type {string} */ panelKey) => {
     const rule = panelRules[panelKey];
     if (!rule) return;
     rule.fields
@@ -244,10 +237,36 @@
       });
   };
 
+  // ── Send the validated registration form to the backend API ───
+  const submitRegistration = (/** @type {HTMLFormElement} */ form) => {
+    const status = document.getElementById(panelRules.registration.statusId);
+    const payload = Object.fromEntries(new FormData(form).entries());
+
+    fetch('/api/candidates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+        if (status) {
+          status.textContent = `Saved \u2713 (candidate #${data.candidate && data.candidate.id})`;
+          status.className = 'min-h-6 text-sm font-semibold text-emerald-600';
+        }
+      })
+      .catch((err) => {
+        if (status) {
+          status.textContent = `Save failed: ${err.message}`;
+          status.className = 'min-h-6 text-sm font-semibold text-red-600';
+        }
+      });
+  };
+
   // ── Wire the registration panel ───────────────────────────────
   const attachRegistration = () => {
     const rule = panelRules.registration;
-    const form = document.getElementById(rule.formId);
+    const form = /** @type {HTMLFormElement | null} */ (document.getElementById(rule.formId));
     if (!form || form.dataset.gssValidationReady) return;
     form.dataset.gssValidationReady = 'true';
 
@@ -255,7 +274,9 @@
     form.addEventListener('submit', (event) => {
       event.preventDefault();
       event.stopImmediatePropagation();
-      validatePanel('registration');
+      if (validatePanel('registration')) {
+        submitRegistration(form);
+      }
     });
 
     form.addEventListener('input', (event) => clearFieldError(form, 'registration', event.target), true);
@@ -288,7 +309,7 @@
   window.GSSValidation = {
     rules: panelRules,
     validatePanel,
-    registerPanel(key, rule) {
+    registerPanel(/** @type {string} */ key, /** @type {GSSPanelRule} */ rule) {
       panelRules[key] = rule;
     },
     init

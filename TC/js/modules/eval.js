@@ -1,3 +1,4 @@
+// @ts-check
 // ── Panel 7 · Fiche d'Évaluation Individuelle — functions ──
 
 function updateEvalSummary() {
@@ -5,13 +6,14 @@ function updateEvalSummary() {
   let totalObt = 0;
   let hasAny = false;
   rows.forEach(row => {
-    const obtInput = row.querySelector('.eval-note-obt');
-    const val = obtInput?.value !== '' ? parseFloat(obtInput?.value) : NaN;
+    const obtInput = /** @type {HTMLInputElement | null} */ (row.querySelector('.eval-note-obt'));
+    const val = obtInput && obtInput.value !== '' ? parseFloat(obtInput.value) : NaN;
     if (!isNaN(val)) { totalObt += val; hasAny = true; }
   });
 
-  const el = (id) => document.getElementById(id);
-  if (el('eval-total-obt')) el('eval-total-obt').textContent = hasAny ? totalObt : '—';
+  const el = (/** @type {string} */ id) => document.getElementById(id);
+  const totalObtEl = el('eval-total-obt');
+  if (totalObtEl) totalObtEl.textContent = hasAny ? String(totalObt) : '—';
 
   const t = translations[currentLang] || translations.en;
   let cat = '—', catColor = 'text-slate-500';
@@ -21,9 +23,10 @@ function updateEvalSummary() {
     else if (totalObt >= 60) { cat = t.evalOptAcceptable     || 'Acceptable (60–69)';      catColor = 'text-amber-600'; }
     else                     { cat = t.evalOptNotRecommended || 'Not Recommended (<60)';   catColor = 'text-red-600'; }
   }
-  if (el('eval-result-cat')) {
-    el('eval-result-cat').textContent = cat;
-    el('eval-result-cat').className = `mb-1 block text-base font-bold ${catColor}`;
+  const resultCatEl = el('eval-result-cat');
+  if (resultCatEl) {
+    resultCatEl.textContent = cat;
+    resultCatEl.className = `mb-1 block text-base font-bold ${catColor}`;
   }
 }
 

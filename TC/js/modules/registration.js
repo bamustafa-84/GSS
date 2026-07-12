@@ -1,23 +1,25 @@
+// @ts-check
 // ── Searchable <select> enhancer ─────────────────────────────
 // Turns a native <select> into an accessible combobox with a search
 // box shown when the list is open. The native select stays in the DOM
 // (visually hidden) so form submission and change events keep working.
+/**
+ * @param {HTMLSelectElement} select
+ * @param {{ searchable?: boolean }} [options]
+ */
 const initSearchableSelect = (select, { searchable = true } = {}) => {
   if (!select || select.dataset.comboReady) return null;
   select.dataset.comboReady = 'true';
 
-  const strings = {
-    fr: { search: 'Rechercher…', empty: 'Aucun résultat' },
-    en: { search: 'Search…', empty: 'No results' }
-  };
-  const s = () => strings[document.documentElement.lang] || strings.en;
+  // Combobox strings live in translation.js (COMBO_STRINGS).
+  const s = () => COMBO_STRINGS[/** @type {keyof typeof COMBO_STRINGS} */ (document.documentElement.lang)] || COMBO_STRINGS.en;
 
   const ACTIVE_CLASSES = ['bg-[#042F8D]/[0.06]', 'text-[#042F8D]'];
   const SELECTED_CLASSES = ['bg-[#042F8D]/[0.08]', 'font-semibold', 'text-[#042F8D]'];
 
   const wrapper = document.createElement('div');
   wrapper.className = 'relative w-full';
-  select.parentNode.insertBefore(wrapper, select);
+  select.parentNode?.insertBefore(wrapper, select);
   wrapper.appendChild(select);
   select.classList.add('sr-only');
   select.tabIndex = -1;
@@ -64,7 +66,7 @@ const initSearchableSelect = (select, { searchable = true } = {}) => {
   wrapper.appendChild(panel);
 
   let activeIndex = -1;
-  const visibleOptions = () => Array.from(list.querySelectorAll('li:not([hidden])'));
+  const visibleOptions = () => /** @type {HTMLElement[]} */ (Array.from(list.querySelectorAll('li:not([hidden])')));
 
   const updateLabel = () => {
     const selected = select.options[select.selectedIndex];
@@ -92,7 +94,7 @@ const initSearchableSelect = (select, { searchable = true } = {}) => {
     });
   };
 
-  const setActive = (idx) => {
+  const setActive = (/** @type {number} */ idx) => {
     const items = visibleOptions();
     items.forEach((li) => li.classList.remove(...ACTIVE_CLASSES));
     if (!items.length) { activeIndex = -1; return; }
@@ -102,7 +104,7 @@ const initSearchableSelect = (select, { searchable = true } = {}) => {
     el.scrollIntoView({ block: 'nearest' });
   };
 
-  const filter = (query) => {
+  const filter = (/** @type {string} */ query) => {
     const q = query.trim().toLowerCase();
     let visible = 0;
     list.querySelectorAll('li').forEach((li) => {
@@ -122,7 +124,7 @@ const initSearchableSelect = (select, { searchable = true } = {}) => {
   const open = () => {
     if (select.disabled) return;
     panel.hidden = false;
-    chevron.classList.add('rotate-180');
+    chevron?.classList.add('rotate-180');
     button.setAttribute('aria-expanded', 'true');
     if (search) search.value = '';
     filter('');
@@ -134,11 +136,11 @@ const initSearchableSelect = (select, { searchable = true } = {}) => {
 
   const close = () => {
     panel.hidden = true;
-    chevron.classList.remove('rotate-180');
+    chevron?.classList.remove('rotate-180');
     button.setAttribute('aria-expanded', 'false');
   };
 
-  const choose = (value) => {
+  const choose = (/** @type {string} */ value) => {
     select.value = value;
     select.dispatchEvent(new Event('change', { bubbles: true }));
     updateLabel();
@@ -147,7 +149,7 @@ const initSearchableSelect = (select, { searchable = true } = {}) => {
     button.focus();
   };
 
-  const onKeydown = (e) => {
+  const onKeydown = (/** @type {KeyboardEvent} */ e) => {
     if (!isOpen()) {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); open(); }
       return;
@@ -157,7 +159,8 @@ const initSearchableSelect = (select, { searchable = true } = {}) => {
     else if (e.key === 'Enter') {
       e.preventDefault();
       const items = visibleOptions();
-      if (items[activeIndex]) choose(items[activeIndex].dataset.value);
+      const active = items[activeIndex];
+      if (active && active.dataset.value) choose(active.dataset.value);
     } else if (e.key === 'Escape') { e.preventDefault(); close(); button.focus(); }
   };
 
@@ -167,7 +170,7 @@ const initSearchableSelect = (select, { searchable = true } = {}) => {
     search.addEventListener('input', () => filter(search.value));
     search.addEventListener('keydown', onKeydown);
   }
-  document.addEventListener('click', (e) => { if (!wrapper.contains(e.target)) close(); });
+  document.addEventListener('click', (e) => { if (e.target instanceof Node && !wrapper.contains(e.target)) close(); });
 
   const refresh = () => {
     buildList();
@@ -181,44 +184,22 @@ const initSearchableSelect = (select, { searchable = true } = {}) => {
 };
 
 const initInscriptionForm = () => {
-  const form = document.getElementById('inscriptionForm');
+  const form = /** @type {HTMLFormElement | null} */ (document.getElementById('inscriptionForm'));
   const status = document.getElementById('formStatus');
   if (!form || !status) return;
 
-  // ── Localized messages (follows the page language) ──────────
-  const messages = {
-    fr: {
-      required: 'Veuillez saisir au moins votre nom complet et votre téléphone principal.',
-      phone: 'Veuillez saisir un numéro de téléphone valide (7 à 15 chiffres).',
-      email: 'Veuillez saisir une adresse e-mail valide.',
-      dobFuture: 'La date de naissance ne peut pas être dans le futur.',
-      dobAge: 'Le candidat doit avoir au moins 18 ans.',
-      dateInvalid: 'Veuillez saisir une date valide.',
-      selectCity: 'Sélectionnez votre ville',
-      selectCountryFirst: "Sélectionnez d'abord le pays",
-      ready: (n) => `Formulaire prêt à être envoyé. ${n} champ(s) complété(s).`
-    },
-    en: {
-      required: 'Please enter at least your full name and primary phone number.',
-      phone: 'Please enter a valid phone number (7 to 15 digits).',
-      email: 'Please enter a valid email address.',
-      dobFuture: 'The date of birth cannot be in the future.',
-      dobAge: 'The applicant must be at least 18 years old.',
-      dateInvalid: 'Please enter a valid date.',
-      selectCity: '',
-      selectCountryFirst: 'Select a country first',
-      ready: (n) => `Form ready to be submitted. ${n} field(s) completed.`
-    }
-  };
-  const t = () => messages[document.documentElement.lang] || messages.en;
+  // ── Localized messages live in translation.js (REGISTRATION_MESSAGES) ──
+  const t = () => REGISTRATION_MESSAGES[/** @type {keyof typeof REGISTRATION_MESSAGES} */ (document.documentElement.lang)] || REGISTRATION_MESSAGES.en;
 
-  // ── Element refs ────────────────────────────────────────────
-  const countrySelect = form.elements['Nationality'];
-  const citySelect = form.elements['PlaceOfBirth'];
-  const dobInput = form.elements['DateOfBirth'];
+  // ── Element refs ───────────────────────────────────────
+  /** @param {string} name @returns {any} */
+  const field = (name) => form.elements.namedItem(name);
+  const countrySelect = field('Nationality');
+  const citySelect = field('PlaceOfBirth');
+  const dobInput = field('DateOfBirth');
 
-  // ── Visual filled-state indicator ───────────────────────────
-  const markFilled = (element) => {
+  // ── Visual filled-state indicator ──────────────────────
+  const markFilled = (/** @type {Element | null} */ element) => {
     if (
       element instanceof HTMLInputElement ||
       element instanceof HTMLTextAreaElement ||
@@ -237,22 +218,22 @@ const initInscriptionForm = () => {
   });
 
   // ── Field error helpers ─────────────────────────────────────
-  const setError = (element, hasError) => {
+  const setError = (/** @type {Element | null} */ element, /** @type {boolean} */ hasError) => {
     if (!element) return;
     element.classList.toggle('border-red-500', hasError);
     element.classList.toggle('ring-2', hasError);
     element.classList.toggle('ring-red-200', hasError);
   };
-  const clearError = (element) => setError(element, false);
+  const clearError = (/** @type {Element | null} */ element) => setError(element, false);
 
-  // ── Validators ──────────────────────────────────────────────
-  const isValidPhone = (value) => {
+  // ── Validators ─────────────────────────────────────
+  const isValidPhone = (/** @type {string} */ value) => {
     if (value.trim() === '') return true; // optional unless flagged required
     if (!/^\+?[0-9\s().-]{7,20}$/.test(value)) return false;
     const digits = value.replace(/\D/g, '');
     return digits.length >= 7 && digits.length <= 15;
   };
-  const isValidEmail = (value) => {
+  const isValidEmail = (/** @type {string} */ value) => {
     if (value.trim() === '') return true; // optional
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
   };
@@ -273,7 +254,7 @@ const initInscriptionForm = () => {
     });
   };
 
-  const populateCities = (country) => {
+  const populateCities = (/** @type {string} */ country) => {
     if (!citySelect) return;
     const cities = locations.cities[country] || [];
     citySelect.innerHTML = '';
@@ -309,8 +290,8 @@ const initInscriptionForm = () => {
   const cityCombo = initSearchableSelect(citySelect);
 
   // Same fancy dropdown UI (without search) for short lists.
-  initSearchableSelect(form.elements['MaritalStatus'], { searchable: false });
-  initSearchableSelect(form.elements['EducationLevel'], { searchable: false });
+  initSearchableSelect(field('MaritalStatus'), { searchable: false });
+  initSearchableSelect(field('EducationLevel'), { searchable: false });
 
   if (countrySelect) {
     countrySelect.addEventListener('change', () => {
@@ -325,9 +306,9 @@ const initInscriptionForm = () => {
     const today = new Date();
     const maxDob = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
     const minDob = new Date(today.getFullYear() - 100, today.getMonth(), today.getDate());
-    const toISO = (d) => {
+    const toISO = (/** @type {Date} */ d) => {
       const tz = d.getTimezoneOffset() * 60000;
-      return new Date(d - tz).toISOString().split('T')[0];
+      return new Date(d.getTime() - tz).toISOString().split('T')[0];
     };
     dobInput.max = toISO(maxDob);
     dobInput.min = toISO(minDob);
@@ -339,21 +320,21 @@ const initInscriptionForm = () => {
     const m = t();
 
     [
-      form.elements['FullName'],
-      form.elements['Phone1'],
-      form.elements['Phone2'],
-      form.elements['Email'],
+      field('FullName'),
+      field('Phone1'),
+      field('Phone2'),
+      field('Email'),
       dobInput
     ].forEach(clearError);
 
     // Required fields
     const requiredFields = ['FullName', 'Phone1'];
     const missing = requiredFields.filter((name) => {
-      const field = form.elements[name];
-      return !field || field.value.trim() === '';
+      const f = field(name);
+      return !f || f.value.trim() === '';
     });
     if (missing.length) {
-      missing.forEach((name) => setError(form.elements[name], true));
+      missing.forEach((name) => setError(field(name), true));
       status.textContent = m.required;
       status.className = 'min-h-6 text-sm font-semibold text-red-600';
       return;
@@ -361,10 +342,10 @@ const initInscriptionForm = () => {
 
     // Phone format
     for (const name of ['Phone1', 'Phone2']) {
-      const field = form.elements[name];
-      if (field && !isValidPhone(field.value)) {
-        setError(field, true);
-        field.focus();
+      const f = field(name);
+      if (f && !isValidPhone(f.value)) {
+        setError(f, true);
+        f.focus();
         status.textContent = m.phone;
         status.className = 'min-h-6 text-sm font-semibold text-red-600';
         return;
@@ -372,7 +353,7 @@ const initInscriptionForm = () => {
     }
 
     // Email format
-    const emailField = form.elements['Email'];
+    const emailField = field('Email');
     if (emailField && !isValidEmail(emailField.value)) {
       setError(emailField, true);
       emailField.focus();
@@ -415,7 +396,7 @@ const initInscriptionForm = () => {
     const data = new FormData(form);
     const summary = [];
     for (const [key, value] of data.entries()) {
-      if (value && value.trim() !== '') summary.push(`${key}: ${value}`);
+      if (typeof value === 'string' && value.trim() !== '') summary.push(`${key}: ${value}`);
     }
 
     status.textContent = m.ready(summary.length);
@@ -426,14 +407,14 @@ const initInscriptionForm = () => {
 // ── Reusable digital signature pads ──────────────────────────
 const initSignaturePads = () => {
   document.querySelectorAll('.gss-sign').forEach((wrapper) => {
-    const canvas = wrapper.querySelector('.gss-sign-canvas');
-    const input = wrapper.querySelector('.gss-sign-input');
+    const canvas = /** @type {HTMLCanvasElement | null} */ (wrapper.querySelector('.gss-sign-canvas'));
+    const input = /** @type {HTMLInputElement | null} */ (wrapper.querySelector('.gss-sign-input'));
     const hint = wrapper.querySelector('.gss-sign-hint');
     const clearBtn = wrapper.querySelector('.gss-sign-clear');
     if (!canvas || !input || canvas.dataset.signReady) return;
     canvas.dataset.signReady = 'true';
 
-    const ctx = canvas.getContext('2d');
+    const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
     let drawing = false;
     let hasInk = false;
     let lastX = 0;
@@ -458,13 +439,13 @@ const initSignaturePads = () => {
       }
     };
 
-    const pointerPos = (event) => {
+    const pointerPos = (/** @type {any} */ event) => {
       const rect = canvas.getBoundingClientRect();
       const source = event.touches ? event.touches[0] : event;
       return { x: source.clientX - rect.left, y: source.clientY - rect.top };
     };
 
-    const startDraw = (event) => {
+    const startDraw = (/** @type {any} */ event) => {
       event.preventDefault();
       drawing = true;
       const { x, y } = pointerPos(event);
@@ -472,7 +453,7 @@ const initSignaturePads = () => {
       lastY = y;
     };
 
-    const moveDraw = (event) => {
+    const moveDraw = (/** @type {any} */ event) => {
       if (!drawing) return;
       event.preventDefault();
       const { x, y } = pointerPos(event);
@@ -513,7 +494,7 @@ const initSignaturePads = () => {
     if (parentForm) parentForm.addEventListener('reset', () => setTimeout(clearSignature, 0));
 
     syncCanvasSize();
-    if ('ResizeObserver' in window) {
+    if (typeof ResizeObserver !== 'undefined') {
       new ResizeObserver(syncCanvasSize).observe(canvas);
     } else {
       window.addEventListener('resize', syncCanvasSize);
@@ -534,5 +515,7 @@ if (document.readyState === 'loading') {
 
 
 // Expose for dynamic initialization after modal injection
-window.initInscriptionForm = initInscriptionForm;
+// (cast: `initInscriptionForm` is already a top-level global const,
+//  so it can't also be declared as a window global in global.js)
+/** @type {any} */ (window).initInscriptionForm = initInscriptionForm;
 

@@ -1,5 +1,6 @@
+// @ts-check
 /**
- * GSS – Collapsible fieldset legends (Panel 1 · registration)
+ * GSS – Collapsible fieldset legends
  * ------------------------------------------------------------------
  * Turns each fieldset <legend> into a collapse/expand toggle for its
  * body. A chevron is injected and rotated to indicate the state.
@@ -9,10 +10,24 @@
 (() => {
   'use strict';
 
-  const bodyOf = (fieldset, legend) =>
+  // Panels whose fieldsets should be collapsible.
+  const COLLAPSIBLE_PANELS = [
+    'panel-registration',
+    'panel-presences',
+    'panel-exam',
+    'panel-evaluation',
+    'panel-mensuration'
+  ];
+
+  const bodyOf = (/** @type {Element} */ fieldset, /** @type {Element} */ legend) =>
     Array.prototype.filter.call(fieldset.children, (el) => el !== legend);
 
-  const setCollapsed = (legend, body, chevron, collapsed) => {
+  const setCollapsed = (
+    /** @type {HTMLElement} */ legend,
+    /** @type {Element[]} */ body,
+    /** @type {SVGElement | null} */ chevron,
+    /** @type {boolean} */ collapsed
+  ) => {
     body.forEach((el) => el.classList.toggle('hidden', collapsed));
     if (chevron) chevron.classList.toggle('-rotate-90', collapsed);
     legend.setAttribute('aria-expanded', String(!collapsed));
@@ -32,37 +47,41 @@
   };
 
   const initCollapsibleLegends = () => {
-    const panel = document.getElementById('panel-registration');
-    if (!panel) return;
+    COLLAPSIBLE_PANELS.forEach((panelId) => {
+      const panel = document.getElementById(panelId);
+      if (!panel) return;
 
-    panel.querySelectorAll('fieldset').forEach((fieldset) => {
-      const legend = fieldset.querySelector(':scope > legend');
-      if (!legend || legend.dataset.collapsibleReady) return;
+      panel.querySelectorAll('fieldset').forEach((fieldset) => {
+        const legend = /** @type {HTMLElement | null} */ (
+          fieldset.querySelector(':scope > legend')
+        );
+        if (!legend || legend.dataset.collapsibleReady) return;
 
-      const body = bodyOf(fieldset, legend);
-      if (!body.length) return;
-      legend.dataset.collapsibleReady = 'true';
+        const body = bodyOf(fieldset, legend);
+        if (!body.length) return;
+        legend.dataset.collapsibleReady = 'true';
 
-      // Make the legend behave like a toggle button.
-      legend.classList.add('cursor-pointer', 'select-none');
-      legend.setAttribute('role', 'button');
-      legend.setAttribute('tabindex', '0');
-      legend.setAttribute('aria-expanded', 'true');
+        // Make the legend behave like a toggle button.
+        legend.classList.add('cursor-pointer', 'select-none');
+        legend.setAttribute('role', 'button');
+        legend.setAttribute('tabindex', '0');
+        legend.setAttribute('aria-expanded', 'true');
 
-      const chevron = makeChevron();
-      legend.appendChild(chevron);
+        const chevron = makeChevron();
+        legend.appendChild(chevron);
 
-      const toggle = () => {
-        const collapsed = legend.getAttribute('aria-expanded') === 'true';
-        setCollapsed(legend, body, chevron, collapsed);
-      };
+        const toggle = () => {
+          const collapsed = legend.getAttribute('aria-expanded') === 'true';
+          setCollapsed(legend, body, chevron, collapsed);
+        };
 
-      legend.addEventListener('click', toggle);
-      legend.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          toggle();
-        }
+        legend.addEventListener('click', toggle);
+        legend.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            toggle();
+          }
+        });
       });
     });
   };
@@ -76,9 +95,11 @@
   window.GSSCollapsible = {
     init: initCollapsibleLegends,
     // Expand a fieldset if it is currently collapsed.
-    expand(fieldset) {
+    expand(/** @type {Element | null} */ fieldset) {
       if (!fieldset) return;
-      const legend = fieldset.querySelector(':scope > legend');
+      const legend = /** @type {HTMLElement | null} */ (
+        fieldset.querySelector(':scope > legend')
+      );
       if (legend && legend.getAttribute('aria-expanded') === 'false') {
         legend.click();
       }
