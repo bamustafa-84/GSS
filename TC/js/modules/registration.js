@@ -286,12 +286,12 @@ const initInscriptionForm = () => {
   populateCities(countrySelect ? countrySelect.value : '');
 
   // Enhance both dropdowns with a searchable combobox UI.
-  initSearchableSelect(countrySelect);
+  const countryCombo = initSearchableSelect(countrySelect);
   const cityCombo = initSearchableSelect(citySelect);
 
   // Same fancy dropdown UI (without search) for short lists.
-  initSearchableSelect(field('MaritalStatus'), { searchable: false });
-  initSearchableSelect(field('EducationLevel'), { searchable: false });
+  const maritalCombo = initSearchableSelect(field('MaritalStatus'), { searchable: false });
+  const educationCombo = initSearchableSelect(field('EducationLevel'), { searchable: false });
 
   if (countrySelect) {
     countrySelect.addEventListener('change', () => {
@@ -402,6 +402,13 @@ const initInscriptionForm = () => {
     status.textContent = m.ready(summary.length);
     status.className = 'min-h-6 text-sm font-semibold text-emerald-600';
   });
+
+  // ── TEMP: prefill the whole form for insert testing ──────────
+  // Auto-fills every required field on load so the form can be submitted
+  // (and inserted via the Node API) without manual entry. The combobox
+  // labels are refreshed afterwards so the picked values are visible.
+  temp_fill_values();
+  [countryCombo, cityCombo, maritalCombo, educationCombo].forEach((c) => c && c.refresh());
 };
 
 // ── Reusable digital signature pads ──────────────────────────
@@ -501,6 +508,199 @@ const initSignaturePads = () => {
     }
   });
 };
+
+
+
+
+
+// ── TEMP: auto-fill all required fields for insert testing ───
+// Call `temp_fill_values()` from the browser console (or `window.temp_fill_values()`)
+// to populate every required field with sample data so the form can be
+// submitted/inserted without manual entry. Remove before production.
+const temp_fill_values = () => {
+  const form = /** @type {HTMLFormElement | null} */ (document.getElementById('inscriptionForm'));
+  if (!form) {
+    console.warn('[temp_fill_values] #inscriptionForm not found.');
+    return;
+  }
+
+  /** @param {string} name @returns {any} */
+  const el = (name) => form.elements.namedItem(name);
+  const today = new Date().toISOString().split('T')[0];
+
+  const setInput = (/** @type {string} */ name, /** @type {string} */ value) => {
+    const f = el(name);
+    if (!f) return;
+    f.value = value;
+    f.dispatchEvent(new Event('input', { bubbles: true }));
+    f.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+
+  const setRadio = (/** @type {string} */ name, /** @type {string} */ value) => {
+    const r = /** @type {HTMLInputElement | null} */ (form.querySelector(`input[name="${name}"][value="${value}"]`));
+    if (r) {
+      r.checked = true;
+      r.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  };
+
+  const setCheckbox = (/** @type {string} */ name, /** @type {boolean} */ checked = true) => {
+    const c = /** @type {HTMLInputElement | null} */ (form.querySelector(`input[name="${name}"]`));
+    if (c) {
+      c.checked = checked;
+      c.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  };
+
+  // Selects a specific value if present, otherwise the first non-empty option.
+  const setSelect = (/** @type {string} */ name, /** @type {string} */ preferred = '') => {
+    const s = /** @type {HTMLSelectElement | null} */ (el(name));
+    if (!s) return;
+    const match = Array.from(s.options).find((o) => o.value === preferred && preferred);
+    const opt = match || Array.from(s.options).find((o) => o.value);
+    if (opt) {
+      s.value = opt.value;
+      s.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  };
+
+  // Personal information
+  setInput('RegistrationDate', today);
+  setInput('FullName', 'Test Candidate');
+  setInput('Phone1', '999 111 222');
+  setInput('Phone2', '999 333 444');
+  setInput('FatherName', 'Test Father');
+  setInput('MotherName', 'Test Mother');
+  setInput('Email', 'test@example.com');
+  setInput('DateOfBirth', '1995-06-15');
+  setSelect('Nationality');           // first available country → populates cities
+  setSelect('PlaceOfBirth');          // first available city (populated above)
+  setRadio('Gender', 'Male');
+  setSelect('MaritalStatus', 'Single');
+  setInput('FullAddress', '123 Test Street, Test City');
+
+  // Education & experience
+  setSelect('EducationLevel', 'Secondary');
+  setRadio('IsFrenchLiterate', 'Yes');
+  setRadio('HasSecurityExperience', 'Yes');
+  setInput('SecurityExperienceDetails', 'Two years as a security guard.');
+
+  // Health & documents
+  setRadio('HasHealthIssues', 'No');
+  setCheckbox('HasIdOrPassportCopy', true);
+  setCheckbox('HasPassportPhotos', true);
+
+  // Registration fees
+  setRadio('IsPaid', 'Paid');
+
+  // Applicant's declaration
+  setInput('ApplicantName', 'Test Candidate');
+  const sig = /** @type {HTMLInputElement | null} */ (el('ApplicantSignature'));
+  if (sig) {
+    // 1×1 transparent PNG – enough to satisfy the signature-required check.
+    sig.value = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+  }
+  setInput('ApplicantDate', today);
+
+  // For administration use only
+  setRadio('InterviewResult', 'Pending');
+  setInput('OfficerName', 'Officer Test');
+  setInput('OfficerSignature', 'Officer Signature / Stamp');
+
+  console.log('[temp_fill_values] Required fields filled.');
+};
+
+/** @type {any} */ (window).temp_fill_values = temp_fill_values;
+
+
+// ── Dynamic DB mapping via the `dbname` attribute ────────────
+// Every form control that carries a `dbname` attribute maps to a
+// PostgreSQL column of that name. These helpers read/write the form
+// purely from those attributes, so no column name is hard-coded and
+// all control types are supported (text, textarea, select, radio,
+// checkbox, date, hidden and file inputs).
+
+/** @param {File} file @returns {Promise<string>} */
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+
+/**
+ * Build a `{ column: value }` object from every `[dbname]` control in a form.
+ * @param {HTMLFormElement} form
+ * @returns {Promise<Record<string, any>>}
+ */
+const collectDbValues = async (form) => {
+  /** @type {Record<string, any>} */
+  const row = {};
+  const controls = /** @type {HTMLElement[]} */ (Array.from(form.querySelectorAll('[dbname]')));
+
+  for (const el of controls) {
+    const column = el.getAttribute('dbname');
+    if (!column) continue;
+    const input = /** @type {any} */ (el);
+    const type = String(input.type || '').toLowerCase();
+
+    if (type === 'radio') {
+      if (input.checked) row[column] = input.value;
+      else if (!(column in row)) row[column] = null;
+      continue;
+    }
+    if (type === 'checkbox') {
+      // Multiple checkboxes may share a column → OR their checked state.
+      row[column] = Boolean(row[column]) || input.checked;
+      continue;
+    }
+    if (type === 'file') {
+      if (input.files && input.files.length) row[column] = await readFileAsDataUrl(input.files[0]);
+      else if (!(column in row)) row[column] = null;
+      continue;
+    }
+
+    // text, tel, email, date, hidden, textarea, select, …
+    const value = typeof input.value === 'string' ? input.value.trim() : input.value;
+    row[column] = value === '' ? null : value;
+  }
+
+  return row;
+};
+
+/**
+ * Fill every `[dbname]` control in a form from a `{ column: value }` DB row.
+ * @param {HTMLFormElement} form
+ * @param {Record<string, any> | null | undefined} row
+ */
+const applyDbValues = (form, row) => {
+  if (!row) return;
+  const controls = /** @type {HTMLElement[]} */ (Array.from(form.querySelectorAll('[dbname]')));
+
+  controls.forEach((el) => {
+    const column = el.getAttribute('dbname');
+    if (!column || !(column in row)) return;
+    const input = /** @type {any} */ (el);
+    const type = String(input.type || '').toLowerCase();
+    const value = row[column];
+
+    if (type === 'radio') {
+      input.checked = String(input.value) === String(value);
+    } else if (type === 'checkbox') {
+      input.checked = value === true || value === 'true' || value === input.value;
+    } else if (type === 'file') {
+      // File inputs cannot be set programmatically for security reasons.
+      return;
+    } else {
+      input.value = value == null ? '' : value;
+    }
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+};
+
+/** @type {any} */ (window).GSSForm = { collectDbValues, applyDbValues };
+
 
 // Auto-init when used as a standalone page
 if (document.readyState === 'loading') {

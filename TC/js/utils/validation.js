@@ -26,7 +26,6 @@
       statusId: 'formStatus',
       fields: [
         // Personal information
-        { key: 'CandidateNo', type: 'input' },
         { key: 'RegistrationDate', type: 'input' },
         { key: 'FullName', type: 'input' },
         { key: 'Phone1', type: 'input' },
@@ -53,9 +52,7 @@
         { key: 'ApplicantSignature', type: 'signature' },
         { key: 'ApplicantDate', type: 'input' },
         // Administration use
-        { key: 'InterviewResult', type: 'radio' },
-        { key: 'OfficerName', type: 'input' },
-        { key: 'OfficerSignature', type: 'input' }
+        { key: 'InterviewResult', type: 'radio' }
       ]
     }
   };
@@ -238,11 +235,24 @@
   };
 
   // ── Send the validated registration form to the backend API ───
-  const submitRegistration = (/** @type {HTMLFormElement} */ form) => {
+  const submitRegistration = async (/** @type {HTMLFormElement} */ form) => {
     const status = document.getElementById(panelRules.registration.statusId);
-    const payload = Object.fromEntries(new FormData(form).entries());
 
-    fetch('/api/candidates', {
+    // Build the payload dynamically from every control's `dbname` attribute
+    // (column names come straight from tc.html — nothing is hard-coded here).
+    const gssForm = /** @type {any} */ (window).GSSForm;
+    const payload = gssForm
+      ? await gssForm.collectDbValues(form)
+      : Object.fromEntries(new FormData(form).entries());
+
+    // The API lives on the Node server (port 3000). When the page is served
+    // from somewhere else (e.g. Live Server on 5500, or file://), target the
+    // Node server directly; otherwise use a same-origin relative path.
+    const apiBase = /^https?:\/\/(localhost|127\.0\.0\.1):3000$/.test(location.origin)
+      ? ''
+      : 'http://localhost:3000';
+
+    fetch(`${apiBase}/api/applicants`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -251,7 +261,7 @@
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
         if (status) {
-          status.textContent = `Saved \u2713 (candidate #${data.candidate && data.candidate.id})`;
+          status.textContent = `Saved \u2713`;
           status.className = 'min-h-6 text-sm font-semibold text-emerald-600';
         }
       })
