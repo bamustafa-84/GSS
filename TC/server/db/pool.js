@@ -14,7 +14,7 @@ const { Pool } = require('pg');
 
 // Load variables from a local .env file when present (optional dependency).
 try {
-  require('dotenv').config();
+  require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 } catch (_) {
   /* dotenv is optional; env vars may be provided by the host instead. */
 }

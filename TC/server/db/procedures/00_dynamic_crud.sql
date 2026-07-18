@@ -1,28 +1,16 @@
 -- ================================================================
--- GSS · Generic dynamic CRUD stored function
+-- GSS · Generic dynamic CRUD stored function (engine)
 -- ----------------------------------------------------------------
 -- A single, table-agnostic PL/pgSQL function that performs INSERT,
 -- SELECT, UPDATE and DELETE from a JSONB payload. All SQL is built
--- and executed inside the database (not the application), with:
---
+-- and executed inside the database (not the application):
 --   • Table + column names validated against information_schema and
 --     safely interpolated with format() %I (quote_ident).
 --   • Values passed as JSONB and materialised through
 --     jsonb_populate_record(NULL::table, payload), so PostgreSQL casts
 --     each value to the real column type (no string concatenation of
 --     user data → safe against SQL injection).
---   • Identity / generated columns automatically excluded from writes.
---   • The identity (or first) column used for ordering / default keys.
---
--- Signature:
---   dynamic_crud(action, table, data jsonb, filters jsonb) → jsonb
---     action  : 'insert' | 'select' | 'update' | 'delete'
---     table   : target table in the current schema
---     data    : { column: value, … } for insert / update
---     filters : { column: value, … } equality WHERE for select/update/delete
---
--- Returns: the affected row (insert/update/delete) or a JSON array of
--- rows (select). Raises a descriptive exception on invalid input.
+-- Named panel procedures below build on this engine.
 -- ================================================================
 
 CREATE OR REPLACE FUNCTION dynamic_crud(
@@ -39,6 +27,7 @@ DECLARE
   v_cols   text;
   v_set    text;
   v_where  text;
+  v_where_upd text;
   v_sql    text;
   v_result jsonb;
 BEGIN
@@ -75,6 +64,16 @@ BEGIN
   -- 4. Build a validated equality WHERE from p_filters (real columns only).
   SELECT string_agg(format('%I = %L', f.key, f.value), ' AND ')
   INTO v_where
+  FROM jsonb_each_text(coalesce(p_filters, '{}'::jsonb)) AS f
+  WHERE EXISTS (
+    SELECT 1 FROM information_schema.columns c
+    WHERE c.table_schema = v_schema AND c.table_name = p_table AND c.column_name = f.key
+  );
+
+  -- Same predicate, qualified with the UPDATE target alias so it is never
+  -- ambiguous against the jsonb_populate_record source row.
+  SELECT string_agg(format('target.%I = %L', f.key, f.value), ' AND ')
+  INTO v_where_upd
   FROM jsonb_each_text(coalesce(p_filters, '{}'::jsonb)) AS f
   WHERE EXISTS (
     SELECT 1 FROM information_schema.columns c
@@ -132,7 +131,7 @@ BEGIN
 
     v_sql := format(
       'UPDATE %I.%I AS target SET %s FROM jsonb_populate_record(NULL::%I.%I, $1) AS x WHERE %s RETURNING to_jsonb(target.*)',
-      v_schema, p_table, v_set, v_schema, p_table, v_where
+      v_schema, p_table, v_set, v_schema, p_table, v_where_upd
     );
     EXECUTE v_sql INTO v_result USING p_data;
     RETURN coalesce(v_result, 'null'::jsonb);

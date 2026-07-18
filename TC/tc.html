@@ -37,6 +37,199 @@
     </style>
   </head>
   <body class="min-h-screen bg-white text-[#042F8D] font-sans">
+    <!-- ═══════════════════ TOP PANEL SEARCH BAR ═══════════════════ -->
+    <div class="sticky top-0 z-[60] border-b border-slate-200 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70">
+      <div class="mx-auto flex max-w-7xl items-center gap-3 px-5 py-3 sm:px-6 lg:px-8">
+      
+
+        <!-- ── Unified pill: [ panel dropdown | search input ] ── -->
+        <div class="relative flex flex-1 items-stretch rounded-full border border-slate-200 bg-white shadow-sm transition-colors focus-within:border-[#042F8D] focus-within:ring-4 focus-within:ring-[#042F8D]/10">
+          <!-- Panel selector (left segment) -->
+          <div id="psPanel" class="relative shrink-0">
+            <button type="button" id="psPanelBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="psPanelMenu"
+              class="flex h-full max-w-[9.5rem] items-center gap-2 rounded-l-full border-r border-slate-200 bg-slate-50/70 px-4 py-2.5 text-sm font-semibold text-[#042F8D] transition-colors hover:bg-slate-100 focus:outline-none">
+              <span id="psPanelLabel" class="truncate" data-i18n="psAllPanels">All panels</span>
+              <svg id="psPanelChevron" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 transition-transform duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <ul id="psPanelMenu" role="listbox" aria-label="Panels" class="absolute left-0 top-full z-[70] mt-2 hidden max-h-72 w-56 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 text-slate-700 shadow-[0_24px_60px_rgba(4,47,141,0.25)]"></ul>
+          </div>
+
+          <!-- Text search (right segment) -->
+          <div id="psSearch" class="relative flex-1">
+            <div class="relative">
+              <svg xmlns="http://www.w3.org/2000/svg" class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <input id="psSearchInput" type="text" autocomplete="off" data-i18n-placeholder="psSearchPlaceholder" placeholder="Search any info in the selected panel…"
+                class="w-full rounded-r-full border-0 bg-transparent py-2.5 pl-10 pr-3 text-sm text-slate-800 focus:outline-none focus:ring-0" />
+            </div>
+            <div id="psResults" class="absolute left-0 top-full z-[70] mt-2 hidden w-full overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-[0_24px_60px_rgba(4,47,141,0.25)]">
+              <ul id="psResultsList" role="listbox" aria-label="Results" class="max-h-80 overflow-y-auto p-1.5"></ul>
+              <p id="psEmpty" class="hidden px-4 py-6 text-center text-sm text-slate-400" data-i18n="noPanelFound">No results found</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Open grid button ── -->
+        <button type="button" id="psGridBtn" title="Panels grid" aria-label="Open panels grid"
+          class="flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+          <span class="hidden sm:inline" data-i18n="psGrid">Grid</span>
+        </button>
+
+        <!-- ── Open signatures manager button ── -->
+        <button type="button" id="sigBtn" title="Signatures" aria-label="Manage signatures"
+          class="flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+          <span class="hidden sm:inline" data-i18n="sigBtn">Signatures</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ PANELS FILTER GRID OVERLAY ═══════════════════ -->
+    <div id="psGridOverlay" class="fixed inset-0 z-[80] hidden bg-[rgba(1,7,16,0.6)] p-3 backdrop-blur-sm sm:p-6" aria-hidden="true">
+      <div class="mx-auto flex h-full w-full max-w-7xl flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.35)]" role="dialog" aria-modal="true" aria-labelledby="psGridTitle">
+        <div class="flex shrink-0 items-center justify-between gap-3 bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-5 py-4 text-white">
+          <div class="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+            <h2 id="psGridTitle" class="text-base font-semibold" data-i18n="psGridTitle">Panels &amp; filters</h2>
+          </div>
+          <button type="button" id="psGridClose" class="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/25" data-i18n="closeBtn">Close</button>
+        </div>
+
+        <!-- ── Toolbar: searchable panel dropdown ── -->
+        <div class="flex shrink-0 flex-wrap items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-5">
+          <label class="text-sm font-semibold text-slate-600" data-i18n="psGridChoose">Select a panel</label>
+          <div id="gridPanel" class="relative w-full sm:w-72">
+            <button type="button" id="gridPanelBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="gridPanelMenu"
+              class="flex w-full items-center justify-between gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+              <span id="gridPanelLabel" class="truncate" data-i18n="psGridChoosePlaceholder">Choose a panel…</span>
+              <svg id="gridPanelChevron" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 transition-transform duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div id="gridPanelMenu" class="absolute left-0 top-full z-[90] mt-2 hidden w-full min-w-[16rem] overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-[0_24px_60px_rgba(4,47,141,0.25)]">
+              <div class="border-b border-slate-100 p-2.5">
+                <div class="relative">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                  <input id="gridPanelSearch" type="text" autocomplete="off" data-i18n-placeholder="psGridSearchPanel" placeholder="Search panel…"
+                    class="w-full rounded-xl border-[1.5px] border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                </div>
+              </div>
+              <ul id="gridPanelList" role="listbox" aria-label="Panels" class="max-h-72 overflow-y-auto p-1.5"></ul>
+              <p id="gridPanelEmpty" class="hidden px-4 py-6 text-center text-sm text-slate-400" data-i18n="noPanelFound">No results found</p>
+            </div>
+          </div>
+
+          <!-- ── Column filter / customization ── -->
+          <div id="gridCols" class="relative">
+            <button type="button" id="gridColsBtn" aria-haspopup="dialog" aria-expanded="false" aria-controls="gridColsPanel"
+              class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+              <span data-i18n="psColsBtn">Columns</span>
+            </button>
+
+            <div id="gridColsPanel" role="dialog" aria-modal="false" aria-labelledby="gridColsTitle"
+              class="fixed left-1/2 top-1/2 z-[95] hidden max-h-[85vh] w-[min(92vw,36rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_24px_60px_rgba(4,47,141,0.25)]">
+              <div class="mb-3 flex items-center justify-between gap-2">
+                <h4 id="gridColsTitle" class="text-sm font-bold text-[#042F8D]" data-i18n="psColsTitle">Customize columns</h4>
+                <button type="button" id="gridColsReset" class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-500 transition hover:border-[#042F8D] hover:text-[#042F8D]" data-i18n="psColsReset">Reset</button>
+              </div>
+              <p class="mb-3 text-xs text-slate-400" data-i18n="psColsHint">Drag columns between the lists to show or hide them, and reorder the displayed columns by dragging.</p>
+              <div class="grid gap-3 sm:grid-cols-2">
+                <div class="flex flex-col">
+                  <p class="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-500" data-i18n="psColsAvailable">Available columns</p>
+                  <ul id="colsAvailable" class="gss-col-list max-h-[45vh] min-h-[8rem] flex-1 space-y-1.5 overflow-y-auto rounded-xl border border-dashed border-slate-200 bg-slate-50 p-2" data-zone="available"></ul>
+                </div>
+                <div class="flex flex-col">
+                  <p class="mb-1.5 text-xs font-bold uppercase tracking-wide text-[#042F8D]" data-i18n="psColsDisplayed">Displayed columns</p>
+                  <ul id="colsDisplayed" class="gss-col-list max-h-[45vh] min-h-[8rem] flex-1 space-y-1.5 overflow-y-auto rounded-xl border border-dashed border-[#042F8D]/30 bg-[#042F8D]/[0.03] p-2" data-zone="displayed"></ul>
+                </div>
+              </div>
+              <div class="mt-4 flex justify-end gap-2">
+                <button type="button" id="gridColsCancel" class="rounded-full border-[1.5px] border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" data-i18n="closeBtn">Close</button>
+                <button type="button" id="gridColsApply" class="rounded-full bg-[#042F8D] px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(4,47,141,0.2)] transition hover:-translate-y-px" data-i18n="psColsApply">Apply</button>
+              </div>
+            </div>
+          </div>
+
+          <span id="psGridCount" class="ml-auto text-xs font-semibold text-slate-400"></span>
+        </div>
+
+        <!-- ── Data grid ── -->
+        <div id="psGridBody" class="flex-1 overflow-auto bg-slate-50">
+          <div id="psGridEmptyState" class="flex h-full flex-col items-center justify-center gap-2 p-8 text-center text-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+            <p class="text-sm" data-i18n="psGridPick">Select a panel to display its data grid.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ SIGNATURE MANAGER OVERLAY ═══════════════════ -->
+    <div id="sigOverlay" class="fixed inset-0 z-[80] hidden bg-[rgba(1,7,16,0.6)] p-3 backdrop-blur-sm sm:p-6" aria-hidden="true">
+      <div class="mx-auto flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.35)]" role="dialog" aria-modal="true" aria-labelledby="sigTitle">
+        <div class="flex shrink-0 items-center justify-between gap-3 bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-5 py-4 text-white">
+          <div class="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+            <h2 id="sigTitle" class="text-base font-semibold" data-i18n="sigTitle">Signatures</h2>
+          </div>
+          <button type="button" id="sigClose" class="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/25" data-i18n="closeBtn">Close</button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto bg-slate-50 p-5 sm:p-6">
+          <div class="grid gap-6 lg:grid-cols-2">
+
+            <!-- ── Create a signature ── -->
+            <form id="sigForm" novalidate class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 sm:p-5">
+              <h3 class="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-[#042F8D]" data-i18n="sigNew">Add a signature</h3>
+
+              <div class="mb-4 flex flex-col gap-1.5">
+                <label for="sigName" class="text-sm font-semibold text-slate-700 after:content-['_*'] after:text-red-500 after:font-bold" data-i18n="sigLbName">Signature Name</label>
+                <input id="sigName" name="sigName" type="text" autocomplete="off" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+              </div>
+
+              <div class="mb-3 flex flex-col gap-1.5">
+                <label for="sigCanvas" class="text-sm font-semibold text-slate-700 after:content-['_*'] after:text-red-500 after:font-bold" data-i18n="sigLbSignature">Signature</label>
+                <div class="gss-sign group relative w-full overflow-hidden rounded-xl border-[1.5px] border-[#dbe2f0] bg-white/40 transition focus-within:border-[#042F8D] focus-within:ring-4 focus-within:ring-[#042F8D]/10">
+                  <canvas id="sigCanvas" class="gss-sign-canvas block h-44 w-full touch-none cursor-crosshair bg-transparent"></canvas>
+                  <span class="gss-sign-hint pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-slate-400" data-i18n="sigHint">Sign within the box</span>
+                  <button type="button" class="gss-sign-clear absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-[#042F8D] hover:text-[#042F8D]" data-i18n="sigClear">Clear</button>
+                  <input id="sigData" name="sigData" class="gss-sign-input" type="hidden" />
+                </div>
+              </div>
+
+              <div class="mb-4">
+                <label for="sigUpload" class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-[#042F8D] shadow-sm transition hover:border-[#042F8D] hover:bg-slate-50">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <span data-i18n="sigUpload">Upload an image</span>
+                </label>
+                <input id="sigUpload" type="file" accept="image/*" class="hidden" />
+              </div>
+
+              <div class="flex items-center justify-between gap-3">
+                <p id="sigStatus" class="min-h-5 text-sm font-semibold" aria-live="polite"></p>
+                <button type="submit" id="sigSave" class="rounded-full bg-[#042F8D] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(4,47,141,0.2)] transition hover:-translate-y-px hover:shadow-[0_14px_30px_rgba(4,47,141,0.34)] disabled:opacity-60" data-i18n="sigSaveBtn">Save signature</button>
+              </div>
+            </form>
+
+            <!-- ── Existing signatures ── -->
+            <div class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 sm:p-5">
+              <div class="mb-4 flex items-center justify-between gap-2">
+                <h3 class="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-[#042F8D]" data-i18n="sigSaved">Saved signatures</h3>
+                <button type="button" id="sigRefresh" class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-500 transition hover:border-[#042F8D] hover:text-[#042F8D]" data-i18n="sigRefresh">Refresh</button>
+              </div>
+              <div class="relative mb-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <input id="sigSearch" type="text" autocomplete="off" data-i18n-placeholder="sigSearchPlaceholder" placeholder="Search signatures…"
+                  class="w-full rounded-xl border-[1.5px] border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-800 transition focus:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+              </div>
+              <ul id="sigList" class="space-y-2"></ul>
+              <p id="sigListEmpty" class="hidden px-2 py-6 text-center text-sm text-slate-400" data-i18n="sigNone">No signatures saved yet.</p>
+              <p id="sigListMore" class="hidden px-2 pt-2 text-center text-xs text-slate-400"></p>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="mx-auto max-w-7xl px-5 py-7 sm:px-6 lg:px-8">
       <div class="mb-4 flex justify-end">
         <div class="inline-flex gap-2 rounded-full border border-slate-200 bg-white p-1.5 shadow-sm" role="group" aria-label="Language switcher">
@@ -690,7 +883,13 @@
                   <div class="mt-4 grid gap-4 md:grid-cols-2">
                     <div class="flex flex-col gap-1.5">
                       <label for="Comm-PlaceOfBirth" class="text-sm font-semibold text-slate-700" data-i18n="engLbFaitA">Done at</label>
-                      <input id="Comm-PlaceOfBirth" name="Comm-PlaceOfBirth" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                      <!-- <input id="Comm-PlaceOfBirth" name="Comm-PlaceOfBirth" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />-->
+                       <label
+                          id="Comm-PlaceOfBirth"
+                          name="Comm-PlaceOfBirth"
+                          class="w-full rounded-xl border-[1.5px] border-slate-200 bg-slate-100 px-3 py-2.5 text-sm text-slate-500 cursor-not-allowed select-none">
+                          Kinshasa
+                        </label>
                     </div>
                     <div class="flex flex-col gap-1.5">
                       <label for="Comm-ApplicantDate" class="text-sm font-semibold text-slate-700" data-i18n="engLbLe">Date</label>
@@ -710,15 +909,19 @@
                       </div>
                     </div>
                     <div class="flex flex-col gap-1.5 md:col-span-2">
-                      <label for="Comm-OfficerSignature" class="text-sm font-semibold text-slate-700" data-i18n="engLbCachet">Signature and GSS Official Stamp</label>
-                      <input id="Comm-OfficerSignature" name="Comm-OfficerSignature" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                      <label for="Comm-OfficerSignature" class="text-sm font-semibold text-slate-700" data-i18n="engLbCachet">Training OfficerSignature</label>
+                      <div class="gss-sign group relative w-full overflow-hidden rounded-xl border-[1.5px] border-[#dbe2f0] bg-white/40 transition">
+                        <canvas id="Comm-OfficerSignature" class="gss-sign-canvas block h-44 w-full touch-none bg-transparent"></canvas>
+                        <span class="gss-sign-hint pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-slate-400" data-i18n="sigOfficerNone">No Training Officer signature on file</span>
+                        <input id="Comm-OfficerSignature-data" name="Comm-OfficerSignature-data" class="gss-sign-input" type="hidden" />
+                      </div>
                     </div>
                   </div>
                 </fieldset>
 
                 <div class="rounded-[16px] border border-green-200 bg-green-50 p-4">
                   <label class="flex cursor-pointer items-start gap-3">
-                    <input type="checkbox" id="ack-engagement" class="gss-ack-check mt-0.5 h-4 w-4 rounded accent-green-600" data-tab="engagement" />
+                    <input type="checkbox" id="ack-engagement" dbname="ack_commitment" class="gss-ack-check mt-0.5 h-4 w-4 rounded accent-green-600" data-tab="engagement" />
                     <span class="text-sm leading-6 text-slate-700" data-i18n-html="ackEngagement">I freely undertake to comply with this <strong>Confidentiality Agreement</strong>, which takes effect from the date of signature.</span>
                   </label>
                 </div>
@@ -1591,10 +1794,13 @@
     <script src="./js/utils/locations.js"></script>
     <script src="./js/utils/validation.js"></script>
     <script src="./js/utils/collapsible.js"></script>
+    <script src="./js/utils/panelJump.js"></script>
 
     <script src="./js/modules/registration.js"></script>
     <script src="./js/modules/attendance.js"></script>
     <script src="./js/modules/eval.js"></script>
+    <script src="./js/modules/signatures.js"></script>
+    <script src="./js/modules/applicant-link.js"></script>
 
     <!-- intl-tel-input plugin (bundled with utils for formatting/validation) -->
     <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.3.1/build/js/intlTelInputWithUtils.min.js"></script>

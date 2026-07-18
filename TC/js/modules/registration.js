@@ -315,7 +315,7 @@ const initInscriptionForm = () => {
   }
 
   // ── Submit ──────────────────────────────────────────────────
-  form.addEventListener('submit', (event) => {
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
     const m = t();
 
@@ -392,15 +392,27 @@ const initInscriptionForm = () => {
       }
     }
 
-    // Success summary
-    const data = new FormData(form);
-    const summary = [];
-    for (const [key, value] of data.entries()) {
-      if (typeof value === 'string' && value.trim() !== '') summary.push(`${key}: ${value}`);
+    // Persist the applicant, then mark the Registration panel completed.
+    const API_BASE = (location.protocol.startsWith('http') && location.port !== '5500') ? '' : 'http://localhost:3000';
+    try {
+      const row = await collectDbValues(form);
+      const res = await fetch(`${API_BASE}/api/applicants`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(row),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || !payload.ok) throw new Error(payload.error || 'Save failed');
+      status.textContent = m.ready(1);
+      status.className = 'min-h-6 text-sm font-semibold text-emerald-600';
+      const linker = /** @type {any} */ (window).GSSApplicant;
+      if (linker && typeof linker.completeRegistration === 'function') {
+        linker.completeRegistration(payload.applicant);
+      }
+    } catch (err) {
+      status.textContent = err instanceof Error ? err.message : 'Save failed';
+      status.className = 'min-h-6 text-sm font-semibold text-red-600';
     }
-
-    status.textContent = m.ready(summary.length);
-    status.className = 'min-h-6 text-sm font-semibold text-emerald-600';
   });
 
   // ── TEMP: prefill the whole form for insert testing ──────────
@@ -686,7 +698,16 @@ const applyDbValues = (form, row) => {
     const value = row[column];
 
     if (type === 'radio') {
-      input.checked = String(input.value) === String(value);
+      // Boolean columns (e.g. is_french_literate, has_security_experience,
+      // has_health_issues, ispaid) map to Yes/No or Paid/Unpaid radios.
+      if (typeof value === 'boolean') {
+        const v = String(input.value).trim().toLowerCase();
+        const truthy = ['yes', 'paid', 'true', 'on', '1', 'y'];
+        const falsy = ['no', 'unpaid', 'false', 'off', '0', 'n'];
+        input.checked = value ? truthy.includes(v) : falsy.includes(v);
+      } else {
+        input.checked = String(input.value) === String(value);
+      }
     } else if (type === 'checkbox') {
       input.checked = value === true || value === 'true' || value === input.value;
     } else if (type === 'file') {

@@ -25,7 +25,7 @@ const fs = require('fs');
 const path = require('path');
 
 try {
-  require('dotenv').config();
+  require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 } catch (_) {
   /* optional */
 }
@@ -61,15 +61,19 @@ const MIME_TYPES = {
 };
 
 /**
- * Verify database connectivity and (re)install the dynamic CRUD stored
- * function before the server starts accepting requests. The `applicant`
- * table itself is managed in PostgreSQL, so no table schema is created here.
+ * Verify database connectivity and (re)install every stored procedure in the
+ * `db/procedures` folder before the server starts accepting requests. All
+ * database access afterwards goes exclusively through these procedures.
  * @returns {Promise<void>}
  */
 const ensureDbReady = async () => {
   await db.query('SELECT 1');
-  const procedures = fs.readFileSync(path.join(__dirname, 'db', 'procedures.sql'), 'utf8');
-  await db.query(procedures);
+  const dir = path.join(__dirname, 'db', 'procedures');
+  const files = fs.readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
+  for (const file of files) {
+    const sql = fs.readFileSync(path.join(dir, file), 'utf8');
+    await db.query(sql);
+  }
 };
 
 /**
@@ -89,34 +93,38 @@ const crud = async (action, table, data = {}, filters = {}) => {
   return result.rows[0].result;
 };
 
+/**
+ * Invoke a named stored function that returns a single `result` jsonb value.
+ * @param {string} fn  Function name (e.g. 'registration_insert').
+ * @param {string} signature  Positional placeholder list (e.g. '$1::jsonb').
+ * @param {any[]} params
+ * @returns {Promise<any>}
+ */
+const callProc = async (fn, signature, params) => {
+  const result = await db.query(`SELECT ${fn}(${signature}) AS result`, params);
+  return result.rows[0] ? result.rows[0].result : null;
+};
+
 /** @type {Map<string, { dataType: string, insertable: boolean }> | null} */
 let columnMetaCache = null;
 /** @type {string | null} The identity/primary key column (e.g. candidate_no). */
 let identityColumnCache = null;
 
 /**
- * Load column metadata for the applicant table straight from the catalog:
- * name → { data type, whether the client may write to it }. Driven entirely
- * by information_schema, so columns stay data-driven (nothing hard-coded).
+ * Load column metadata for the applicant table through the `app_table_columns`
+ * stored function: name → { data type, whether the client may write to it }.
  * @returns {Promise<Map<string, { dataType: string, insertable: boolean }>>}
  */
 const loadColumnMeta = async () => {
   if (columnMetaCache) return columnMetaCache;
-  const result = await db.query(
-    `SELECT column_name, data_type, is_identity, is_generated
-       FROM information_schema.columns
-      WHERE table_name = $1
-        AND table_schema = current_schema()
-      ORDER BY ordinal_position`,
-    [APPLICANT_TABLE]
-  );
+  const cols = await callProc('app_table_columns', '$1', [APPLICANT_TABLE]) || [];
   const meta = /** @type {Map<string, { dataType: string, insertable: boolean }>} */ (new Map());
-  for (const r of result.rows) {
-    meta.set(r.column_name, {
+  for (const r of cols) {
+    meta.set(r.name, {
       dataType: r.data_type,
       insertable: r.is_identity === 'NO' && r.is_generated === 'NEVER',
     });
-    if (!identityColumnCache && r.is_identity === 'YES') identityColumnCache = r.column_name;
+    if (!identityColumnCache && r.is_identity === 'YES') identityColumnCache = r.name;
   }
   columnMetaCache = meta;
   return meta;
@@ -127,7 +135,6 @@ const getIdentityColumn = async () => {
   const meta = await loadColumnMeta();
   return /** @type {string} */ (identityColumnCache || [...meta.keys()][0] || '');
 };
-
 const TRUE_VALUES = new Set(['true', 'yes', 'paid', 'on', '1', 'y']);
 const FALSE_VALUES = new Set(['false', 'no', 'unpaid', 'off', '0', 'n']);
 
@@ -231,20 +238,15 @@ const serveStatic = (res, urlPath) => {
 };
 
 /**
- * If `applicant_signature_id` holds a drawn signature (a base64 data URL),
- * store the decoded image as a row in the `signature` table and replace the
- * value with the generated `signature_id` (the FK the applicant row keeps).
- * The image bytes are passed as a `\x`-hex string so PostgreSQL casts them to
- * `bytea` inside the same `dynamic_crud` stored function. No-op otherwise.
- * @param {Record<string, any>} body
- * @returns {Promise<void>}
+ * Decode a base64 (or URL-encoded) `data:` URL into a Buffer plus its MIME type.
+ * Returns `null` when the input is not a usable data URL or is empty.
+ * @param {any} raw
+ * @returns {{ buffer: Buffer, contentType: string } | null}
  */
-const storeApplicantSignature = async (body) => {
-  const raw = body ? body.applicant_signature_id : undefined;
-  if (typeof raw !== 'string') return;
-
+const dataUrlToBuffer = (raw) => {
+  if (typeof raw !== 'string') return null;
   const match = /^data:([^;,]+)?(;base64)?,(.*)$/s.exec(raw.trim());
-  if (!match) return; // not a data URL — leave as-is (will be coerced/skipped)
+  if (!match) return null;
 
   const contentType = match[1] || 'application/octet-stream';
   const isBase64 = Boolean(match[2]);
@@ -253,24 +255,193 @@ const storeApplicantSignature = async (body) => {
     ? Buffer.from(payload, 'base64')
     : Buffer.from(decodeURIComponent(payload), 'utf8');
 
-  if (buffer.length === 0) {
-    delete body.applicant_signature_id;
-    return;
-  }
+  return buffer.length ? { buffer, contentType } : null;
+};
 
+/**
+ * Insert a decoded signature image via the `signature_insert` stored function.
+ * The image bytes are passed as a `\x`-hex string so PostgreSQL casts them to
+ * `bytea` inside the procedure.
+ * @param {{ buffer: Buffer, contentType: string }} image
+ * @param {string} name The signature name (stored as contact_name / created_by).
+ * @param {boolean} [isTrainingOfficer] Whether this signature is the Training Officer.
+ * @returns {Promise<any>} The inserted signature row (without the image bytes).
+ */
+const insertSignature = ({ buffer, contentType }, name, isTrainingOfficer = false) => {
   const extension = (contentType.split('/')[1] || 'png').split('+')[0];
-  const who = String(body.applicant_name || body.full_name || 'applicant').slice(0, 100);
-
-  const signature = await crud('insert', SIGNATURE_TABLE, {
+  const who = String(name || 'signature').slice(0, 100);
+  return callProc('signature_insert', '$1::jsonb', [JSON.stringify({
     signature_image: '\\x' + buffer.toString('hex'),
     content_type: contentType.slice(0, 100),
     file_name: `signature_${Date.now()}.${extension}`.slice(0, 255),
     file_size: buffer.length,
     created_by: who,
     contact_name: who,
-  });
+    is_training_officer: Boolean(isTrainingOfficer),
+  })]);
+};
 
+/**
+ * If `applicant_signature_id` holds a drawn signature (a base64 data URL),
+ * store the decoded image as a row in the `signature` table and replace the
+ * value with the generated `signature_id` (the FK the applicant row keeps).
+ * No-op otherwise.
+ * @param {Record<string, any>} body
+ * @returns {Promise<void>}
+ */
+const storeApplicantSignature = async (body) => {
+  const raw = body ? body.applicant_signature_id : undefined;
+  if (typeof raw !== 'string') return;
+
+  const image = dataUrlToBuffer(raw);
+  if (!image) {
+    // Empty pad / not a data URL — drop it so typed columns keep their defaults.
+    if (/^data:/.test(raw.trim())) delete body.applicant_signature_id;
+    return;
+  }
+
+  const who = String(body.applicant_name || body.full_name || 'applicant').slice(0, 100);
+  const signature = await insertSignature(image, who);
   body.applicant_signature_id = signature.signature_id;
+};
+
+/**
+ * List / search stored signatures via the `signature_search` stored function.
+ * Returns the newest rows first; supports incremental loading (q, limit, offset).
+ * Image bytes are never included.
+ * @param {http.ServerResponse} res
+ * @param {{ q?: string, limit?: number, offset?: number }} [opts]
+ */
+const listSignatures = async (res, opts = {}) => {
+  const q = (opts.q || '').toString();
+  const limit = Number.isFinite(opts.limit) ? Number(opts.limit) : 10;
+  const offset = Number.isFinite(opts.offset) ? Number(opts.offset) : 0;
+  const rows = await callProc('signature_search', '$1, $2, $3', [q, limit, offset]);
+  const hasTrainingOfficer = await callProc('signature_has_officer', '', []);
+  sendJson(res, 200, {
+    ok: true,
+    signatures: Array.isArray(rows) ? rows : [],
+    hasTrainingOfficer: hasTrainingOfficer === true,
+  });
+};
+
+/**
+ * Create a signature from a posted `{ name, image }` payload (image = data URL).
+ * @param {http.ServerResponse} res
+ * @param {Record<string, any>} body
+ */
+const createSignature = async (res, body) => {
+  const name = (body && (body.name || body.contact_name || body.signature_name) || '').toString().trim();
+  const image = dataUrlToBuffer(body ? body.image || body.signature_image : undefined);
+  if (!name) {
+    sendJson(res, 400, { error: 'A signature name is required.' });
+    return;
+  }
+  if (!image) {
+    sendJson(res, 400, { error: 'A signature image is required.' });
+    return;
+  }
+  const signature = await insertSignature(image, name, Boolean(body && body.is_training_officer));
+  if (signature && typeof signature === 'object') delete signature.signature_image;
+  sendJson(res, 201, { ok: true, signature });
+};
+
+/**
+ * Delete a signature by id via the `signature_delete` stored function.
+ * @param {http.ServerResponse} res
+ * @param {string} id
+ */
+const deleteSignature = async (res, id) => {
+  const numId = Number(id);
+  if (!Number.isFinite(numId)) {
+    sendJson(res, 400, { error: 'Invalid signature id' });
+    return;
+  }
+  const deleted = await callProc('signature_delete', '$1', [numId]);
+  if (deleted !== true) {
+    sendJson(res, 404, { error: 'Signature not found' });
+    return;
+  }
+  sendJson(res, 200, { ok: true, deleted: true });
+};
+
+/**
+ * Stream a signature image (bytea) back to the browser by id, using the
+ * `signature_image` stored function (returns hex bytes + content type).
+ * @param {http.ServerResponse} res
+ * @param {string} id
+ */
+const sendSignatureImage = async (res, id) => {  const img = await callProc('signature_image', '$1', [Number(id)]);
+  const hex = img && img.image_hex;
+  if (!img || typeof hex !== 'string' || hex.length === 0) {
+    sendJson(res, 404, { error: 'Signature not found' });
+    return;
+  }
+  const buffer = Buffer.from(hex, 'hex');
+  res.writeHead(200, {
+    'Content-Type': (img.content_type || 'image/png'),
+    'Content-Length': buffer.length,
+    'Cache-Control': 'no-store',
+  });
+  res.end(buffer);
+};
+
+/** @type {Map<string, { columns: { name: string, data_type: string }[], byteaCols: Set<string> }>} */
+const tableMetaCache = new Map();
+
+/**
+ * Column metadata (name + type) for any table, with a set of `bytea` columns
+ * so binary blobs can be stripped from JSON responses.
+ * @param {string} table
+ * @returns {Promise<{ columns: { name: string, data_type: string }[], byteaCols: Set<string> }>}
+ */
+const getTableColumns = async (table) => {
+  const cached = tableMetaCache.get(table);
+  if (cached) return cached;
+  const cols = /** @type {any[]} */ (await callProc('app_table_columns', '$1', [table]) || []);
+  const columns = cols.map((r) => ({ name: r.name, data_type: r.data_type }));
+  const byteaCols = new Set(cols.filter((r) => r.data_type === 'bytea').map((r) => r.name));
+  const meta = { columns, byteaCols };
+  tableMetaCache.set(table, meta);
+  return meta;
+};
+
+/**
+ * Whether a base table with this name exists in the current schema.
+ * @param {string} table
+ * @returns {Promise<boolean>}
+ */
+const tableExists = async (table) => {
+  const result = await db.query('SELECT app_table_exists($1) AS ok', [table]);
+  return result.rows[0] && result.rows[0].ok === true;
+};
+
+/**
+ * List all rows of an arbitrary table (validated against the catalog), plus its
+ * column metadata so the client can render headers even when there are no rows.
+ * Binary (`bytea`) columns are stripped from the payload.
+ * @param {http.ServerResponse} res
+ * @param {string} table
+ */
+const listRecords = async (res, table) => {
+  if (!table) {
+    sendJson(res, 400, { error: 'Missing table name' });
+    return;
+  }
+  if (!await tableExists(table)) {
+    sendJson(res, 200, { ok: true, table, exists: false, columns: [], records: [] });
+    return;
+  }
+  const { columns, byteaCols } = await getTableColumns(table);
+  const rows = await crud('select', table);
+  const records = (Array.isArray(rows) ? rows : []).map((row) => {
+    if (!byteaCols.size || !row) return row;
+    const clean = { ...row };
+    byteaCols.forEach((c) => { delete clean[c]; });
+    return clean;
+  });
+  const publicColumns = columns.filter((c) => !byteaCols.has(c.name));
+  sendJson(res, 200, { ok: true, table, exists: true, columns: publicColumns, records });
 };
 
 /**
@@ -305,8 +476,13 @@ const createApplicant = async (res, body) => {
     return;
   }
 
-  const applicant = await crud('insert', APPLICANT_TABLE, row);
-  sendJson(res, 201, { ok: true, applicant });
+  // Update when a candidate number is supplied, otherwise insert.
+  const idRaw = body && (body.candidate_no || body.CandidateNo);
+  const id = Number.parseInt(String(idRaw), 10);
+  const applicant = Number.isFinite(id)
+    ? await callProc('registration_update', '$1, $2::jsonb', [id, JSON.stringify(row)])
+    : await callProc('registration_insert', '$1::jsonb', [JSON.stringify(row)]);
+  sendJson(res, Number.isFinite(id) ? 200 : 201, { ok: true, applicant });
 };
 
 const server = http.createServer(async (req, res) => {
@@ -316,7 +492,7 @@ const server = http.createServer(async (req, res) => {
   // Allow the front-end to call the API cross-origin (e.g. when the page
   // is served by Live Server on port 5500 instead of this Node server).
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (method === 'OPTIONS') {
@@ -338,16 +514,77 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // ── Registration (applicant) search via stored procedure ──
+    if (method === 'GET' && url.startsWith('/api/registration/search')) {
+      const params = new URL(url, 'http://localhost').searchParams;
+      const rows = await callProc('registration_search', '$1, $2, $3', [
+        params.get('q') || '',
+        Number.parseInt(params.get('limit') || '25', 10) || 25,
+        Number.parseInt(params.get('offset') || '0', 10) || 0,
+      ]);
+      sendJson(res, 200, { ok: true, applicants: Array.isArray(rows) ? rows : [] });
+      return;
+    }
+
     if (method === 'GET' && url.startsWith('/api/applicants')) {
-      const idCol = await getIdentityColumn();
       const id = new URL(url, 'http://localhost').searchParams.get('id');
       if (id) {
-        const rows = await crud('select', APPLICANT_TABLE, {}, { [idCol]: Number(id) });
-        sendJson(res, 200, { ok: true, applicant: rows[0] || null });
+        const applicant = await callProc('registration_get', '$1', [Number(id)]);
+        sendJson(res, 200, { ok: true, applicant: applicant || null });
         return;
       }
-      const rows = await crud('select', APPLICANT_TABLE);
-      sendJson(res, 200, { ok: true, applicants: rows });
+      const rows = await callProc('registration_search', '$1, $2, $3', ['', 1000, 0]);
+      sendJson(res, 200, { ok: true, applicants: Array.isArray(rows) ? rows : [] });
+      return;
+    }
+
+    // ── Signature table (search / image / insert) ─────────────
+    if (method === 'GET' && url.startsWith('/api/signatures/officer')) {
+      const officer = await callProc('signature_officer', '', []);
+      sendJson(res, 200, { ok: true, officer: officer || null });
+      return;
+    }
+
+    if (method === 'GET' && url.startsWith('/api/signatures/image')) {
+      const id = new URL(url, 'http://localhost').searchParams.get('id');
+      if (!id) {
+        sendJson(res, 400, { error: 'Missing signature id' });
+        return;
+      }
+      await sendSignatureImage(res, id);
+      return;
+    }
+
+    if (method === 'GET' && url.startsWith('/api/signatures')) {
+      const params = new URL(url, 'http://localhost').searchParams;
+      await listSignatures(res, {
+        q: params.get('q') || '',
+        limit: Number.parseInt(params.get('limit') || '10', 10) || 10,
+        offset: Number.parseInt(params.get('offset') || '0', 10) || 0,
+      });
+      return;
+    }
+
+    if (method === 'POST' && url.startsWith('/api/signatures')) {
+      const body = await readJsonBody(req);
+      await createSignature(res, body);
+      return;
+    }
+
+    if (method === 'DELETE' && url.startsWith('/api/signatures')) {
+      const id = new URL(url, 'http://localhost').searchParams.get('id');
+      if (!id) {
+        sendJson(res, 400, { error: 'Missing signature id' });
+        return;
+      }
+      await deleteSignature(res, id);
+      return;
+    }
+
+    // ── Generic per-table records (drives the panel data grid + search) ──
+    if (method === 'GET' && url.startsWith('/api/records')) {
+      const table = new URL(url, 'http://localhost').searchParams.get('table') || '';
+      await listRecords(res, table);
       return;
     }
 
