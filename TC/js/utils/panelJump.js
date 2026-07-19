@@ -395,6 +395,9 @@
   // Which panel is currently shown in the grid ('' = none).
   let gridTab = '';
 
+  /** @type {{ key: string, dir: number }} Current grid sort (dir: 1 asc, -1 desc). */
+  let gridSort = { key: '', dir: 1 };
+
   const gridIsOpen = () => !!gridOverlay && !gridOverlay.classList.contains('hidden');
   const gridMenuOpen = () => !!gridPanelMenu && !gridPanelMenu.classList.contains('hidden');
 
@@ -588,14 +591,28 @@
     titleRow.className = 'bg-[#042F8D] text-white';
     if (editTab) {
       const th = document.createElement('th');
+      th.dataset.editCol = '1';
       th.className = 'w-14 whitespace-nowrap px-3 py-2.5 text-left text-xs font-bold uppercase tracking-wide';
       th.textContent = gridI18n('psColEdit', 'Edit');
       titleRow.appendChild(th);
     }
     cols.forEach((col) => {
+      const c = /** @type {any} */ (col);
       const th = document.createElement('th');
-      th.className = 'whitespace-nowrap px-3 py-2.5 text-left text-xs font-bold uppercase tracking-wide';
-      th.textContent = headerLabel(col);
+      th.dataset.col = c.key;
+      th.className = 'group cursor-pointer select-none whitespace-nowrap px-3 py-2.5 text-left text-xs font-bold uppercase tracking-wide transition-colors hover:bg-white/10';
+      th.title = gridI18n('psSortHint', 'Click to sort');
+      const wrap = document.createElement('span');
+      wrap.className = 'inline-flex items-center gap-1';
+      const lbl = document.createElement('span');
+      lbl.textContent = headerLabel(col);
+      wrap.appendChild(lbl);
+      const arrow = document.createElement('span');
+      arrow.className = 'gss-sort-arrow text-[10px] opacity-70';
+      arrow.textContent = gridSort.key === c.key ? (gridSort.dir === 1 ? '▲' : '▼') : '↕';
+      wrap.appendChild(arrow);
+      th.appendChild(wrap);
+      th.addEventListener('click', () => sortGridBy(c));
       titleRow.appendChild(th);
     });
 
@@ -628,7 +645,7 @@
     const tbody = document.createElement('tbody');
     tbody.id = 'psGridRows';
     tbody.className = 'divide-y divide-slate-100 bg-white';
-    records.forEach((row) => {
+    records.forEach((row, rowIndex) => {
       const tr = document.createElement('tr');
       tr.className = 'transition-colors hover:bg-[#042F8D]/5';
       /** @type {Record<string, string>} */
@@ -655,6 +672,7 @@
         tr.appendChild(td);
       });
       /** @type {any} */ (tr).__cells = cells;
+      /** @type {any} */ (tr).__origIndex = rowIndex;
       tbody.appendChild(tr);
     });
     tableEl.appendChild(tbody);
@@ -674,8 +692,253 @@
       note.classList.add('hidden');
     }
     gridBody.appendChild(note);
+    // Re-apply an active sort to the freshly rendered rows (if the sorted
+    // column is still present); otherwise reset the sort state.
+    if (gridSort.key && cols.some((c) => /** @type {any} */ (c).key === gridSort.key)) {
+      applyGridSort();
+    } else {
+      gridSort = { key: '', dir: 1 };
+    }
     updateGridCount();
   };
+
+  /** Update the ▲/▼/↕ arrow on every sortable header. */
+  const updateSortArrows = () => {
+    if (!gridBody) return;
+    gridBody.querySelectorAll('thead th[data-col]').forEach((el) => {
+      const th = /** @type {HTMLElement} */ (el);
+      const arrow = th.querySelector('.gss-sort-arrow');
+      if (!arrow) return;
+      arrow.textContent = th.dataset.col === gridSort.key
+        ? (gridSort.dir === 1 ? '▲' : '▼')
+        : '↕';
+    });
+  };
+
+  const isNumeric = (/** @type {string} */ s) => s !== '' && /^-?\d+(?:\.\d+)?$/.test(s.replace(/\s/g, ''));
+
+  /**
+   * Reorder the currently rendered rows. When gridSort has a key, rows are
+   * sorted by that column (asc/desc). When no key is set, the grid is restored
+   * to its original/default order (the server order captured at render time).
+   */
+  const applyGridSort = () => {
+    if (!gridBody) return;
+    const tbody = gridBody.querySelector('#psGridRows');
+    if (!tbody) return;
+    const rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+
+    if (!gridSort.key) {
+      // Restore the original order.
+      rows.sort((a, b) =>
+        (/** @type {any} */ (a).__origIndex || 0) - (/** @type {any} */ (b).__origIndex || 0));
+      rows.forEach((r) => tbody.appendChild(r));
+      updateSortArrows();
+      return;
+    }
+
+    const key = gridSort.key;
+    const dir = gridSort.dir;
+    rows.sort((a, b) => {
+      const av = (/** @type {any} */ (a).__cells || {})[key] || '';
+      const bv = (/** @type {any} */ (b).__cells || {})[key] || '';
+      if (av === bv) return 0;
+      // Empty cells always sort to the bottom regardless of direction.
+      if (av === '') return 1;
+      if (bv === '') return -1;
+      let cmp;
+      if (isNumeric(av) && isNumeric(bv)) {
+        cmp = parseFloat(av) - parseFloat(bv);
+      } else {
+        const ad = Date.parse(av);
+        const bd = Date.parse(bv);
+        if (!Number.isNaN(ad) && !Number.isNaN(bd)) cmp = ad - bd;
+        else cmp = av.localeCompare(bv);
+      }
+      return cmp * dir;
+    });
+    rows.forEach((r) => tbody.appendChild(r));
+    updateSortArrows();
+  };
+
+  /**
+   * Three-state column sorting on header click:
+   *   1st click → ascending, 2nd → descending, 3rd → clear (original order).
+   */
+  function sortGridBy(/** @type {any} */ col) {
+    const key = col && col.key;
+    if (!key) return;
+    if (gridSort.key !== key) {
+      gridSort = { key, dir: 1 };          // ascending
+    } else if (gridSort.dir === 1) {
+      gridSort = { key, dir: -1 };         // descending
+    } else {
+      gridSort = { key: '', dir: 1 };      // clear → restore default order
+    }
+    applyGridSort();
+  }
+
+  // ── Minimal XLSX (Office Open XML) writer — no external deps ────
+  const xmlEsc = (/** @type {any} */ s) => String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+
+  /** 0-based column index → spreadsheet column letters (A, B, …, Z, AA…). */
+  const colLetter = (/** @type {number} */ n) => {
+    let s = '';
+    let x = n + 1;
+    while (x > 0) { const m = (x - 1) % 26; s = String.fromCharCode(65 + m) + s; x = Math.floor((x - 1) / 26); }
+    return s;
+  };
+
+  /** @type {Uint32Array | null} */
+  let CRC_TABLE = null;
+  const crc32 = (/** @type {Uint8Array} */ bytes) => {
+    if (!CRC_TABLE) {
+      CRC_TABLE = new Uint32Array(256);
+      for (let i = 0; i < 256; i++) {
+        let c = i;
+        for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        CRC_TABLE[i] = c >>> 0;
+      }
+    }
+    let crc = 0xFFFFFFFF;
+    for (let i = 0; i < bytes.length; i++) crc = CRC_TABLE[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  };
+
+  /** Build a ZIP archive (store / no compression) from named byte entries. */
+  const zipStore = (/** @type {{ name: string, data: Uint8Array }[]} */ files) => {
+    const enc = new TextEncoder();
+    const u16 = (/** @type {number} */ v) => [v & 0xFF, (v >>> 8) & 0xFF];
+    const u32 = (/** @type {number} */ v) => [v & 0xFF, (v >>> 8) & 0xFF, (v >>> 16) & 0xFF, (v >>> 24) & 0xFF];
+    /** @type {Uint8Array[]} */
+    const parts = [];
+    /** @type {Uint8Array[]} */
+    const central = [];
+    let offset = 0;
+
+    files.forEach((f) => {
+      const nameBytes = enc.encode(f.name);
+      const data = f.data;
+      const crc = crc32(data);
+      const size = data.length;
+      const local = Uint8Array.from([].concat(
+        u32(0x04034b50), u16(20), u16(0x0800), u16(0), u16(0), u16(0),
+        u32(crc), u32(size), u32(size), u16(nameBytes.length), u16(0)
+      ));
+      parts.push(local, nameBytes, data);
+      central.push(Uint8Array.from([].concat(
+        u32(0x02014b50), u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(0),
+        u32(crc), u32(size), u32(size), u16(nameBytes.length), u16(0), u16(0),
+        u16(0), u16(0), u32(0), u32(offset)
+      )), nameBytes);
+      offset += local.length + nameBytes.length + data.length;
+    });
+
+    let cdSize = 0;
+    central.forEach((c) => { cdSize += c.length; });
+    const eocd = Uint8Array.from([].concat(
+      u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length),
+      u32(cdSize), u32(offset), u16(0)
+    ));
+
+    const all = parts.concat(central, [eocd]);
+    let total = 0;
+    all.forEach((a) => { total += a.length; });
+    const out = new Uint8Array(total);
+    let p = 0;
+    all.forEach((a) => { out.set(a, p); p += a.length; });
+    return out;
+  };
+
+  const XLSX_CONTENT_TYPES = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+    '<Default Extension="xml" ContentType="application/xml"/>' +
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+    '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' +
+    '</Types>';
+  const XLSX_ROOT_RELS = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+    '</Relationships>';
+  const XLSX_WORKBOOK = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+    '<sheets><sheet name="Export" sheetId="1" r:id="rId1"/></sheets></workbook>';
+  const XLSX_WB_RELS = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>' +
+    '</Relationships>';
+
+  /**
+   * Export the grid to a genuine .xlsx workbook that opens directly in
+   * Microsoft Excel. Only the currently visible (filtered) rows are exported,
+   * in their current (sorted) order. The Edit column is excluded.
+   */
+  const exportGridToExcel = () => {
+    if (!gridBody) return;
+    const headerRow = gridBody.querySelector('thead tr:first-child');
+    const bodyRows = gridBody.querySelectorAll('#psGridRows tr');
+    if (!headerRow || !bodyRows.length) return;
+
+    const ths = Array.prototype.slice.call(headerRow.querySelectorAll('th'));
+    // Column indexes to include (skip the Edit column).
+    const includeIdx = ths
+      .map((/** @type {HTMLElement} */ th, /** @type {number} */ i) => ({ i, skip: th.hasAttribute('data-edit-col') }))
+      .filter((x) => !x.skip)
+      .map((x) => x.i);
+    const headers = includeIdx.map((i) => (ths[i].textContent || '').trim());
+
+    /** @type {string[][]} */
+    const matrix = [headers];
+    bodyRows.forEach((el) => {
+      const tr = /** @type {HTMLElement} */ (el);
+      if (tr.classList.contains('hidden')) return; // filtered out
+      const tds = Array.prototype.slice.call(tr.children);
+      matrix.push(includeIdx.map((i) => (tds[i] ? (tds[i].textContent || '').trim() : '')));
+    });
+
+    const isNum = (/** @type {string} */ v) => v !== '' && /^-?\d+(?:\.\d+)?$/.test(v);
+    let rowsXml = '';
+    matrix.forEach((row, r) => {
+      let cellsXml = '';
+      row.forEach((val, c) => {
+        const ref = colLetter(c) + (r + 1);
+        if (r > 0 && isNum(val)) {
+          cellsXml += `<c r="${ref}"><v>${val}</v></c>`;
+        } else {
+          cellsXml += `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(val)}</t></is></c>`;
+        }
+      });
+      rowsXml += `<row r="${r + 1}">${cellsXml}</row>`;
+    });
+    const sheetXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      '<sheetData>' + rowsXml + '</sheetData></worksheet>';
+
+    const enc = new TextEncoder();
+    const zip = zipStore([
+      { name: '[Content_Types].xml', data: enc.encode(XLSX_CONTENT_TYPES) },
+      { name: '_rels/.rels', data: enc.encode(XLSX_ROOT_RELS) },
+      { name: 'xl/workbook.xml', data: enc.encode(XLSX_WORKBOOK) },
+      { name: 'xl/_rels/workbook.xml.rels', data: enc.encode(XLSX_WB_RELS) },
+      { name: 'xl/worksheets/sheet1.xml', data: enc.encode(sheetXml) },
+    ]);
+
+    const blob = new Blob([zip], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const link = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0, 10);
+    link.href = URL.createObjectURL(blob);
+    link.download = `${gridTab || 'grid'}-${stamp}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+  };
+
+  const gridExportBtn = document.getElementById('psGridExport');
+  gridExportBtn?.addEventListener('click', exportGridToExcel);
 
   /** Filter grid rows by every column filter (AND across columns). */
   function applyColumnFilters() {

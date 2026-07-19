@@ -485,6 +485,22 @@ const createApplicant = async (res, body) => {
   sendJson(res, Number.isFinite(id) ? 200 : 201, { ok: true, applicant });
 };
 
+/**
+ * Invoke the generic `dictionary_crud` stored function.
+ * @param {'list'|'insert'|'update'|'delete'} action
+ * @param {string|null} category
+ * @param {Record<string, any>} [data]
+ * @param {number|null} [id]
+ * @returns {Promise<any>}
+ */
+const dictionaryCrud = (action, category, data = {}, id = null) =>
+  callProc('dictionary_crud', '$1, $2, $3::jsonb, $4', [
+    action,
+    category,
+    JSON.stringify(data || {}),
+    id,
+  ]);
+
 const server = http.createServer(async (req, res) => {
   const method = req.method || 'GET';
   const url = req.url || '/';
@@ -578,6 +594,46 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       await deleteSignature(res, id);
+      return;
+    }
+
+    // ── Dictionary (reference values) CRUD via the generic stored proc ──
+    if (method === 'GET' && url.startsWith('/api/dictionary')) {
+      const category = new URL(url, 'http://localhost').searchParams.get('category');
+      const items = await dictionaryCrud('list', category || null);
+      sendJson(res, 200, { ok: true, items: Array.isArray(items) ? items : [] });
+      return;
+    }
+
+    if (method === 'POST' && url.startsWith('/api/dictionary')) {
+      const body = await readJsonBody(req);
+      const idRaw = body && (body.dict_id != null ? body.dict_id : body.id);
+      const id = Number.parseInt(String(idRaw), 10);
+      const category = (body && body.category) || null;
+      const item = Number.isFinite(id)
+        ? await dictionaryCrud('update', category, body, id)
+        : await dictionaryCrud('insert', category, body, null);
+      if (item == null) {
+        sendJson(res, 400, { error: 'Could not save the dictionary value.' });
+        return;
+      }
+      sendJson(res, Number.isFinite(id) ? 200 : 201, { ok: true, item });
+      return;
+    }
+
+    if (method === 'DELETE' && url.startsWith('/api/dictionary')) {
+      const idRaw = new URL(url, 'http://localhost').searchParams.get('id');
+      const id = Number.parseInt(String(idRaw), 10);
+      if (!Number.isFinite(id)) {
+        sendJson(res, 400, { error: 'Missing dictionary id' });
+        return;
+      }
+      const deleted = await dictionaryCrud('delete', null, {}, id);
+      if (deleted !== true) {
+        sendJson(res, 404, { error: 'Dictionary value not found' });
+        return;
+      }
+      sendJson(res, 200, { ok: true, deleted: true });
       return;
     }
 

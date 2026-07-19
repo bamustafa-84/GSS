@@ -291,7 +291,33 @@ const initInscriptionForm = () => {
 
   // Same fancy dropdown UI (without search) for short lists.
   const maritalCombo = initSearchableSelect(field('MaritalStatus'), { searchable: false });
-  const educationCombo = initSearchableSelect(field('EducationLevel'), { searchable: false });
+  const educationSelect = field('EducationLevel');
+  const educationCombo = initSearchableSelect(educationSelect, { searchable: false });
+
+  // Expose a hook so the Dictionary manager can (re)populate the Education
+  // Level options straight from the `dictionary` table (category edu_lvl).
+  /** @type {any} */ (window).GSSEducationLevel = {
+    setOptions(/** @type {{ code?: string, label: string }[]} */ items) {
+      if (!educationSelect) return;
+      const current = educationSelect.value;
+      const placeholder = educationSelect.querySelector('option[value=""]');
+      educationSelect.innerHTML = '';
+      if (placeholder) educationSelect.appendChild(placeholder);
+      (Array.isArray(items) ? items : []).forEach((it) => {
+        const opt = document.createElement('option');
+        opt.value = it.code || it.label;
+        opt.textContent = it.label;
+        educationSelect.appendChild(opt);
+      });
+      // Restore the previous selection when it still exists.
+      if (current) educationSelect.value = current;
+      if (educationCombo) educationCombo.refresh();
+    },
+    /** Re-sync the combo's visible label with the native select value. */
+    refresh() {
+      if (educationCombo) educationCombo.refresh();
+    },
+  };
 
   if (countrySelect) {
     countrySelect.addEventListener('change', () => {
@@ -415,11 +441,6 @@ const initInscriptionForm = () => {
     }
   });
 
-  // ── TEMP: prefill the whole form for insert testing ──────────
-  // Auto-fills every required field on load so the form can be submitted
-  // (and inserted via the Node API) without manual entry. The combobox
-  // labels are refreshed afterwards so the picked values are visible.
-  temp_fill_values();
   [countryCombo, cityCombo, maritalCombo, educationCombo].forEach((c) => c && c.refresh());
 };
 
@@ -521,110 +542,6 @@ const initSignaturePads = () => {
   });
 };
 
-
-
-
-
-// ── TEMP: auto-fill all required fields for insert testing ───
-// Call `temp_fill_values()` from the browser console (or `window.temp_fill_values()`)
-// to populate every required field with sample data so the form can be
-// submitted/inserted without manual entry. Remove before production.
-const temp_fill_values = () => {
-  const form = /** @type {HTMLFormElement | null} */ (document.getElementById('inscriptionForm'));
-  if (!form) {
-    console.warn('[temp_fill_values] #inscriptionForm not found.');
-    return;
-  }
-
-  /** @param {string} name @returns {any} */
-  const el = (name) => form.elements.namedItem(name);
-  const today = new Date().toISOString().split('T')[0];
-
-  const setInput = (/** @type {string} */ name, /** @type {string} */ value) => {
-    const f = el(name);
-    if (!f) return;
-    f.value = value;
-    f.dispatchEvent(new Event('input', { bubbles: true }));
-    f.dispatchEvent(new Event('change', { bubbles: true }));
-  };
-
-  const setRadio = (/** @type {string} */ name, /** @type {string} */ value) => {
-    const r = /** @type {HTMLInputElement | null} */ (form.querySelector(`input[name="${name}"][value="${value}"]`));
-    if (r) {
-      r.checked = true;
-      r.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-  };
-
-  const setCheckbox = (/** @type {string} */ name, /** @type {boolean} */ checked = true) => {
-    const c = /** @type {HTMLInputElement | null} */ (form.querySelector(`input[name="${name}"]`));
-    if (c) {
-      c.checked = checked;
-      c.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-  };
-
-  // Selects a specific value if present, otherwise the first non-empty option.
-  const setSelect = (/** @type {string} */ name, /** @type {string} */ preferred = '') => {
-    const s = /** @type {HTMLSelectElement | null} */ (el(name));
-    if (!s) return;
-    const match = Array.from(s.options).find((o) => o.value === preferred && preferred);
-    const opt = match || Array.from(s.options).find((o) => o.value);
-    if (opt) {
-      s.value = opt.value;
-      s.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-  };
-
-  // Personal information
-  setInput('RegistrationDate', today);
-  setInput('FullName', 'Test Candidate');
-  setInput('Phone1', '999 111 222');
-  setInput('Phone2', '999 333 444');
-  setInput('FatherName', 'Test Father');
-  setInput('MotherName', 'Test Mother');
-  setInput('Email', 'test@example.com');
-  setInput('DateOfBirth', '1995-06-15');
-  setSelect('Nationality');           // first available country → populates cities
-  setSelect('PlaceOfBirth');          // first available city (populated above)
-  setRadio('Gender', 'Male');
-  setSelect('MaritalStatus', 'Single');
-  setInput('FullAddress', '123 Test Street, Test City');
-
-  // Education & experience
-  setSelect('EducationLevel', 'Secondary');
-  setRadio('IsFrenchLiterate', 'Yes');
-  setRadio('HasSecurityExperience', 'Yes');
-  setInput('SecurityExperienceDetails', 'Two years as a security guard.');
-
-  // Health & documents
-  setRadio('HasHealthIssues', 'No');
-  setCheckbox('HasIdOrPassportCopy', true);
-  setCheckbox('HasPassportPhotos', true);
-
-  // Registration fees
-  setRadio('IsPaid', 'Paid');
-
-  // Applicant's declaration
-  setInput('ApplicantName', 'Test Candidate');
-  const sig = /** @type {HTMLInputElement | null} */ (el('ApplicantSignature'));
-  if (sig) {
-    // 1×1 transparent PNG – enough to satisfy the signature-required check.
-    sig.value = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-  }
-  setInput('ApplicantDate', today);
-
-  // For administration use only
-  setRadio('InterviewResult', 'Pending');
-  setInput('OfficerName', 'Officer Test');
-  setInput('OfficerSignature', 'Officer Signature / Stamp');
-
-  console.log('[temp_fill_values] Required fields filled.');
-};
-
-/** @type {any} */ (window).temp_fill_values = temp_fill_values;
-
-
 // ── Dynamic DB mapping via the `dbname` attribute ────────────
 // Every form control that carries a `dbname` attribute maps to a
 // PostgreSQL column of that name. These helpers read/write the form
@@ -719,24 +636,3 @@ const applyDbValues = (form, row) => {
     input.dispatchEvent(new Event('change', { bubbles: true }));
   });
 };
-
-/** @type {any} */ (window).GSSForm = { collectDbValues, applyDbValues };
-
-
-// Auto-init when used as a standalone page
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    initInscriptionForm();
-    initSignaturePads();
-  });
-} else {
-  initInscriptionForm();
-  initSignaturePads();
-}
-
-
-// Expose for dynamic initialization after modal injection
-// (cast: `initInscriptionForm` is already a top-level global const,
-//  so it can't also be declared as a window global in global.js)
-/** @type {any} */ (window).initInscriptionForm = initInscriptionForm;
-

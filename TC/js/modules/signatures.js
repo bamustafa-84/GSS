@@ -203,6 +203,12 @@
       officerLocked?.classList.toggle('hidden', !locked);
       const rows = Array.isArray(data.signatures) ? data.signatures : [];
       renderList(rows);
+      // Keep the read-only Training Officer signature on the Commitment panel
+      // in sync (a newly designated / deleted officer must show immediately).
+      try {
+        const linker = /** @type {any} */ (window).GSSApplicant;
+        if (linker && typeof linker.loadOfficerSignature === 'function') linker.loadOfficerSignature();
+      } catch (_) { /* noop */ }
     } catch (_) {
       renderList([]);
       if (listEmpty) {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GSS | Rejoignez nos agents de sécurité</title>
-    <script src="./tailwind/tailwind.min.js"></script>
+    <script src="./libs/tailwind.min.js"></script>
     <script>
       // Make every Tailwind text-* utility fluid/responsive using clamp().
       // Each entry is [clamp(min, preferred, max), { lineHeight }].
@@ -29,7 +29,9 @@
       };
     </script>
     <!-- intl-tel-input (fancy phone field with country flags) -->
+    <!-- <link rel="stylesheet" href="./libs/intlTelInput.css" /> -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.3.1/build/css/intlTelInput.css" />
+    
 
     <style>
           /* Let the intl-tel-input wrapper fill the field width like the other inputs. */
@@ -150,6 +152,13 @@
           </div>
 
           <span id="psGridCount" class="ml-auto text-xs font-semibold text-slate-400"></span>
+
+          <!-- ── Export the current (filtered) grid to Excel ── -->
+          <button type="button" id="psGridExport" title="Export to Excel" aria-label="Export to Excel"
+            class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10 disabled:opacity-50">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span data-i18n="psGridExport">Export to Excel</span>
+          </button>
         </div>
 
         <!-- ── Data grid ── -->
@@ -225,6 +234,52 @@
               <p id="sigListMore" class="hidden px-2 pt-2 text-center text-xs text-slate-400"></p>
             </div>
 
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ DICTIONARY MANAGER OVERLAY ═══════════════════ -->
+    <div id="dictOverlay" class="fixed inset-0 z-[1100] hidden bg-[rgba(1,7,16,0.6)] p-3 backdrop-blur-sm sm:p-6" aria-hidden="true">
+      <div class="mx-auto flex h-full w-full max-w-2xl flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.35)]" role="dialog" aria-modal="true" aria-labelledby="dictTitle">
+        <div class="flex shrink-0 items-center justify-between gap-3 bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-5 py-4 text-white">
+          <div class="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            <h2 id="dictTitle" class="text-base font-semibold" data-i18n="dictTitle">Dictionary Management</h2>
+          </div>
+          <button type="button" id="dictClose" class="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/25" data-i18n="closeBtn">Close</button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto bg-slate-50 p-5 sm:p-6">
+          <!-- ── Add / edit a value ── -->
+          <form id="dictForm" novalidate class="mb-5 rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 sm:p-5">
+            <input type="hidden" id="dictId" />
+            <input type="hidden" id="dictCategory" />
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div class="flex flex-col gap-1.5">
+                <label for="dictFrLabel" class="text-sm font-semibold text-slate-700 after:content-['_*'] after:text-red-500 after:font-bold" data-i18n="dictLbFrValue">French value</label>
+                <input id="dictFrLabel" name="dictFrLabel" type="text" autocomplete="off" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label for="dictEnLabel" class="text-sm font-semibold text-slate-700 after:content-['_*'] after:text-red-500 after:font-bold" data-i18n="dictLbEnValue">English value</label>
+                <input id="dictEnLabel" name="dictEnLabel" type="text" autocomplete="off" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+              </div>
+            </div>
+            <div class="mt-3 flex items-center gap-2">
+              <button type="submit" id="dictSave" class="rounded-full bg-[#042F8D] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(4,47,141,0.2)] transition hover:-translate-y-px disabled:opacity-60" data-i18n="dictSaveBtn">Save</button>
+              <button type="button" id="dictCancelEdit" class="hidden rounded-full border-[1.5px] border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" data-i18n="dictCancelBtn">Cancel</button>
+            </div>
+            <p id="dictStatus" class="mt-2 min-h-5 text-sm font-semibold" aria-live="polite"></p>
+          </form>
+
+          <!-- ── Existing values ── -->
+          <div class="rounded-[20px] border-2 border-[#042F8D]/20 bg-white p-4 sm:p-5">
+            <div class="mb-3 flex items-center justify-between gap-2">
+              <h3 class="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-[#042F8D]" data-i18n="dictSavedValues">Saved values</h3>
+              <button type="button" id="dictRefresh" class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-500 transition hover:border-[#042F8D] hover:text-[#042F8D]" data-i18n="sigRefresh">Refresh</button>
+            </div>
+            <ul id="dictList" class="space-y-2"></ul>
+            <p id="dictListEmpty" class="hidden px-2 py-6 text-center text-sm text-slate-400" data-i18n="dictNone">No values yet.</p>
           </div>
         </div>
       </div>
@@ -470,7 +525,13 @@
                 </legend>
                 <div class="mt-4 grid gap-4 md:grid-cols-2">
                   <div class="flex flex-col gap-2">
-                    <label class="text-sm font-semibold text-slate-700" data-i18n="lbNiveauEtudes">Education Level</label>
+                    <div class="flex items-center justify-between gap-2">
+                      <label class="text-sm font-semibold text-slate-700" data-i18n="lbNiveauEtudes">Education Level</label>
+                      <button type="button" id="eduDictBtn" class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-[#042F8D] shadow-sm transition hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#042F8D]/20" data-dict-category="edu_lvl" data-dict-title-i18n="dictEduTitle" title="Dictionary Management" data-i18n-title="dictManage">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                        <span data-i18n="dictManage">Dictionary Management</span>
+                      </button>
+                    </div>
                     <div class="flex flex-wrap gap-2">
                       <select id="EducationLevel" name="EducationLevel" dbname="education_level" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
                           <option value="" disabled selected data-i18n="optSelectEducationLevel"></option>
@@ -748,7 +809,7 @@
 
                 <div class="rounded-[16px] border border-green-200 bg-green-50 p-4">
                   <label class="flex cursor-pointer items-start gap-3">
-                    <input type="checkbox" id="ack-conditions" class="gss-ack-check mt-0.5 h-4 w-4 rounded accent-green-600" data-tab="conditions" />
+                    <input type="checkbox" id="ack-conditions" dbname="ack_conditions" class="gss-ack-check mt-0.5 h-4 w-4 rounded accent-green-600" data-tab="conditions" />
                     <span class="text-sm leading-6 text-slate-700" data-i18n-html="ackConditions">I have read, understood, and accept the <strong>Registration Conditions</strong> of GSS Security Services.</span>
                   </label>
                 </div>
@@ -815,7 +876,7 @@
 
                 <div class="rounded-[16px] border border-green-200 bg-green-50 p-4">
                   <label class="flex cursor-pointer items-start gap-3">
-                    <input type="checkbox" id="ack-reglement" class="gss-ack-check mt-0.5 h-4 w-4 rounded accent-green-600" data-tab="reglement" />
+                    <input type="checkbox" id="ack-rules" dbname="ack_rules" class="gss-ack-check mt-0.5 h-4 w-4 rounded accent-green-600" data-tab="reglement" />
                     <span class="text-sm leading-6 text-slate-700" data-i18n-html="ackReglement">I have read, understood, and accept the <strong>Internal Regulations</strong> of GSS Security Services.</span>
                   </label>
                 </div>
@@ -1800,10 +1861,12 @@
     <script src="./js/modules/attendance.js"></script>
     <script src="./js/modules/eval.js"></script>
     <script src="./js/modules/signatures.js"></script>
+    <script src="./js/modules/dictionary.js"></script>
     <script src="./js/modules/applicant-link.js"></script>
 
     <!-- intl-tel-input plugin (bundled with utils for formatting/validation) -->
-    <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.3.1/build/js/intlTelInputWithUtils.min.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.3.1/build/js/intlTelInputWithUtils.min.js"></script> -->
+    <script src="./libs/intlTelInputWithUtils.min.js"></script>
     <script>
       // Upgrade the Panel 1 phone fields to intl-tel-input.
 

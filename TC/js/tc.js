@@ -11,12 +11,21 @@ const tabState = { registration: false, conditions: false, reglement: false, eng
                    // lettre: false, uniforme: false, 
                    dossier: false };
 
-let defaultTab = 'registration';
+let defaultTab = Object.keys(tabState)[0];; //'registration';
 
-// ── Sequential tab locking ─────────────────────────────────
+//#region FILL THE FORM BUTTON / OPEN DEFAULT TAB (REGISTRATION FOR NOW)
+const openModal = () => {
+  modal?.classList.add('flex');
+  modal?.classList.remove('hidden');
+  switchTab(defaultTab);
+};
+openFormBtn?.addEventListener('click', openModal);
+//#endregion
+
+//#region SWITCH TABS
+const TAB_ORDER = Object.keys(tabState);
+
 // A tab unlocks only once the previous tab in the flow is completed (green).
-const TAB_ORDER = ['registration', 'conditions', 'reglement', 'engagement', 'presences', 'exam', 'evaluation', 'mensuration', 'dossier'];
-
 /** @param {string} name @returns {boolean} */
 const isTabUnlocked = (name) => {
   const idx = TAB_ORDER.indexOf(name);
@@ -37,16 +46,6 @@ const updateTabLocks = () => {
   });
 };
 
-//#region FILL THE FORM BUTTON / OPEN DEFAULT TAB (REGISTRATION FOR NOW)
-const openModal = () => {
-  modal?.classList.add('flex');
-  modal?.classList.remove('hidden');
-  switchTab(defaultTab);
-};
-openFormBtn?.addEventListener('click', openModal);
-//#endregion
-
-//#region SWITCH TABS
 /** @param {string} tabName */
 const switchTab = (tabName) => {
   // Enforce the sequential workflow: locked tabs cannot be opened.
@@ -103,6 +102,16 @@ const switchTab = (tabName) => {
     behavior: 'smooth'
   });
 
+  // Refresh the read-only Training Officer signature whenever the
+  // Commitment (engagement) panel is opened, so a signature designated
+  // after page load shows up without needing a reload.
+  if (tabName === 'engagement') {
+    try {
+      const linker = /** @type {any} */ (window).GSSApplicant;
+      if (linker && typeof linker.loadOfficerSignature === 'function') linker.loadOfficerSignature();
+    } catch (_) { /* noop */ }
+  }
+
   defaultTab = tabName;
   updateTabLocks();
 }
@@ -135,3 +144,24 @@ const closeModal = () => {
 };
 closeModalBtn?.addEventListener('click', closeModal);
 //#endregion
+
+// LOAD APP
+async function initializeApp() {
+    try {
+        await Promise.all([
+            initInscriptionForm(),
+            initSignaturePads()
+        ]);
+
+        console.log('Application initialized');
+
+    } catch (error) {
+        console.error('Initialization failed:', error);
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+    initializeApp();
+}

@@ -61,11 +61,11 @@
   // Per-panel acceptance configuration.
   const ACCEPT = /** @type {Record<string, any>} */ ({
     conditions: {
-      ack: 'ack-conditions', tab: 'conditions', col: 'conditions_accepted', dot: '2',
+      ack: 'ack-conditions', tab: 'conditions', col: 'ack_conditions', dot: '2',
       confirmKey: 'confirmConditions', confirmMsg: 'Are you sure you want to accept the Registration Conditions?',
     },
     reglement: {
-      ack: 'ack-reglement', tab: 'reglement', col: 'rules_accepted', dot: '3',
+      ack: 'ack-rules', tab: 'reglement', col: 'ack_rules', dot: '3',
       confirmKey: 'confirmRules', confirmMsg: 'Are you sure you want to accept the Internal Regulations?',
     },
     engagement: {
@@ -87,6 +87,10 @@
   });
 
   // ── Field helpers ──────────────────────────────────────────────
+  /** Coerce a DB/API value (boolean, 't'/'f', 'true'/'false', 1/0) to boolean. */
+  const isTruthy = (/** @type {any} */ value) =>
+    value === true || value === 1 || value === 't' || value === 'true' || value === 'yes' || value === 'on';
+
   const formatValue = (/** @type {any} */ value, /** @type {boolean} */ isDate) => {
     if (value === null || value === undefined) return '';
     if (isDate) {
@@ -101,7 +105,7 @@
     el.readOnly = true;
     el.setAttribute('aria-readonly', 'true');
     el.tabIndex = -1;
-    el.classList.add('bg-slate-100', 'text-slate-500', 'cursor-not-allowed');
+    el.classList.add('bg-slate-100', 'opacity-80', 'cursor-not-allowed');
     el.classList.remove('bg-white');
     if (String(el.type || '').toLowerCase() === 'date') el.classList.add('pointer-events-none');
   };
@@ -111,7 +115,7 @@
     el.readOnly = false;
     el.removeAttribute('aria-readonly');
     el.tabIndex = 0;
-    el.classList.remove('bg-slate-100', 'text-slate-500', 'cursor-not-allowed', 'pointer-events-none');
+    el.classList.remove('bg-slate-100', 'opacity-80', 'cursor-not-allowed', 'pointer-events-none');
     el.classList.add('bg-white');
   };
 
@@ -149,10 +153,22 @@
     p.canvas.style.pointerEvents = 'none';
     p.clear?.classList.add('hidden');
     if (url) {
+      // If the image fails to load (missing/deleted signature, server down),
+      // hide the broken-image icon and fall back to the placeholder hint.
+      p.img.onerror = () => {
+        p.img.removeAttribute('src');
+        p.img.classList.add('hidden');
+        p.hint?.classList.remove('hidden');
+      };
+      p.img.onload = () => {
+        p.img.classList.remove('hidden');
+        p.hint?.classList.add('hidden');
+      };
+      p.img.classList.add('hidden');
+      p.hint?.classList.remove('hidden');
       p.img.src = url;
-      p.img.classList.remove('hidden');
-      p.hint?.classList.add('hidden');
     } else {
+      p.img.onerror = null;
       p.img.removeAttribute('src');
       p.img.classList.add('hidden');
       p.hint?.classList.remove('hidden');
@@ -276,7 +292,20 @@
       const ok = window.confirm(t(cfg.confirmKey, cfg.confirmMsg));
       if (!ok) { ack.checked = false; return; }
       applyAcceptance(key, true, true);
+      // Mirror the Registration behaviour: once this step is confirmed (green),
+      // move the user straight to the next step in the workflow.
+      goToNextTab(cfg.tab);
     });
+  };
+
+  /** Advance to the next tab after the given one is completed (green). */
+  const goToNextTab = (/** @type {string} */ tab) => {
+    try {
+      const order = (typeof TAB_ORDER !== 'undefined' && Array.isArray(TAB_ORDER)) ? TAB_ORDER : null;
+      if (!order) return;
+      const next = order[order.indexOf(tab) + 1];
+      if (next && typeof switchTab === 'function') switchTab(next);
+    } catch (_) { /* noop */ }
   };
 
   // ── Registration completion / read-only ───────────────────────
@@ -303,6 +332,8 @@
     setRegistrationReadonly(true);
     setGreenTab('registration', true, '1');
     try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
+    // Step 1 is done and green → automatically move the user to Step 2.
+    try { if (typeof switchTab === 'function') switchTab('conditions'); } catch (_) { /* noop */ }
   };
 
   /** Fetch + render the current Training Officer signature (read-only) on Panel 4. */
@@ -338,6 +369,13 @@
       linker.applyDbValues(form, record);
     }
 
+    // Refresh the Education Level combo so the stored value (applied above) is
+    // reflected in the searchable dropdown's visible label.
+    try {
+      const edu = /** @type {any} */ (window).GSSEducationLevel;
+      if (edu && typeof edu.refresh === 'function') edu.refresh();
+    } catch (_) { /* noop */ }
+
     // DB-generated candidate number.
     const candNo = byId('CandidateNo');
     if (candNo) candNo.value = record.candidate_no != null ? String(record.candidate_no) : '';
@@ -358,12 +396,12 @@
     SIG_IDS.forEach((cid) => showSignatureImage(cid, url));
 
     // Restore each panel's accepted state from the record.
-    if (record.conditions_accepted) applyAcceptance('conditions', true, false);
-    if (record.rules_accepted) applyAcceptance('reglement', true, false);
+    if (isTruthy(record.ack_conditions)) applyAcceptance('conditions', true, false);
+    if (isTruthy(record.ack_rules)) applyAcceptance('reglement', true, false);
     // Commitment panel: driven by the ack_commitment column. When true, tick
     // the checkbox (green + read-only); when false, leave it unticked so the
     // Card ID / Passport number stays editable.
-    const ackCommitment = record.ack_commitment === true || record.ack_commitment === 't' || record.ack_commitment === 'true';
+    const ackCommitment = isTruthy(record.ack_commitment);
     applyAcceptance('engagement', ackCommitment, false);
 
     // An existing applicant means Registration is already completed.
@@ -386,6 +424,15 @@
     currentId = null;
     const form = /** @type {HTMLFormElement | null} */ (document.getElementById('inscriptionForm'));
     if (form) form.reset();
+
+    // Education Level must start empty on a new form — clear it and refresh the
+    // searchable combo so no stale value/label lingers.
+    const edu = byId('EducationLevel');
+    if (edu) edu.value = '';
+    try {
+      const eduHook = /** @type {any} */ (window).GSSEducationLevel;
+      if (eduHook && typeof eduHook.refresh === 'function') eduHook.refresh();
+    } catch (_) { /* noop */ }
 
     const candNo = byId('CandidateNo');
     if (candNo) candNo.value = '';

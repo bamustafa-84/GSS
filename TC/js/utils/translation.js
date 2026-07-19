@@ -21,7 +21,7 @@ const translations = {
     // ── Modal / tabs ─────────────────────────────────────────
     modalTitle: 'Processus d\'inscription', closeBtn: 'Fermer',
     psTitle: 'Rechercher', psAllPanels: 'Tous les panneaux', psSearchPlaceholder: 'Rechercher une info dans le panneau sélectionné…', noPanelFound: 'Aucun résultat',
-    psGrid: 'Grille', psGridTitle: 'Panneaux et filtres',
+    psGrid: 'Grille', psGridTitle: 'Panneaux et filtres', psGridExport: 'Exporter vers Excel', psSortHint: 'Cliquer pour trier',
     psGridChoose: 'Choisir un panneau', psGridChoosePlaceholder: 'Choisir un panneau…', psGridSearchPanel: 'Rechercher un panneau…', psApplicant: 'Candidat',
     psGridPick: 'Sélectionnez un panneau pour afficher sa grille de données.',
     psColSection: 'Section', psColInfo: 'Information', psColType: 'Type', psFilter: 'Filtrer',
@@ -54,6 +54,12 @@ const translations = {
     confirmRules: 'Êtes-vous sûr de vouloir accepter le Règlement intérieur ?',
     confirmCommitment: 'Êtes-vous sûr de vouloir accepter l\'Engagement de confidentialité ?',
     psColEdit: 'Modifier',
+    dictManage: 'Gestion du dictionnaire', dictTitle: 'Gestion du dictionnaire', dictEduTitle: 'Niveaux d\'études',
+    dictLbValue: 'Valeur', dictLbFrValue: 'Valeur (français)', dictLbEnValue: 'Valeur (anglais)', dictSaveBtn: 'Enregistrer', dictUpdateBtn: 'Mettre à jour', dictCancelBtn: 'Annuler',
+    dictSavedValues: 'Valeurs enregistrées', dictNone: 'Aucune valeur pour le moment.', dictEdit: 'Modifier', dictDelete: 'Supprimer',
+    dictSaving: 'Enregistrement…', dictSavedOk: 'Valeur enregistrée.', dictDeletedOk: 'Valeur supprimée.',
+    dictErrValue: 'Une valeur est requise.', dictErrFrValue: 'La valeur en français est requise.', dictErrEnValue: 'La valeur en anglais est requise.', dictErrSave: 'Impossible d\'enregistrer la valeur.', dictErrDelete: 'Impossible de supprimer la valeur.',
+    dictConfirmDelete: 'Supprimer cette valeur ? Cette action est irréversible.', dictLoadErr: 'Impossible de charger les valeurs. Le serveur est-il démarré ?',
     tabRegistration: 'Inscription', tabConditions: 'Conditions', tabReglement: 'Règlement', tabEngagement: 'Engagement',
     // ── Panel 1 · Registration Form ──────────────────────────
     formTag: 'Formulaire d\'inscription',
@@ -443,7 +449,7 @@ const translations = {
     // ── Modal / tabs ─────────────────────────────────────────
     modalTitle: 'Application Process', closeBtn: 'Close',
     psTitle: 'Find in form', psAllPanels: 'All panels', psSearchPlaceholder: 'Search any info in the selected panel…', noPanelFound: 'No results found',
-    psGrid: 'Grid', psGridTitle: 'Panels & filters',
+    psGrid: 'Grid', psGridTitle: 'Panels & filters', psGridExport: 'Export to Excel', psSortHint: 'Click to sort',
     psGridChoose: 'Select a panel', psGridChoosePlaceholder: 'Choose a panel…', psGridSearchPanel: 'Search panel…', psApplicant: 'Applicant',
     psGridPick: 'Select a panel to display its data grid.',
     psColSection: 'Section', psColInfo: 'Information', psColType: 'Type', psFilter: 'Filter',
@@ -476,6 +482,12 @@ const translations = {
     confirmRules: 'Are you sure you want to accept the Internal Regulations?',
     confirmCommitment: 'Are you sure you want to accept the Confidentiality Agreement?',
     psColEdit: 'Edit',
+    dictManage: 'Dictionary Management', dictTitle: 'Dictionary Management', dictEduTitle: 'Education Levels',
+    dictLbValue: 'Value', dictLbFrValue: 'French value', dictLbEnValue: 'English value', dictSaveBtn: 'Save', dictUpdateBtn: 'Update', dictCancelBtn: 'Cancel',
+    dictSavedValues: 'Saved values', dictNone: 'No values yet.', dictEdit: 'Edit', dictDelete: 'Delete',
+    dictSaving: 'Saving…', dictSavedOk: 'Value saved.', dictDeletedOk: 'Value deleted.',
+    dictErrValue: 'A value is required.', dictErrFrValue: 'The French value is required.', dictErrEnValue: 'The English value is required.', dictErrSave: 'Could not save the value.', dictErrDelete: 'Could not delete the value.',
+    dictConfirmDelete: 'Delete this value? This action cannot be undone.', dictLoadErr: 'Could not load values. Is the server running?',
     tabRegistration: 'Registration', tabConditions: 'Conditions', tabReglement: 'Rules', tabEngagement: 'Commitment',
     // ── Panel 1 · Registration Form ──────────────────────────
     formTag: 'Registration Form',
