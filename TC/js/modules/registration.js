@@ -1,4 +1,6 @@
 // @ts-check
+/// <reference path="../utils/translation.js" />
+
 // ── Searchable <select> enhancer ─────────────────────────────
 // Turns a native <select> into an accessible combobox with a search
 // box shown when the list is open. The native select stays in the DOM
@@ -630,9 +632,24 @@ const applyDbValues = (form, row) => {
     } else if (type === 'file') {
       // File inputs cannot be set programmatically for security reasons.
       return;
-    } else {
-      input.value = value == null ? '' : value;
+    } 
+    else if (type === 'select-one') {
+        // update hidden select
+        input.value = String(value ?? '').trim();;
+
+        // update visible text
+        const span = input
+            .closest('.relative')
+            ?.querySelector('button span');
+
+        if (span) {
+            span.textContent = value;
+            span.classList.remove('text-slate-400');
+        }
     }
-    input.dispatchEvent(new Event('change', { bubbles: true }));
+    else //if (type === 'select-one'){
+      input.value = value == null ? '' : value;
+    
+    //input.dispatchEvent(new Event('change', { bubbles: true }));
   });
 };

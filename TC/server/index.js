@@ -222,7 +222,7 @@ const serveStatic = (res, urlPath) => {
   }
 
   fs.stat(target, (err, stats) => {
-    const file = !err && stats.isDirectory() ? path.join(target, 'index.html') : target;
+    const file = !err && stats.isDirectory() ? path.join(target, 'tc.html') : target;
     fs.readFile(file, (readErr, data) => {
       if (readErr) {
         sendJson(res, 404, { error: 'Not found' });
@@ -650,7 +650,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     // Anything else → static assets (default to tc.html at the root).
-    serveStatic(res, url === '/' ? '/tc.html' : url);
+    serveStatic(res, url === '/' ? 'tc.html' : url);
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('Request failed:', err);
@@ -662,7 +662,7 @@ ensureDbReady()
   .then(() => {
     server.listen(PORT, () => {
       // eslint-disable-next-line no-console
-      console.log(`GSS test server running → http://localhost:${PORT}/tc.html`);
+      console.log(`GSS test server running → http://localhost:${PORT}/tc/tc.html`);
     });
   })
   .catch((err) => {

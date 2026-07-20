@@ -226,6 +226,7 @@
    * @param {Record<string, any>} record
    */
   const openRecordForm = (/** @type {string} */ tab, /** @type {Record<string, any>} */ record) => {
+
     const modal = document.getElementById('formModal');
     // Open the modal directly (do NOT click #openFormBtn — that resets to New mode).
     if (modal && modal.classList.contains('hidden')) {
@@ -1146,6 +1147,9 @@
   });
   gridPanelSearch?.addEventListener('input', renderGridPanelList);
 
+
+
+  //#region RENDER GRI VIEW
   // ── Open / close the grid overlay ──────────────────────────────
   const openGrid = () => {
     if (!gridOverlay) return;
@@ -1153,7 +1157,7 @@
     gridOverlay.setAttribute('aria-hidden', 'false');
     // Re-fetch fresh data each time the grid is opened.
     clearTableCache();
-    // Empty by default: only render once a panel is picked from the dropdown.
+    // Empty by default: only render once a panel is picked from the dropdown. 
     renderDataGrid();
   };
   const closeGrid = () => {
@@ -1176,6 +1180,12 @@
       closeGridMenu();
     }
   });
+  //#endregion
+
+
+
+
+
 
   // ── Language sync ──────────────────────────────────────────────
   document.querySelectorAll('[data-lang]').forEach((b) =>

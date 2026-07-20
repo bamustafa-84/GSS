@@ -30,7 +30,7 @@ function updateEvalSummary() {
   }
 }
 
-(function initEvaluationPanel() {
+(function initEvaluationPanel() { 
   document.querySelectorAll('#eval-tbody .eval-note-obt').forEach(inp => {
     inp.addEventListener('input', updateEvalSummary);
   });

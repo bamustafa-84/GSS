@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GSS | Login</title>
-    <script src="./tailwind/tailwind.min.js"></script>
+    <script src="./libs/tailwind.min.js"></script>
     <script>
       // Make every Tailwind text-* utility fluid/responsive using clamp().
       // Each entry is [clamp(min, preferred, max), { lineHeight }].
@@ -121,7 +121,7 @@
           <form id="loginForm" class="space-y-5" novalidate>
             <!-- Email -->
             <div class="space-y-1.5">
-              <label for="email" class="text-sm font-semibold text-slate-700" data-i18n="loginEmailLabel">Email address</label>
+              <label for="email" class="text-sm font-semibold text-slate-700" data-i18n="loginEmailLabel">Username</label>
               <div class="group relative">
                 <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition group-focus-within:text-[#042F8D]">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
@@ -215,17 +215,9 @@
 
           <!-- Email -->
           <div class="space-y-1.5">
-            <label for="suEmail" class="text-sm font-semibold text-slate-700" data-i18n="signupEmailLabel">Email address</label>
+            <label for="suEmail" class="text-sm font-semibold text-slate-700" data-i18n="signupEmailLabel">Username</label>
             <input id="suEmail" name="email" type="email" inputmode="email" autocomplete="email" required
               placeholder="name@example.com" data-i18n-placeholder="signupEmailPh"
-              class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-          </div>
-
-          <!-- Phone -->
-          <div class="space-y-1.5">
-            <label for="suPhone" class="text-sm font-semibold text-slate-700" data-i18n="signupPhoneLabel">Phone number</label>
-            <input id="suPhone" name="phone" type="tel" inputmode="tel" autocomplete="tel" pattern="^\+?[0-9\s().-]{7,20}$"
-              placeholder="+243 999 000 000" data-i18n-placeholder="signupPhonePh"
               class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
           </div>
 
@@ -280,7 +272,7 @@
     </div>
 
     <script src="./js/global.js"></script>
-    <script src="./js/translation.js"></script>
+    <script src="./js/utils/translation.js"></script>
     <script src="./js/login.js"></script>
   </body>
 </html>

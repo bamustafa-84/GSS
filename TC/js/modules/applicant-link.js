@@ -364,9 +364,9 @@
     });
 
     const form = /** @type {HTMLFormElement | null} */ (document.getElementById('inscriptionForm'));
-    const linker = /** @type {any} */ (window).GSSForm;
-    if (form && linker && typeof linker.applyDbValues === 'function') {
-      linker.applyDbValues(form, record);
+    //const linker = /** @type {any} */ (window).GSSForm;
+    if (form && record) {
+      applyDbValues(form, record);
     }
 
     // Refresh the Education Level combo so the stored value (applied above) is

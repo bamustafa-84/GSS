@@ -1,4 +1,5 @@
 // @ts-check
+/// <reference path="./modules/registration.js" />
 
 const modal = document.getElementById('formModal');
 const openFormBtn = document.getElementById('openFormBtn');
