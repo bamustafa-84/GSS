@@ -1,5 +1,6 @@
 // @ts-check
 /// <reference path="./modules/registration.js" />
+/// <reference path="./modules/applicant-link.js" />
 
 const modal = document.getElementById('formModal');
 const openFormBtn = document.getElementById('openFormBtn');
@@ -151,7 +152,9 @@ async function initializeApp() {
     try {
         await Promise.all([
             initInscriptionForm(),
-            initSignaturePads()
+            initSignaturePads(),
+            
+            initApplicantForm()
         ]);
 
         console.log('Application initialized');

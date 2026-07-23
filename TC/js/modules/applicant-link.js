@@ -13,13 +13,32 @@
  *     read-only → persist).
  *   • Resets the form to "New" mode when the Fill-the-form button is used.
  */
-(() => {
-  'use strict';
+const SIG_IDS = ['Cond-ApplicantSignature', 'rules-ApplicantSignature', 'Comm-ApplicantSignature'];
+const byId = (/** @type {string} */ id) => /** @type {HTMLInputElement | null} */ (document.getElementById(id));
+
+const ACCEPT = /** @type {Record<string, any>} */ ({
+    conditions: {
+      ack: 'ack-conditions', tab: 'conditions', col: 'ack_conditions', dot: '2',
+      confirmKey: 'confirmConditions', confirmMsg: 'Are you sure you want to accept the Registration Conditions?',
+    },
+    reglement: {
+      ack: 'ack-rules', tab: 'reglement', col: 'ack_rules', dot: '3',
+      confirmKey: 'confirmRules', confirmMsg: 'Are you sure you want to accept the Internal Regulations?',
+    },
+    engagement: {
+      ack: 'ack-engagement', tab: 'engagement', col: 'ack_commitment', dot: '4',
+      confirmKey: 'confirmCommitment', confirmMsg: 'Are you sure you want to accept the Confidentiality Agreement?',
+      extra: { 'Comm-IDPassportNumber': 'id_pass_no' },
+    },
+});
+
+const DATE_COLS = new Set(['registration_date', 'date_of_birth', 'applicant_date']);
+
 
   const API_BASE =
     (location.protocol.startsWith('http') && location.port !== '5500') ? '' : 'http://localhost:3000';
 
-  const byId = (/** @type {string} */ id) => /** @type {HTMLInputElement | null} */ (document.getElementById(id));
+  
 
   const t = (/** @type {string} */ key, /** @type {string} */ fallback) => {
     try {
@@ -44,36 +63,14 @@
   });
 
   // Read-only signature canvases on panels 2/3/4 (always read-only).
-  const SIG_IDS = ['Cond-ApplicantSignature', 'rules-ApplicantSignature', 'Comm-ApplicantSignature'];
+
   // The Registration panel signature pad (editable for new applicants).
   const REG_SIG_ID = 'ApplicantSignature';
 
-  // Live mirror: applicant column → { source registration field id, targets }.
-  const MIRROR = /** @type {{ col: string, source: string, targets: string[] }[]} */ ([
-    { col: 'full_name', source: 'FullName', targets: ['Cond-ApplicantName', 'rules-ApplicantName', 'Comm-ApplicantName', 'Comm-ApplicantName1'] },
-    { col: 'registration_date', source: 'RegistrationDate', targets: ['Cond-ApplicantDate', 'rules-ApplicantDate', 'Comm-ApplicantDate'] },
-    { col: 'date_of_birth', source: 'DateOfBirth', targets: ['Comm-DateOfBirth'] },
-    { col: 'phone_1', source: 'Phone1', targets: ['Comm-Phone1'] },
-  ]);
-
-  const DATE_COLS = new Set(['registration_date', 'date_of_birth', 'applicant_date']);
+  
 
   // Per-panel acceptance configuration.
-  const ACCEPT = /** @type {Record<string, any>} */ ({
-    conditions: {
-      ack: 'ack-conditions', tab: 'conditions', col: 'ack_conditions', dot: '2',
-      confirmKey: 'confirmConditions', confirmMsg: 'Are you sure you want to accept the Registration Conditions?',
-    },
-    reglement: {
-      ack: 'ack-rules', tab: 'reglement', col: 'ack_rules', dot: '3',
-      confirmKey: 'confirmRules', confirmMsg: 'Are you sure you want to accept the Internal Regulations?',
-    },
-    engagement: {
-      ack: 'ack-engagement', tab: 'engagement', col: 'ack_commitment', dot: '4',
-      confirmKey: 'confirmCommitment', confirmMsg: 'Are you sure you want to accept the Confidentiality Agreement?',
-      extra: { 'Comm-IDPassportNumber': 'id_pass_no' },
-    },
-  });
+  
 
   /** @type {number | null} The candidate number of the loaded applicant. */
   let currentId = null;
@@ -100,14 +97,44 @@
     return String(value);
   };
 
-  const makeReadonly = (/** @type {HTMLInputElement | null} */ el) => {
-    if (!el) return;
-    el.readOnly = true;
-    el.setAttribute('aria-readonly', 'true');
-    el.tabIndex = -1;
-    el.classList.add('bg-slate-100', 'opacity-80', 'cursor-not-allowed');
-    el.classList.remove('bg-white');
-    if (String(el.type || '').toLowerCase() === 'date') el.classList.add('pointer-events-none');
+  const makeReadonly = (/** @type {HTMLInputElement | HTMLTextAreaElement | null} */ el) => {
+    // if (!el) return;
+    // el.readOnly = true;
+    // el.setAttribute('aria-readonly', 'true');
+    // el.tabIndex = -1;
+    // el.classList.add('bg-slate-100', 'opacity-80', 'cursor-not-allowed');
+    // el.classList.remove('bg-white');
+    // if (String(el.type || '').toLowerCase() === 'date') el.classList.add('pointer-events-none');
+
+    //  if (!el) return;
+
+    // const tag = el.tagName.toLowerCase();
+    // const type = (el.getAttribute("type") || "").toLowerCase();
+
+    // // Textbox, date, number, email, etc.
+    // if (tag === "input" || tag === "textarea") {
+    //     el.readOnly = true;
+    // }
+
+    // // Dropdown
+    // else if (tag === "select") {
+    //     el.disabled = true;
+    // }
+
+    // // Checkbox / Radio
+    // else if (type === "checkbox" || type === "radio") {
+    //     el.disabled = true;
+    // }
+
+    // // Visual style
+    // el.setAttribute("aria-readonly", "true");
+    // el.classList.add(
+    //     "bg-slate-100",
+    //     "opacity-80",
+    //     "cursor-not-allowed"
+    // );
+
+    // el.classList.remove("bg-white");
   };
 
   const unmakeReadonly = (/** @type {HTMLInputElement | null} */ el) => {
@@ -122,57 +149,6 @@
   const setTarget = (/** @type {string} */ id, /** @type {any} */ value, /** @type {boolean} */ isDate) => {
     const el = byId(id);
     if (el) el.value = formatValue(value, isDate);
-  };
-
-  // ── Signature pad helpers ──────────────────────────────────────
-  const padParts = (/** @type {string} */ canvasId) => {
-    const canvas = document.getElementById(canvasId);
-    const wrap = canvas ? canvas.closest('.gss-sign') : null;
-    if (!canvas || !wrap) return null;
-    let img = /** @type {HTMLImageElement | null} */ (wrap.querySelector('img.gss-sign-img'));
-    if (!img) {
-      img = document.createElement('img');
-      img.className = 'gss-sign-img pointer-events-none absolute inset-0 m-auto max-h-full max-w-full object-contain p-2 hidden';
-      img.alt = 'Signature';
-      wrap.appendChild(img);
-    }
-    return {
-      canvas: /** @type {HTMLCanvasElement} */ (canvas),
-      wrap,
-      img,
-      hint: wrap.querySelector('.gss-sign-hint'),
-      clear: wrap.querySelector('.gss-sign-clear'),
-      input: /** @type {HTMLInputElement | null} */ (wrap.querySelector('.gss-sign-input')),
-    };
-  };
-
-  /** Make a pad read-only and show the given signature image (or hide it). */
-  const showSignatureImage = (/** @type {string} */ canvasId, /** @type {string} */ url) => {
-    const p = padParts(canvasId);
-    if (!p) return;
-    p.canvas.style.pointerEvents = 'none';
-    p.clear?.classList.add('hidden');
-    if (url) {
-      // If the image fails to load (missing/deleted signature, server down),
-      // hide the broken-image icon and fall back to the placeholder hint.
-      p.img.onerror = () => {
-        p.img.removeAttribute('src');
-        p.img.classList.add('hidden');
-        p.hint?.classList.remove('hidden');
-      };
-      p.img.onload = () => {
-        p.img.classList.remove('hidden');
-        p.hint?.classList.add('hidden');
-      };
-      p.img.classList.add('hidden');
-      p.hint?.classList.remove('hidden');
-      p.img.src = url;
-    } else {
-      p.img.onerror = null;
-      p.img.removeAttribute('src');
-      p.img.classList.add('hidden');
-      p.hint?.classList.remove('hidden');
-    }
   };
 
   /** Re-enable an editable signature pad (used for New mode / no stored image). */
@@ -283,20 +259,7 @@
     }
   };
 
-  const wireAcceptance = (/** @type {string} */ key) => {
-    const cfg = ACCEPT[key];
-    const ack = byId(cfg.ack);
-    if (!ack) return;
-    ack.addEventListener('change', () => {
-      if (!ack.checked) return;
-      const ok = window.confirm(t(cfg.confirmKey, cfg.confirmMsg));
-      if (!ok) { ack.checked = false; return; }
-      applyAcceptance(key, true, true);
-      // Mirror the Registration behaviour: once this step is confirmed (green),
-      // move the user straight to the next step in the workflow.
-      goToNextTab(cfg.tab);
-    });
-  };
+ 
 
   /** Advance to the next tab after the given one is completed (green). */
   const goToNextTab = (/** @type {string} */ tab) => {
@@ -350,8 +313,166 @@
     }
   };
 
-  // ── Load an applicant record into the whole form ───────────────
-  const load = (/** @type {Record<string, any> | null | undefined} */ record) => {
+  // ── Reset the whole form to a blank "New" state ────────────────
+  const resetToNewMode = () => {
+    currentId = null;
+    const form = /** @type {HTMLFormElement | null} */ (document.getElementById('inscriptionForm'));
+    if (form) form.reset();
+
+    // Education Level must start empty on a new form — clear it and refresh the
+    // searchable combo so no stale value/label lingers.
+    const edu = byId('EducationLevel');
+    if (edu) edu.value = '';
+    try {
+      const eduHook = /** @type {any} */ (window).GSSEducationLevel;
+      if (eduHook && typeof eduHook.refresh === 'function') eduHook.refresh();
+    } catch (_) { /* noop */ }
+
+    const candNo = byId('CandidateNo');
+    if (candNo) candNo.value = '';
+
+    Object.keys(TEXT_MAP).forEach((id) => setTarget(id, '', false));
+    const idpass = byId('Comm-IDPassportNumber');
+    if (idpass) idpass.value = '';
+
+    enableSignaturePad(REG_SIG_ID);
+    SIG_IDS.forEach((cid) => showSignatureImage(cid, ''));
+
+    Object.keys(ACCEPT).forEach((k) => applyAcceptance(k, false, false));
+
+    // Registration editable + gray; re-lock the whole flow.
+    setRegistrationReadonly(false);
+    setGreenTab('registration', false, '1');
+    GENERIC_TABS.forEach((tab) => {
+      setGreenTab(tab, false, DOT_ALL[tab]);
+      const ack = byId('ack-' + tab);
+      if (ack) { ack.checked = false; ack.disabled = false; }
+    });
+    try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
+
+    try { if (typeof switchTab === 'function') switchTab('registration'); } catch (_) { /* noop */ }
+  };
+  ///** @type {any} */ (window).GSSApplicant = { initApplicantForm, load, mirrorFromForm, reset: resetToNewMode, completeRegistration, loadOfficerSignature };
+
+
+
+
+const initApplicantForm = () => {
+    // Applicant-mapped panel fields are always read-only.
+    //Object.keys(TEXT_MAP).forEach((id) => makeReadonly(byId(id)));
+    SIG_IDS.forEach((cid) => showSignatureImage(cid, ''));
+
+    MIRROR.forEach(({ source }) => {
+      const src = byId(source);
+      if (!src) return;
+      src.addEventListener('input', mirrorFromForm);
+      src.addEventListener('change', mirrorFromForm);
+    });
+
+    Object.keys(ACCEPT).forEach(wireAcceptance);
+
+    // Generic acks (panels without a DB acceptance column) just gate the flow.
+    GENERIC_TABS.forEach((tab) => {
+      const ack = byId('ack-' + tab);
+      if (!ack) return;
+      ack.addEventListener('change', () => {
+        if (!ack.checked) return;
+        setGreenTab(tab, true, DOT_ALL[tab]);
+        ack.disabled = true;
+        try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
+      });
+    });
+
+    // Show the current Training Officer signature (read-only) on Panel 4.
+    loadOfficerSignature();
+
+    // Fill-the-form button → open a blank form in New mode.
+    document.getElementById('openFormBtn')?.addEventListener('click', resetToNewMode);
+};
+
+const showSignatureImage = (/** @type {string} */ canvasId, /** @type {string} */ url) => {
+    const p = padParts(canvasId);
+    if (!p) return;
+    p.canvas.style.pointerEvents = 'none';
+    p.clear?.classList.add('hidden');
+    if (url) {
+      // If the image fails to load (missing/deleted signature, server down),
+      // hide the broken-image icon and fall back to the placeholder hint.
+      p.img.onerror = () => {
+        p.img.removeAttribute('src');
+        p.img.classList.add('hidden');
+        p.hint?.classList.remove('hidden');
+      };
+      p.img.onload = () => {
+        p.img.classList.remove('hidden');
+        p.hint?.classList.add('hidden');
+      };
+      p.img.classList.add('hidden');
+      p.hint?.classList.remove('hidden');
+      p.img.src = url;
+    } else {
+      p.img.onerror = null;
+      p.img.removeAttribute('src');
+      p.img.classList.add('hidden');
+      p.hint?.classList.remove('hidden');
+    }
+};
+
+// Live mirror: applicant column → { source registration field id, targets }.
+const MIRROR = /** @type {{ col: string, source: string, targets: string[] }[]} */ ([
+  { col: 'full_name', source: 'FullName', targets: ['Cond-ApplicantName', 'rules-ApplicantName', 'Comm-ApplicantName', 'Comm-ApplicantName1'] },
+  { col: 'registration_date', source: 'RegistrationDate', targets: ['Cond-ApplicantDate', 'rules-ApplicantDate', 'Comm-ApplicantDate'] },
+  { col: 'date_of_birth', source: 'DateOfBirth', targets: ['Comm-DateOfBirth'] },
+  { col: 'phone_1', source: 'Phone1', targets: ['Comm-Phone1'] },
+]);
+
+// ── Load an applicant record into the whole form ───────────────
+const mirrorFromForm = () => {
+  MIRROR.forEach(({ source, targets, col }) => {
+    const src = byId(source);
+    if (!src) return;
+    const isDate = DATE_COLS.has(col);
+    targets.forEach((tgt) => setTarget(tgt, src.value, isDate));
+  });
+};
+
+const padParts = (/** @type {string} */ canvasId) => {
+  const canvas = document.getElementById(canvasId);
+  const wrap = canvas ? canvas.closest('.gss-sign') : null;
+  if (!canvas || !wrap) return null;
+  let img = /** @type {HTMLImageElement | null} */ (wrap.querySelector('img.gss-sign-img'));
+  if (!img) {
+    img = document.createElement('img');
+    img.className = 'gss-sign-img pointer-events-none absolute inset-0 m-auto max-h-full max-w-full object-contain p-2 hidden';
+    img.alt = 'Signature';
+    wrap.appendChild(img);
+  }
+  return {
+    canvas: /** @type {HTMLCanvasElement} */ (canvas),
+    wrap,
+    img,
+    hint: wrap.querySelector('.gss-sign-hint'),
+    clear: wrap.querySelector('.gss-sign-clear'),
+    input: /** @type {HTMLInputElement | null} */ (wrap.querySelector('.gss-sign-input')),
+  };
+};
+
+ const wireAcceptance = (/** @type {string} */ key) => {
+    const cfg = ACCEPT[key];
+    const ack = byId(cfg.ack);
+    if (!ack) return;
+    ack.addEventListener('change', () => {
+      if (!ack.checked) return;
+      const ok = window.confirm(t(cfg.confirmKey, cfg.confirmMsg));
+      if (!ok) { ack.checked = false; return; }
+      applyAcceptance(key, true, true);
+      // Mirror the Registration behaviour: once this step is confirmed (green),
+      // move the user straight to the next step in the workflow.
+      goToNextTab(cfg.tab);
+    });
+  };
+
+const load = (/** @type {Record<string, any> | null | undefined} */ record) => {
     if (!record) return;
     currentId = record.candidate_no != null ? Number(record.candidate_no) : null;
 
@@ -408,96 +529,4 @@
     setRegistrationReadonly(true);
     setGreenTab('registration', true, '1');
     try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
-  };
-
-  const mirrorFromForm = () => {
-    MIRROR.forEach(({ source, targets, col }) => {
-      const src = byId(source);
-      if (!src) return;
-      const isDate = DATE_COLS.has(col);
-      targets.forEach((tgt) => setTarget(tgt, src.value, isDate));
-    });
-  };
-
-  // ── Reset the whole form to a blank "New" state ────────────────
-  const resetToNewMode = () => {
-    currentId = null;
-    const form = /** @type {HTMLFormElement | null} */ (document.getElementById('inscriptionForm'));
-    if (form) form.reset();
-
-    // Education Level must start empty on a new form — clear it and refresh the
-    // searchable combo so no stale value/label lingers.
-    const edu = byId('EducationLevel');
-    if (edu) edu.value = '';
-    try {
-      const eduHook = /** @type {any} */ (window).GSSEducationLevel;
-      if (eduHook && typeof eduHook.refresh === 'function') eduHook.refresh();
-    } catch (_) { /* noop */ }
-
-    const candNo = byId('CandidateNo');
-    if (candNo) candNo.value = '';
-
-    Object.keys(TEXT_MAP).forEach((id) => setTarget(id, '', false));
-    const idpass = byId('Comm-IDPassportNumber');
-    if (idpass) idpass.value = '';
-
-    enableSignaturePad(REG_SIG_ID);
-    SIG_IDS.forEach((cid) => showSignatureImage(cid, ''));
-
-    Object.keys(ACCEPT).forEach((k) => applyAcceptance(k, false, false));
-
-    // Registration editable + gray; re-lock the whole flow.
-    setRegistrationReadonly(false);
-    setGreenTab('registration', false, '1');
-    GENERIC_TABS.forEach((tab) => {
-      setGreenTab(tab, false, DOT_ALL[tab]);
-      const ack = byId('ack-' + tab);
-      if (ack) { ack.checked = false; ack.disabled = false; }
-    });
-    try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
-
-    try { if (typeof switchTab === 'function') switchTab('registration'); } catch (_) { /* noop */ }
-  };
-
-  // ── Init ───────────────────────────────────────────────────────
-  const init = () => {
-    // Applicant-mapped panel fields are always read-only.
-    Object.keys(TEXT_MAP).forEach((id) => makeReadonly(byId(id)));
-    SIG_IDS.forEach((cid) => showSignatureImage(cid, ''));
-
-    MIRROR.forEach(({ source }) => {
-      const src = byId(source);
-      if (!src) return;
-      src.addEventListener('input', mirrorFromForm);
-      src.addEventListener('change', mirrorFromForm);
-    });
-
-    Object.keys(ACCEPT).forEach(wireAcceptance);
-
-    // Generic acks (panels without a DB acceptance column) just gate the flow.
-    GENERIC_TABS.forEach((tab) => {
-      const ack = byId('ack-' + tab);
-      if (!ack) return;
-      ack.addEventListener('change', () => {
-        if (!ack.checked) return;
-        setGreenTab(tab, true, DOT_ALL[tab]);
-        ack.disabled = true;
-        try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
-      });
-    });
-
-    // Show the current Training Officer signature (read-only) on Panel 4.
-    loadOfficerSignature();
-
-    // Fill-the-form button → open a blank form in New mode.
-    document.getElementById('openFormBtn')?.addEventListener('click', resetToNewMode);
-  };
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
-
-  /** @type {any} */ (window).GSSApplicant = { load, mirrorFromForm, reset: resetToNewMode, completeRegistration, loadOfficerSignature };
-})();
+};
