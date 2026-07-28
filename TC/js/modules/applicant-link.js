@@ -1,4 +1,6 @@
 // @ts-check
+///<reference path="../utils/translation.js" />
+///<reference path="../tc.js" />
 /**
  * GSS · Applicant → form linker
  * ------------------------------------------------------------------
@@ -34,11 +36,6 @@ const ACCEPT = /** @type {Record<string, any>} */ ({
 
 const DATE_COLS = new Set(['registration_date', 'date_of_birth', 'applicant_date']);
 
-
-  const API_BASE =
-    (location.protocol.startsWith('http') && location.port !== '5500') ? '' : 'http://localhost:3000';
-
-  
 
   const t = (/** @type {string} */ key, /** @type {string} */ fallback) => {
     try {

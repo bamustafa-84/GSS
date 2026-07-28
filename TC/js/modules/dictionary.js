@@ -35,9 +35,6 @@
 
   if (!overlay || !form || !frInput || !enInput || !categoryInput || !list) return;
 
-  const API_BASE =
-    (location.protocol.startsWith('http') && location.port !== '5500') ? '' : 'http://localhost:3000';
-
   const lang = () => document.documentElement.lang || 'en';
 
   const t = (/** @type {string} */ key, /** @type {string} */ fallback) => {

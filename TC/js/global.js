@@ -25,6 +25,11 @@
  */
 const GSS_LANG_KEY = 'gss-lang';
 
+/**
+ * @type {string}
+ */
+const API_BASE = 'http://localhost:3000'
+
 /* ------------------------------------------------------------------
  * Tab / progress indicator Tailwind classes
  * Kept as individual constants for backwards compatibility with the
