@@ -39,7 +39,7 @@
   // API base: relative when served by the Node server, otherwise the local
   // test server (covers Live Server on :5500 and file:// previews).
   const API_BASE =
-    (location.protocol.startsWith('http') && location.port !== '5500') ? '' : 'http://localhost:3000';
+    (location.protocol.startsWith('http') && location.port !== '5500') ? location.origin : 'http://localhost:4000';
 
   const t = (/** @type {string} */ key, /** @type {string} */ fallback) => {
     try {

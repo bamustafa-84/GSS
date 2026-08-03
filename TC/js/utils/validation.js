@@ -52,7 +52,8 @@
         { key: 'ApplicantSignature', type: 'signature' },
         { key: 'ApplicantDate', type: 'input' },
         // Administration use
-        { key: 'InterviewResult', type: 'radio' }
+        { key: 'InterviewResult', type: 'radio' },
+        { key: 'Remarks', type: 'input', requiredIf: { field: 'InterviewResult', equals: 'Rejected' } }
       ]
     }
   };
@@ -245,12 +246,11 @@
       ? await gssForm.collectDbValues(form)
       : Object.fromEntries(new FormData(form).entries());
 
-    // The API lives on the Node server (port 3000). When the page is served
-    // from somewhere else (e.g. Live Server on 5500, or file://), target the
-    // Node server directly; otherwise use a same-origin relative path.
-    const apiBase = /^https?:\/\/(localhost|127\.0\.0\.1):3000$/.test(location.origin)
-      ? ''
-      : 'http://localhost:3000';
+    // The API lives on the Node server. Use the serving origin when opened from
+    // it, otherwise fall back to the local test server.
+    const apiBase = (location.protocol.startsWith('http') && location.port !== '5500')
+      ? location.origin
+      : 'http://localhost:4000';
 
     fetch(`${apiBase}/api/applicants`, {
       method: 'POST',
@@ -280,15 +280,10 @@
     if (!form || form.dataset.gssValidationReady) return;
     form.dataset.gssValidationReady = 'true';
 
-    // Take over submission: block the form when required fields are missing.
-    form.addEventListener('submit', (event) => {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      if (validatePanel('registration')) {
-        submitRegistration(form);
-      }
-    });
-
+    // Submission is owned by registration.js, which calls
+    // GSSValidation.validatePanel('registration') before saving. We only wire
+    // the live error-clearing here so there is a single submit path (and no
+    // duplicate/blocking handler that caused false "required" errors).
     form.addEventListener('input', (event) => clearFieldError(form, 'registration', event.target), true);
     form.addEventListener('change', (event) => clearFieldError(form, 'registration', event.target), true);
 

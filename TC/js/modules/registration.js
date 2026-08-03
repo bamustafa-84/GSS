@@ -172,23 +172,46 @@ const initInscriptionForm = () => {
       dobInput
     ].forEach(clearError);
 
-    // Required fields
-    const requiredFields = ['FullName', 'Phone1'];
-    const missing = requiredFields.filter((name) => {
-      const f = field(name);
-      return !f || f.value.trim() === '';
-    });
-    if (missing.length) {
-      missing.forEach((name) => setError(field(name), true));
-      status.textContent = m.required;
-      status.className = 'min-h-6 text-sm font-semibold text-red-600';
-      return;
+    // Full required-field validation via the shared engine (it highlights every
+    // missing field, respects conditional/hidden fields, and shows the message).
+    const gssV = /** @type {any} */ (window).GSSValidation;
+    // Reviewer edit mode (Admin / Head of Training changing a Pending outcome):
+    // only the Interview Result + Remarks are editable, so validate just those
+    // and skip the full-panel check on the read-only registration fields.
+    const reviewOnly = form.dataset.reviewOnly === 'true';
+    if (reviewOnly) {
+      const remarks = field('Remarks');
+      if (remarks) clearError(remarks);
+      const interview = /** @type {any} */ (form.elements.namedItem('InterviewResult'));
+      const rejected = interview && interview.value === 'Rejected';
+      if (rejected && remarks && remarks.value.trim() === '') {
+        setError(remarks, true);
+        remarks.focus();
+        status.textContent = m.remarksRequired || m.required;
+        status.className = 'min-h-6 text-sm font-semibold text-red-600';
+        return;
+      }
+    } else if (gssV && typeof gssV.validatePanel === 'function') {
+      if (!gssV.validatePanel('registration')) return;
+    } else {
+      // Fallback minimal check when the validation engine is unavailable.
+      const requiredFields = ['FullName', 'Phone1'];
+      const missing = requiredFields.filter((name) => {
+        const f = field(name);
+        return !f || f.value.trim() === '';
+      });
+      if (missing.length) {
+        missing.forEach((name) => setError(field(name), true));
+        status.textContent = m.required;
+        status.className = 'min-h-6 text-sm font-semibold text-red-600';
+        return;
+      }
     }
 
     // Phone format
     for (const name of ['Phone1', 'Phone2']) {
       const f = field(name);
-      if (f && !isValidPhone(f.value)) {
+      if (!reviewOnly && f && !isValidPhone(f.value)) {
         setError(f, true);
         f.focus();
         status.textContent = m.phone;
@@ -199,7 +222,7 @@ const initInscriptionForm = () => {
 
     // Email format
     const emailField = field('Email');
-    if (emailField && !isValidEmail(emailField.value)) {
+    if (!reviewOnly && emailField && !isValidEmail(emailField.value)) {
       setError(emailField, true);
       emailField.focus();
       status.textContent = m.email;
@@ -208,8 +231,9 @@ const initInscriptionForm = () => {
     }
 
     // Date of birth validation
-    if (dobInput && dobInput.value.trim() !== '') {
-      const dob = new Date(dobInput.value);
+    if (!reviewOnly && dobInput && dobInput.value.trim() !== '') {
+      const dobIso = /** @type {any} */ (window).GSSDate ? /** @type {any} */ (window).GSSDate.toISO(dobInput.value) : dobInput.value;
+      const dob = new Date(dobIso);
       if (Number.isNaN(dob.getTime())) {
         setError(dobInput, true);
         dobInput.focus();
@@ -238,9 +262,23 @@ const initInscriptionForm = () => {
     }
 
     // Persist the applicant, then mark the Registration panel completed.
-    const API_BASE = (location.protocol.startsWith('http') && location.port !== '5500') ? '' : 'http://localhost:3000';
+    const API_BASE = (location.protocol.startsWith('http') && location.port !== '5500') ? location.origin : 'http://localhost:4000';
     try {
-      const row = await collectDbValues(form);
+      let row;
+      if (reviewOnly) {
+        // Reviewer edit: touch ONLY the interview outcome + remarks so the
+        // read-only registration fields (and empty combos) are never sent.
+        const candNo = field('CandidateNo');
+        const interview = /** @type {any} */ (form.elements.namedItem('InterviewResult'));
+        const remarksEl = field('Remarks');
+        row = {
+          candidate_no: candNo ? candNo.value : '',
+          interview_result: interview ? interview.value : null,
+          remarks: remarksEl ? remarksEl.value.trim() : null,
+        };
+      } else {
+        row = await collectDbValues(form);
+      }
       const res = await fetch(`${API_BASE}/api/applicants`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -248,12 +286,20 @@ const initInscriptionForm = () => {
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok || !payload.ok) throw new Error(payload.error || 'Save failed');
-      status.textContent = m.ready(1);
+      status.textContent = m.submitted;
       status.className = 'min-h-6 text-sm font-semibold text-emerald-600';
       const linker = /** @type {any} */ (window).GSSApplicant;
-      if (linker && typeof linker.completeRegistration === 'function') {
+      if (!reviewOnly && linker && typeof linker.completeRegistration === 'function') {
         linker.completeRegistration(payload.applicant);
       }
+      // Refresh the toolbar notification counts (a new Pending applicant).
+      try { /** @type {any} */ (window).GSSAdmin?.refreshCounts?.(); } catch (_) { /* noop */ }
+      // Show the success message briefly, then close the modal.
+      window.setTimeout(() => {
+        const modalEl = document.getElementById('formModal');
+        if (modalEl) { modalEl.classList.add('hidden'); modalEl.classList.remove('flex'); }
+        try { if (linker && typeof linker.reset === 'function') linker.reset(); } catch (_) { /* noop */ }
+      }, 1400);
     } catch (err) {
       status.textContent = err instanceof Error ? err.message : 'Save failed';
       status.className = 'min-h-6 text-sm font-semibold text-red-600';
@@ -412,7 +458,11 @@ const collectDbValues = async (form) => {
     }
 
     // text, tel, email, date, hidden, textarea, select, …
-    const value = typeof input.value === 'string' ? input.value.trim() : input.value;
+    let value = typeof input.value === 'string' ? input.value.trim() : input.value;
+    // dd/MM/yyyy date fields are stored/sent as ISO (yyyy-MM-dd).
+    if (value !== '' && el.getAttribute && el.getAttribute('data-date') && /** @type {any} */ (window).GSSDate) {
+      value = /** @type {any} */ (window).GSSDate.toISO(value);
+    }
     row[column] = value === '' ? null : value;
   }
 
@@ -434,6 +484,14 @@ const applyDbValues = (form, row) => {
     const input = /** @type {any} */ (el);
     const type = String(input.type || '').toLowerCase();
     const value = row[column];
+
+    // dd/MM/yyyy date fields: show the ISO DB value in dd/MM/yyyy.
+    if (el.getAttribute('data-date')) {
+      input.value = (value == null || value === '')
+        ? ''
+        : (/** @type {any} */ (window).GSSDate ? /** @type {any} */ (window).GSSDate.toDMY(value) : value);
+      return;
+    }
 
     if (type === 'radio') {
       // Boolean columns (e.g. is_french_literate, has_security_experience,

@@ -72,6 +72,9 @@ const DATE_COLS = new Set(['registration_date', 'date_of_birth', 'applicant_date
   /** @type {number | null} The candidate number of the loaded applicant. */
   let currentId = null;
 
+  /** @type {string} The current applicant signature source (image URL or data URL). */
+  let currentSignatureSrc = '';
+
   // Tabs that gate the flow but have no DB acceptance column.
   const GENERIC_TABS = ['presences', 'exam', 'evaluation', 'mensuration', 'dossier'];
   // Original dot numbers per tab (restored when a tab is un-greened).
@@ -88,8 +91,7 @@ const DATE_COLS = new Set(['registration_date', 'date_of_birth', 'applicant_date
   const formatValue = (/** @type {any} */ value, /** @type {boolean} */ isDate) => {
     if (value === null || value === undefined) return '';
     if (isDate) {
-      const d = new Date(value);
-      if (!Number.isNaN(d.getTime())) return d.toISOString().split('T')[0];
+      return /** @type {any} */ (window).GSSDate ? /** @type {any} */ (window).GSSDate.toDMY(value) : String(value);
     }
     return String(value);
   };
@@ -273,10 +275,20 @@ const DATE_COLS = new Set(['registration_date', 'date_of_birth', 'applicant_date
   const setRegistrationReadonly = (/** @type {boolean} */ ro) => {
     const form = document.getElementById('inscriptionForm');
     if (!form) return;
-    // Disabling each fieldset natively disables all inner controls (and the
-    // searchable-select buttons rendered inside them).
-    form.querySelectorAll('fieldset').forEach((fs) => { /** @type {HTMLFieldSetElement} */ (fs).disabled = ro; });
-    form.querySelectorAll('button[type="submit"], button[type="reset"]').forEach((b) => { /** @type {HTMLButtonElement} */ (b).disabled = ro; });
+    // Never leave a fieldset disabled: a disabled <fieldset> also disables the
+    // always-available Dictionary Management button nested inside it.
+    form.querySelectorAll('fieldset').forEach((fs) => { /** @type {HTMLFieldSetElement} */ (fs).disabled = false; });
+    // Toggle the data controls directly (inputs, selects incl. the hidden
+    // native selects behind the searchable combos, and textareas).
+    form.querySelectorAll('input, select, textarea').forEach((el) => {
+      /** @type {HTMLInputElement} */ (el).disabled = ro;
+    });
+    // Buttons: disable everything (submit/reset + searchable-select triggers +
+    // signature clear) EXCEPT admin actions like Dictionary Management, which
+    // must stay usable regardless of the form's read-only state.
+    form.querySelectorAll('button').forEach((b) => {
+      /** @type {HTMLButtonElement} */ (b).disabled = b.hasAttribute('data-dict-category') ? false : ro;
+    });
     const p = padParts(REG_SIG_ID);
     if (p) p.canvas.style.pointerEvents = ro ? 'none' : '';
   };
@@ -289,6 +301,17 @@ const DATE_COLS = new Set(['registration_date', 'date_of_birth', 'applicant_date
       if (candNo) candNo.value = String(applicant.candidate_no);
     }
     mirrorFromForm();
+    // Mirror the applicant's signature onto the Conditions / Rules / Commitment
+    // panels. Prefer the stored image (the server returns its id after saving);
+    // fall back to whatever is currently drawn on the Registration pad.
+    const sigId = applicant && applicant.applicant_signature_id;
+    if (sigId !== null && sigId !== undefined && sigId !== '') {
+      const url = `${API_BASE}/api/signatures/image?id=${encodeURIComponent(String(sigId))}`;
+      showSignatureImage(REG_SIG_ID, url);
+      applyPanelSignature(url);
+    } else {
+      mirrorSignatureFromPad();
+    }
     setRegistrationReadonly(true);
     setGreenTab('registration', true, '1');
     try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
@@ -314,7 +337,7 @@ const DATE_COLS = new Set(['registration_date', 'date_of_birth', 'applicant_date
   const resetToNewMode = () => {
     currentId = null;
     const form = /** @type {HTMLFormElement | null} */ (document.getElementById('inscriptionForm'));
-    if (form) form.reset();
+    if (form) { delete form.dataset.reviewOnly; form.reset(); }
 
     // Education Level must start empty on a new form — clear it and refresh the
     // searchable combo so no stale value/label lingers.
@@ -332,8 +355,14 @@ const DATE_COLS = new Set(['registration_date', 'date_of_birth', 'applicant_date
     const idpass = byId('Comm-IDPassportNumber');
     if (idpass) idpass.value = '';
 
+    // A brand-new form is not awaiting approval, and the applicant's declaration
+    // date defaults to today.
+    setPendingBanner(false);
+    const appDate = byId('ApplicantDate');
+    if (appDate) appDate.value = /** @type {any} */ (window).GSSDate ? /** @type {any} */ (window).GSSDate.today() : new Date().toISOString().split('T')[0];
+
     enableSignaturePad(REG_SIG_ID);
-    SIG_IDS.forEach((cid) => showSignatureImage(cid, ''));
+    applyPanelSignature('');
 
     Object.keys(ACCEPT).forEach((k) => applyAcceptance(k, false, false));
 
@@ -345,6 +374,7 @@ const DATE_COLS = new Set(['registration_date', 'date_of_birth', 'applicant_date
       const ack = byId('ack-' + tab);
       if (ack) { ack.checked = false; ack.disabled = false; }
     });
+    try { if (/** @type {any} */ (window).GSSTabs) /** @type {any} */ (window).GSSTabs.setForcedLock('conditions', false); } catch (_) { /* noop */ }
     try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
 
     try { if (typeof switchTab === 'function') switchTab('registration'); } catch (_) { /* noop */ }
@@ -364,6 +394,30 @@ const initApplicantForm = () => {
       if (!src) return;
       src.addEventListener('input', mirrorFromForm);
       src.addEventListener('change', mirrorFromForm);
+    });
+
+    // Live-mirror the applicant's drawn signature (Registration pad) to the
+    // read-only Conditions / Rules / Commitment panels as it is drawn/cleared.
+    const regPad = padParts(REG_SIG_ID);
+    if (regPad) {
+      const mirrorLater = () => window.setTimeout(mirrorSignatureFromPad, 0);
+      // Clearing / resetting the pad explicitly clears the panels (the clear
+      // button is hidden while a stored signature is shown, so this only fires
+      // in editable/new mode).
+      const clearPanels = () => window.setTimeout(() => applyPanelSignature(''), 0);
+      regPad.canvas.addEventListener('mouseup', mirrorLater);
+      regPad.canvas.addEventListener('touchend', mirrorLater);
+      window.addEventListener('mouseup', mirrorLater);
+      regPad.clear?.addEventListener('click', clearPanels);
+      const parentForm = regPad.canvas.closest('form');
+      if (parentForm) parentForm.addEventListener('reset', clearPanels);
+    }
+
+    // Re-assert the signature whenever a signature-bearing panel is opened, so
+    // it always shows even if the image was set while the panel was hidden.
+    ['conditions', 'reglement', 'engagement'].forEach((tab) => {
+      const btn = document.getElementById('tab-btn-' + tab);
+      if (btn) btn.addEventListener('click', () => window.setTimeout(refreshPanelSignatures, 0));
     });
 
     Object.keys(ACCEPT).forEach(wireAcceptance);
@@ -431,6 +485,35 @@ const mirrorFromForm = () => {
     const isDate = DATE_COLS.has(col);
     targets.forEach((tgt) => setTarget(tgt, src.value, isDate));
   });
+};
+
+// ── Live-mirror the drawn Registration signature onto the read-only panels ──
+// Reads the Registration signature pad's current PNG data URL and paints it on
+// the Conditions / Rules / Commitment panels so the applicant's signature is
+// shown on every relevant form even before the record is saved.
+const mirrorSignatureFromPad = () => {
+  const p = padParts(REG_SIG_ID);
+  if (!p) return;
+  const value = p.input && p.input.value ? p.input.value : '';
+  // Only mirror an actual freshly-drawn signature (a data: URL). After loading
+  // an applicant, this input holds the numeric signature id (set from the
+  // `applicant_signature_id` column by applyDbValues) — mirroring that as an
+  // image source would 404 and wipe the signature off the panels on any click.
+  if (!/^data:/.test(value)) return;
+  applyPanelSignature(value);
+};
+
+// Paint (or clear) the applicant's signature on the Conditions / Rules /
+// Commitment panels and remember it, so it can be re-applied whenever those
+// tabs are opened (guards against any timing/visibility issue).
+const applyPanelSignature = (/** @type {string} */ src) => {
+  currentSignatureSrc = src || '';
+  SIG_IDS.forEach((cid) => showSignatureImage(cid, currentSignatureSrc));
+};
+
+/** Re-assert the remembered signature on the read-only panels. */
+const refreshPanelSignatures = () => {
+  SIG_IDS.forEach((cid) => showSignatureImage(cid, currentSignatureSrc));
 };
 
 const padParts = (/** @type {string} */ canvasId) => {
@@ -511,7 +594,7 @@ const load = (/** @type {Record<string, any> | null | undefined} */ record) => {
       ? `${API_BASE}/api/signatures/image?id=${encodeURIComponent(String(sigId))}`
       : '';
     if (url) showSignatureImage(REG_SIG_ID, url); else enableSignaturePad(REG_SIG_ID);
-    SIG_IDS.forEach((cid) => showSignatureImage(cid, url));
+    applyPanelSignature(url);
 
     // Restore each panel's accepted state from the record.
     if (isTruthy(record.ack_conditions)) applyAcceptance('conditions', true, false);
@@ -526,4 +609,73 @@ const load = (/** @type {Record<string, any> | null | undefined} */ record) => {
     setRegistrationReadonly(true);
     setGreenTab('registration', true, '1');
     try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
+
+    // Reviewer override: while an applicant is still Pending, an Admin or Head
+    // of Training may change the interview outcome. In that case the Interview
+    // Result radios (and their Remarks) are the ONLY fields left editable — the
+    // rest of the Registration panel stays read-only.
+    try {
+      const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
+      const role = session && session.role ? String(session.role) : '';
+      const canReview = role === 'Admin' || role === 'Head of Training';
+      const isPending = String(record.interview_result || 'Pending').toLowerCase() === 'pending';
+      const regForm = /** @type {HTMLFormElement | null} */ (document.getElementById('inscriptionForm'));
+      if (regForm) delete regForm.dataset.reviewOnly;
+      if (canReview && isPending && regForm) {
+        regForm.querySelectorAll('input[name="InterviewResult"]').forEach((el) => {
+          /** @type {HTMLInputElement} */ (el).disabled = false;
+        });
+        const remarks = byId('Remarks');
+        if (remarks) remarks.disabled = false;
+        const submitBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('regSubmitBtn'));
+        if (submitBtn) submitBtn.disabled = false;
+        // Flag the form so the submit handler validates ONLY the reviewer's
+        // fields (Interview Result / Remarks) and skips the full-panel check,
+        // which would otherwise fail on read-only combos that could not be
+        // re-populated from stored free-text values.
+        regForm.dataset.reviewOnly = 'true';
+      }
+    } catch (_) { /* noop */ }
+
+    // Interview outcome drives navigation: Accepted → jump to the Conditions
+    // tab; otherwise stay on Registration and show a "Pending Approval" banner.
+    const accepted = String(record.interview_result || '').toLowerCase() === 'accepted';
+    setPendingBanner(!accepted);
+    // The Conditions tab is only reachable once the interview is Accepted.
+    try { if (/** @type {any} */ (window).GSSTabs) /** @type {any} */ (window).GSSTabs.setForcedLock('conditions', !accepted); } catch (_) { /* noop */ }
+    try {
+      if (typeof switchTab === 'function') switchTab(accepted ? 'conditions' : 'registration');
+    } catch (_) { /* noop */ }
+
+    // On edit, drill straight down to the "For Administration Use" section so
+    // the reviewer lands on the Interview Result / Remarks controls.
+    try {
+      if (!accepted) {
+        const adminFs = document.getElementById('adminFieldset');
+        if (adminFs && !adminFs.classList.contains('hidden')) {
+          window.setTimeout(() => adminFs.scrollIntoView({ behavior: 'smooth', block: 'center' }), 120);
+        }
+      }
+    } catch (_) { /* noop */ }
+};
+
+/** Show or hide the "Pending Approval" banner at the top of the form modal. */
+const setPendingBanner = (/** @type {boolean} */ show) => {
+  const banner = document.getElementById('pendingApprovalBanner');
+  if (!banner) return;
+  banner.classList.toggle('hidden', !show);
+  banner.classList.toggle('flex', show);
+};
+
+// ── Public API ─────────────────────────────────────────────────
+// Exposed on window so the grid (panelJump.js), registration.js and
+// signatures.js can drive the shared applicant flow. Assigned at the end of
+// the file so every function above is already defined.
+/** @type {any} */ (window).GSSApplicant = {
+  initApplicantForm,
+  load,
+  mirrorFromForm,
+  reset: resetToNewMode,
+  completeRegistration,
+  loadOfficerSignature,
 };

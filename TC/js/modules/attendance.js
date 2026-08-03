@@ -5,7 +5,10 @@ let presRowCounter = 0;
 
 function getPresDayName(/** @type {string} */ dateValue) {
   if (!dateValue) return '';
-  const d = new Date(dateValue + 'T00:00:00');
+  // The date field may hold dd/MM/yyyy (masked) or ISO — normalise to ISO.
+  const iso = /** @type {any} */ (window).GSSDate ? /** @type {any} */ (window).GSSDate.toISO(dateValue) : dateValue;
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
   const names = PRES_DAY_NAMES[currentLang] || PRES_DAY_NAMES.en;
   return names[d.getDay()];
 }
@@ -110,6 +113,8 @@ function addPresenceRow() {
   });
 
   tbody.appendChild(tr);
+  // Convert the row's native date field to a dd/MM/yyyy masked text input.
+  if (/** @type {any} */ (window).GSSDate) /** @type {any} */ (window).GSSDate.dateify(tr);
   updatePresenceSummary();
 }
 

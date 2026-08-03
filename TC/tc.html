@@ -78,10 +78,31 @@
         </button>
 
         <!-- ── Open signatures manager button ── -->
-        <button type="button" id="sigBtn" title="Signatures" aria-label="Manage signatures"
+        <button type="button" id="sigBtn" title="Signatures" data-role-any="Admin" aria-label="Manage signatures"
           class="flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
           <span class="hidden sm:inline" data-i18n="sigBtn">Signatures</span>
+        </button>
+
+        <!-- ── Pending interviews notification (all users) ── -->
+        <button type="button" id="pendingBell" data-role-any="Admin,Head of Training" title="Pending interviews" aria-label="Pending interviews"
+          class="relative inline-flex shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white p-2.5 text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span id="pendingBadge" class="absolute -right-1 -top-1 hidden min-w-[1.15rem] rounded-full bg-red-500 px-1 py-0.5 text-center text-[10px] font-bold leading-none text-white">0</span>
+        </button>
+
+        <!-- ── Manage users (Admin only) — beside the pending bell ── -->
+        <button type="button" id="usersBtn" data-role-any="Admin" title="Manage users" aria-label="Manage users"
+          class="hidden shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span class="hidden sm:inline" data-i18n="usersBtn">Users</span>
+        </button>
+
+        <!-- ── Secretary work queue notification (Secretary / Admin / Head of Training) ── -->
+        <button type="button" id="secretaryBell" data-role-any="Secretary,Admin,Head of Training" title="Applicants to process" aria-label="Applicants to process"
+          class="relative hidden shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white p-2.5 text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6a2 2 0 0 1 2 2v1h1a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h1V4a2 2 0 0 1 2-2z"/><path d="M9 5h6"/><path d="m9 14 2 2 4-4"/></svg>
+          <span id="secretaryBadge" class="absolute -right-1 -top-1 hidden min-w-[1.15rem] rounded-full bg-amber-500 px-1 py-0.5 text-center text-[10px] font-bold leading-none text-white">0</span>
         </button>
       </div>
     </div>
@@ -285,11 +306,79 @@
       </div>
     </div>
 
+    <!-- ═══════════════════ MANAGE USERS OVERLAY (Admin) ═══════════════════ -->
+    <div id="usersOverlay" class="fixed inset-0 z-[1100] hidden bg-[rgba(1,7,16,0.6)] p-3 backdrop-blur-sm sm:p-6" aria-hidden="true">
+      <div class="mx-auto flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.35)]" role="dialog" aria-modal="true" aria-labelledby="usersTitle">
+        <header class="flex items-center justify-between gap-3 bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-5 py-4 text-white">
+          <h2 id="usersTitle" class="text-base font-semibold" data-i18n="usersTitle">Manage Users</h2>
+          <div class="flex items-center gap-2">
+            <button type="button" id="usersAddBtn" class="inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-white/25" data-i18n="usersAdd">Add user</button>
+            <button type="button" id="usersRefresh" class="rounded-full bg-white/15 px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-white/25" data-i18n="sigRefresh">Refresh</button>
+            <button type="button" id="usersClose" class="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/25" data-i18n="closeBtn">Close</button>
+          </div>
+        </header>
+        <div class="flex-1 overflow-auto p-4 sm:p-5">
+          <!-- Add / edit form (hidden until Add or Edit) -->
+          <form id="userForm" novalidate class="mb-4 hidden rounded-[16px] border-2 border-[#042F8D]/20 bg-[#f7f9fe] p-4">
+            <input type="hidden" id="userId" />
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div class="flex flex-col gap-1.5">
+                <label for="userUsername" class="text-sm font-semibold text-slate-700" data-i18n="usersUsername">Username</label>
+                <input id="userUsername" type="text" autocomplete="off" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label for="userFullName" class="text-sm font-semibold text-slate-700" data-i18n="usersFullName">Full name</label>
+                <input id="userFullName" type="text" autocomplete="off" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label for="userRole" class="text-sm font-semibold text-slate-700" data-i18n="usersRole">Role</label>
+                <select id="userRole" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+                  <option value="Candidate" data-i18n="roleCandidate">Candidate</option>
+                  <option value="Admin" data-i18n="roleAdmin">Admin</option>
+                  <option value="Head of Training" data-i18n="roleHeadOfTraining">Head of Training</option>
+                  <option value="Secretary" data-i18n="roleSecretary">Secretary</option>
+                  <option value="Instructor" data-i18n="roleInstructor">Instructor</option>
+                </select>
+              </div>
+              <div id="userPasswordWrap" class="flex flex-col gap-1.5">
+                <label for="userPassword" class="text-sm font-semibold text-slate-700" data-i18n="usersPassword">Password</label>
+                <input id="userPassword" type="text" autocomplete="off" placeholder="At least 8 characters" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+              </div>
+            </div>
+            <label class="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+              <input type="checkbox" id="userActive" class="h-4 w-4 accent-[#042F8D]" checked />
+              <span data-i18n="usersActive">Account enabled</span>
+            </label>
+            <div class="mt-4 flex items-center gap-2">
+              <button type="submit" id="userSave" class="rounded-full bg-[#042F8D] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#0b4dc2]" data-i18n="dictSaveBtn">Save</button>
+              <button type="button" id="userCancel" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-[#042F8D] hover:text-[#042F8D]" data-i18n="dictCancelBtn">Cancel</button>
+              <span id="userFormStatus" class="ml-1 min-h-5 text-sm font-semibold"></span>
+            </div>
+          </form>
+
+          <div id="usersTableWrap" class="overflow-x-auto rounded-xl border border-slate-200"></div>
+          <p id="usersListEmpty" class="hidden px-2 py-6 text-center text-sm text-slate-400" data-i18n="usersNone">No users found.</p>
+          <p id="usersStatus" class="mt-2 min-h-5 text-sm font-semibold"></p>
+        </div>
+      </div>
+    </div>
+
     <div class="mx-auto max-w-7xl px-5 py-7 sm:px-6 lg:px-8">
-      <div class="mb-4 flex justify-end">
-        <div class="inline-flex gap-2 rounded-full border border-slate-200 bg-white p-1.5 shadow-sm" role="group" aria-label="Language switcher">
-          <button type="button" class="rounded-full px-3 py-2 font-bold transition-all duration-200" data-lang="fr">FR</button>
-          <button type="button" class="rounded-full px-3 py-2 font-bold transition-all duration-200" data-lang="en">EN</button>
+      <div class="mb-4 flex items-center justify-end gap-3">
+        <div id="userChip" class="hidden items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 shadow-sm">
+          <span class="flex h-7 w-7 items-center justify-center rounded-full bg-[#042F8D]/10 text-[#042F8D]">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+          </span>
+          <span id="userChipName" class="text-sm font-semibold text-[#042F8D]">—</span>
+          <span id="userChipRole" class="hidden items-center gap-1 rounded-full bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white shadow-[0_4px_12px_rgba(4,47,141,0.28)]">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="h-3 w-3"><path d="M12 2 4 5v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V5l-8-3z"/></svg>
+            <span id="userChipRoleText">—</span>
+          </span>
+          <button type="button" id="logoutBtn"
+            class="ml-1 inline-flex items-center gap-1.5 rounded-full bg-[#042F8D] px-3 py-1.5 text-xs font-bold text-white transition hover:bg-[#0b4dc2] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/20">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3.5 w-3.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+            <span data-i18n="logout">Log out</span>
+          </button>
         </div>
       </div>
 
@@ -303,7 +392,7 @@
           <h1 class="mb-3 text-4xl font-bold leading-tight sm:text-5xl" data-i18n="heroTitle">Join an exceptional training program to become a security officer.</h1>
           <p class="mb-6 max-w-2xl text-base leading-7 text-slate-600" data-i18n="heroText">A structured path, serious guidance, and a simplified registration process to begin your journey with GSS.</p>
           <div class="flex flex-wrap gap-3">
-            <button type="button" class="rounded-full bg-[#042F8D] px-4 py-3 font-bold text-white shadow-[0_10px_24px_rgba(4,47,141,0.2)]" id="openFormBtn" data-i18n="openBtn">Fill the form</button>
+            <button type="button" id="openFormBtn" data-role-any="Secretary,Admin" class="rounded-full bg-[#042F8D] px-4 py-3 font-bold text-white shadow-[0_10px_24px_rgba(4,47,141,0.2)]" data-i18n="openBtn">Fill the form</button>
             <button class="rounded-full border border-slate-200 bg-white px-4 py-3 font-bold text-[#042F8D]" type="button" data-i18n="conditionsBtn">View terms</button>
           </div>
           <div class="mt-6 grid gap-4 md:grid-cols-3">
@@ -408,6 +497,12 @@
               <span data-i18n="tabDossier">CheckList</span>
             </button>
           </div>
+        </div>
+
+        <!-- Pending approval banner (shown when editing a not-yet-accepted applicant) -->
+        <div id="pendingApprovalBanner" class="hidden shrink-0 items-center justify-center gap-2 border-b border-amber-200 bg-amber-50 px-5 py-2.5 text-center text-sm font-semibold text-amber-700">
+          <svg xmlns="http://www.w3.org/2000/svg" class="inline h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <span data-i18n="pendingApproval">Pending Approval</span>
         </div>
 
         <!-- ── Tab Content ── -->
@@ -670,7 +765,7 @@
                 </div>
               </fieldset>
 
-              <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
+              <fieldset id="adminFieldset" data-role-any="Admin,Head of Training" class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
                 <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                   <span data-i18n="secAdmin">FOR ADMINISTRATION USE ONLY</span>
@@ -688,7 +783,7 @@
                         <span data-i18n="optRejected"> Rejected</span>
                       </label>
                       <label class="inline-flex cursor-pointer items-center gap-2 rounded-full px-3 py-2 text-sm transition has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)]">
-                        <input type="radio" name="InterviewResult" dbname="interview_result" value="Pending" class="h-4 w-4 accent-[#042F8D]" />
+                        <input type="radio" name="InterviewResult" dbname="interview_result" value="Pending" class="h-4 w-4 accent-[#042F8D]" checked />
                         <span data-i18n="optPending"> Pending</span>
                       </label>
                     </div>
@@ -711,8 +806,8 @@
               </fieldset>
 
               <div class="flex flex-wrap justify-end gap-3">
-                <button type="reset" class="rounded-full border-[1.5px] border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" data-i18n="btnClear">Clear</button>
-                <button type="submit" class="rounded-full bg-[#042F8D] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(4,47,141,0.2)] transition hover:-translate-y-px hover:shadow-[0_14px_30px_rgba(4,47,141,0.34)]" data-i18n="btnSubmit">Submit form</button>
+                <button type="reset" id="regClearBtn" class="rounded-full border-[1.5px] border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50" data-i18n="btnClear">Clear</button>
+                <button type="submit" id="regSubmitBtn" class="rounded-full bg-[#042F8D] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(4,47,141,0.2)] transition hover:-translate-y-px hover:shadow-[0_14px_30px_rgba(4,47,141,0.34)]" data-i18n="btnSubmit">Submit form</button>
               </div>
 
               <p id="formStatus" class="min-h-6 text-sm font-semibold text-red-600" aria-live="polite"></p>
@@ -1864,6 +1959,7 @@
     <script src="./js/modules/eval.js"></script>
     <script src="./js/modules/signatures.js"></script>
     <script src="./js/modules/dictionary.js"></script>
+    <script src="./js/modules/admin.js"></script>
    
     
     <!-- intl-tel-input plugin (bundled with utils for formatting/validation) -->

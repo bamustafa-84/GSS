@@ -26,9 +26,18 @@
 const GSS_LANG_KEY = 'gss-lang';
 
 /**
+ * Base URL for the JSON API. When the page is served by the Node server the API
+ * lives at the same origin (whatever port that is), so we use `location.origin`.
+ * When opened from Live Server (port 5500) or the file system, fall back to the
+ * local Node server. Update the fallback port here if PORT changes in .env.
  * @type {string}
  */
-const API_BASE = 'http://localhost:3000'
+const API_BASE = (() => {
+  try {
+    if (/^https?:$/.test(location.protocol) && location.port !== '5500') return location.origin;
+  } catch (_) { /* non-browser context */ }
+  return 'http://localhost:4000';
+})();
 
 /* ------------------------------------------------------------------
  * Tab / progress indicator Tailwind classes
@@ -115,3 +124,67 @@ var GSSCollapsible;
  * } | undefined}
  */
 var GSSValidation;
+
+/* ------------------------------------------------------------------
+ * Authenticated session (shared by the login page and the app)
+ * The signed-in user is kept in Web Storage under GSS_USER_KEY:
+ *   • localStorage  when "Remember me" is checked (persists across restarts)
+ *   • sessionStorage otherwise (cleared when the tab/browser closes)
+ * ---------------------------------------------------------------- */
+
+/** localStorage/sessionStorage key holding the signed-in user JSON. */
+const GSS_USER_KEY = 'gss-user';
+
+/**
+ * Minimal session store. All members are static so any page/module can call
+ * `GSSSession.get()` / `.set()` / `.clear()` without instantiation.
+ */
+const GSSSession = Object.freeze({
+  /**
+   * Persist the signed-in user. When `remember` is true the session survives
+   * browser restarts (localStorage); otherwise it lives only for the tab
+   * session (sessionStorage). The other store is cleared to avoid stale copies.
+   * @param {Record<string, any>} user
+   * @param {boolean} [remember=false]
+   */
+  set(user, remember = false) {
+    try {
+      const store = remember ? window.localStorage : window.sessionStorage;
+      const other = remember ? window.sessionStorage : window.localStorage;
+      other.removeItem(GSS_USER_KEY);
+      store.setItem(GSS_USER_KEY, JSON.stringify(user || {}));
+    } catch (_) { /* storage unavailable */ }
+  },
+  /**
+   * The current signed-in user, or null when there is no active session.
+   * @returns {Record<string, any> | null}
+   */
+  get() {
+    try {
+      const raw = window.sessionStorage.getItem(GSS_USER_KEY) || window.localStorage.getItem(GSS_USER_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      return null;
+    }
+  },
+  /** Remove the session from both stores (logout). */
+  clear() {
+    try {
+      window.sessionStorage.removeItem(GSS_USER_KEY);
+      window.localStorage.removeItem(GSS_USER_KEY);
+    } catch (_) { /* storage unavailable */ }
+  },
+  /**
+   * Merge a patch into the stored session in place (whichever store holds it),
+   * e.g. to refresh the role from the server without a re-login.
+   * @param {Record<string, any>} patch
+   */
+  update(patch) {
+    try {
+      const inLocal = !!window.localStorage.getItem(GSS_USER_KEY);
+      const store = inLocal ? window.localStorage : window.sessionStorage;
+      const cur = this.get() || {};
+      store.setItem(GSS_USER_KEY, JSON.stringify(Object.assign({}, cur, patch || {})));
+    } catch (_) { /* storage unavailable */ }
+  },
+});

@@ -399,6 +399,11 @@
   // Which panel is currently shown in the grid ('' = none).
   let gridTab = '';
 
+  /** @type {((record: Record<string, any>) => boolean) | null} External row
+   * filter applied on top of the column filters (used by the toolbar
+   * notification bells to show only Pending / Secretary-queue applicants). */
+  let externalRowFilter = null;
+
   /** @type {{ key: string, dir: number }} Current grid sort (dir: 1 asc, -1 desc). */
   let gridSort = { key: '', dir: 1 };
 
@@ -415,10 +420,10 @@
   const gridColsCancel = document.getElementById('gridColsCancel');
   const gridColsReset = document.getElementById('gridColsReset');
 
-  // API base: relative when served by the Node server, otherwise the local
-  // test server (covers Live Server on :5500 and file:// previews).
+  // API base: the serving origin when opened from the Node server, otherwise
+  // the local test server (covers Live Server on :5500 and file:// previews).
   const API_BASE =
-    (location.protocol.startsWith('http') && location.port !== '5500') ? '' : 'http://localhost:3000';
+    (location.protocol.startsWith('http') && location.port !== '5500') ? location.origin : 'http://localhost:4000';
 
   // Localize a key from the shared translation dictionary (falls back to text).
   const gridI18n = (/** @type {string} */ key, /** @type {string} */ fallback) => {
@@ -549,7 +554,10 @@
     if (v === null || v === undefined || v === '') return '';
     if (col.type === 'date' || isDateType(col.type)) {
       const d = new Date(v);
-      if (!Number.isNaN(d.getTime())) return d.toISOString().split('T')[0];
+      if (!Number.isNaN(d.getTime())) {
+        const [y, m, day] = d.toISOString().split('T')[0].split('-');
+        return `${day}/${m}/${y}`;
+      }
     }
     if (typeof v === 'boolean') return v ? gridI18n('optYes', 'Yes').trim() : gridI18n('optNo', 'No').trim();
     return String(v);
@@ -677,6 +685,7 @@
       });
       /** @type {any} */ (tr).__cells = cells;
       /** @type {any} */ (tr).__origIndex = rowIndex;
+      /** @type {any} */ (tr).__record = row;
       tbody.appendChild(tr);
     });
     tableEl.appendChild(tbody);
@@ -963,7 +972,9 @@
     rows.forEach((el) => {
       const tr = /** @type {any} */ (el);
       const cells = tr.__cells || {};
-      const match = Object.keys(query).every((k) => !query[k] || (cells[k] || '').includes(query[k]));
+      const colMatch = Object.keys(query).every((k) => !query[k] || (cells[k] || '').includes(query[k]));
+      const extMatch = !externalRowFilter || externalRowFilter(tr.__record || {});
+      const match = colMatch && extMatch;
       tr.classList.toggle('hidden', !match);
       if (match) shown += 1;
     });
@@ -1159,6 +1170,7 @@
   // ── Open / close the grid overlay ──────────────────────────────
   const openGrid = () => {
     if (!gridOverlay) return;
+    externalRowFilter = null;
     gridOverlay.classList.remove('hidden');
     gridOverlay.setAttribute('aria-hidden', 'false');
     // Re-fetch fresh data each time the grid is opened.
@@ -1205,4 +1217,36 @@
       }, 0);
     })
   );
+
+  // ── Public grid API (toolbar notification bells) ───────────────
+  // Opens the applicant grid pre-filtered. `filterByColumn` sets a column
+  // filter (e.g. interview_result = Pending); `filterByPredicate` applies an
+  // arbitrary record predicate (e.g. the Secretary work queue).
+  const gridLabelFor = (/** @type {string} */ tab) =>
+    tab === 'registration' ? gridI18n('psApplicant', 'Applicant') : panelNameOf(tab);
+
+  const openGridFiltered = async (/** @type {string} */ tab) => {
+    if (!gridOverlay) return;
+    gridTab = tab;
+    if (gridPanelLabel) gridPanelLabel.textContent = gridLabelFor(tab);
+    gridOverlay.classList.remove('hidden');
+    gridOverlay.setAttribute('aria-hidden', 'false');
+    clearTableCache();
+    await renderDataGrid();
+  };
+
+  /** @type {any} */ (window).GSSGrid = {
+    async filterByColumn(/** @type {string} */ tab, /** @type {string} */ colKey, /** @type {string} */ value) {
+      externalRowFilter = null;
+      await openGridFiltered(tab || 'registration');
+      const input = gridBody && /** @type {HTMLInputElement | null} */ (gridBody.querySelector(`thead input[data-col="${colKey}"]`));
+      if (input) input.value = value;
+      applyColumnFilters();
+    },
+    async filterByPredicate(/** @type {string} */ tab, /** @type {(r: Record<string, any>) => boolean} */ predicate) {
+      externalRowFilter = typeof predicate === 'function' ? predicate : null;
+      await openGridFiltered(tab || 'registration');
+      applyColumnFilters();
+    },
+  };
 })();

@@ -229,9 +229,14 @@ const serveStatic = (res, urlPath) => {
         return;
       }
       const type = MIME_TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream';
-      res.writeHead(200, { 'Content-Type': type });
-
-
+      // Never let the browser serve a stale copy of the app's HTML/JS/CSS during
+      // development — always revalidate so code edits take effect on reload.
+      res.writeHead(200, {
+        'Content-Type': type,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+        Expires: '0',
+      });
       res.end(data);
     });
   });
@@ -542,7 +547,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (method === 'GET' && url.startsWith('/api/applicants')) {
+    if (method === 'GET' && (url === '/api/applicants' || url.startsWith('/api/applicants?'))) {
       const id = new URL(url, 'http://localhost').searchParams.get('id');
       if (id) {
         const applicant = await callProc('registration_get', '$1', [Number(id)]);
@@ -551,6 +556,98 @@ const server = http.createServer(async (req, res) => {
       }
       const rows = await callProc('registration_search', '$1, $2, $3', ['', 1000, 0]);
       sendJson(res, 200, { ok: true, applicants: Array.isArray(rows) ? rows : [] });
+      return;
+    }
+
+    // ── Authentication (login / change password / register) ───
+    if (method === 'POST' && url === '/api/login') {
+      const body = await readJsonBody(req);
+      const username = String((body && (body.username || body.email)) || '').trim();
+      const password = String((body && body.password) || '');
+      const forceChange = Boolean(body && (body.forceChange || body.force_change));
+      const result = await callProc('auth_login', '$1, $2, $3', [username, password, forceChange]);
+      sendJson(res, 200, result || { ok: false, status: 'invalid' });
+      return;
+    }
+
+    if (method === 'POST' && url === '/api/change-password') {
+      const body = await readJsonBody(req);
+      const username = String((body && (body.username || body.email)) || '').trim();
+      const current = String((body && (body.currentPassword || body.current_password)) || '');
+      const next = String((body && (body.newPassword || body.new_password)) || '');
+      const result = await callProc('auth_change_password', '$1, $2, $3', [username, current, next]);
+      sendJson(res, 200, result || { ok: false, status: 'invalid' });
+      return;
+    }
+
+    if (method === 'POST' && url === '/api/forgot-password') {
+      const body = await readJsonBody(req);
+      const username = String((body && (body.username || body.email)) || '').trim();
+      const result = await callProc('auth_forgot_password', '$1', [username]);
+      sendJson(res, 200, result || { ok: false, status: 'invalid' });
+      return;
+    }
+
+    if (method === 'POST' && url === '/api/register') {
+      const body = await readJsonBody(req);
+      const username = String((body && (body.username || body.email)) || '').trim();
+      const fullName = String((body && (body.fullName || body.full_name || body.name)) || '').trim();
+      const password = String((body && body.password) || '');
+      const mustChange = Boolean(body && (body.mustChange || body.must_change));
+      const role = String((body && body.role) || 'Candidate');
+      const result = await callProc('auth_register', '$1, $2, $3, $4, $5', [username, fullName, password, mustChange, role]);
+      sendJson(res, result && result.ok ? 201 : 200, result || { ok: false, status: 'invalid' });
+      return;
+    }
+
+    // ── Current user's live role/status (self-heals stale sessions) ──
+    if (method === 'GET' && url.startsWith('/api/me')) {
+      const username = new URL(url, 'http://localhost').searchParams.get('username') || '';
+      const info = await callProc('auth_user_role', '$1', [username]);
+      sendJson(res, 200, info ? Object.assign({ ok: true }, info) : { ok: false });
+      return;
+    }
+
+    // ── User management (admin) ────────────────────────────────
+    if (method === 'GET' && url.startsWith('/api/users')) {
+      const rows = await callProc('login_users_list', '', []);
+      sendJson(res, 200, { ok: true, users: Array.isArray(rows) ? rows : [] });
+      return;
+    }
+
+    if (method === 'POST' && url === '/api/users') {
+      const body = await readJsonBody(req);
+      const idRaw = body && (body.login_id != null ? body.login_id : body.id);
+      const id = Number.parseInt(String(idRaw), 10);
+      if (Number.isFinite(id)) {
+        // Update an existing account (role / active / details).
+        const result = await callProc('login_user_update', '$1, $2::jsonb', [id, JSON.stringify(body || {})]);
+        sendJson(res, result && result.ok ? 200 : 400, result || { ok: false, status: 'invalid' });
+        return;
+      }
+      // Create a new account (used by the admin "add user" form).
+      const username = String((body && (body.username || body.email)) || '').trim();
+      const fullName = String((body && (body.fullName || body.full_name || body.name)) || '').trim();
+      const password = String((body && body.password) || '');
+      const mustChange = body && body.mustChange != null ? Boolean(body.mustChange) : true;
+      const role = String((body && body.role) || 'Candidate');
+      const result = await callProc('auth_register', '$1, $2, $3, $4, $5', [username, fullName, password, mustChange, role]);
+      sendJson(res, result && result.ok ? 201 : 200, result || { ok: false, status: 'invalid' });
+      return;
+    }
+
+    // ── Applicant work-queue notifications ─────────────────────
+    if (method === 'GET' && url.startsWith('/api/applicants/pending')) {
+      const count = await callProc('applicant_pending_count', '', []);
+      const rows = await callProc('applicant_pending_list', '', []);
+      sendJson(res, 200, { ok: true, count: Number(count) || 0, applicants: Array.isArray(rows) ? rows : [] });
+      return;
+    }
+
+    if (method === 'GET' && url.startsWith('/api/applicants/secretary-queue')) {
+      const count = await callProc('applicant_secretary_count', '', []);
+      const rows = await callProc('applicant_secretary_list', '', []);
+      sendJson(res, 200, { ok: true, count: Number(count) || 0, applicants: Array.isArray(rows) ? rows : [] });
       return;
     }
 
