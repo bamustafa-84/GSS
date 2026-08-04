@@ -54,6 +54,8 @@
   let allPanelsLabel = panelLabel.textContent || 'All panels';
   /** @type {number} highlighted result index (-1 = none). */
   let activeIndex = -1;
+  /** @type {string} panel to reopen in the grid when the modal closes ('' = none). */
+  let returnToGridTab = '';
 
   // ── Panels available (read live from the tab buttons) ──────────
   /** @returns {{ tab: string, name: string }[]} */
@@ -226,8 +228,12 @@
    * field (editable Registration + read-only Conditions/Rules/Commitment).
    * @param {string} tab
    * @param {Record<string, any>} record
+   * @param {boolean} [fromGrid] When true, closing the modal returns to the grid.
    */
-  const openRecordForm = (/** @type {string} */ tab, /** @type {Record<string, any>} */ record) => {
+  const openRecordForm = (/** @type {string} */ tab, /** @type {Record<string, any>} */ record, /** @type {boolean} */ fromGrid) => {
+
+    // Remember the grid panel so the modal's Close button can return to it.
+    returnToGridTab = fromGrid ? (gridTab || tab) : '';
 
     const modal = document.getElementById('formModal');
     // Open the modal directly (do NOT click #openFormBtn — that resets to New mode).
@@ -243,6 +249,14 @@
       window.setTimeout(() => linker.load(record), 60);
     }
   };
+
+  // When the modal was opened from the grid, its Close button reopens the grid.
+  document.getElementById('closeModalBtn')?.addEventListener('click', () => {
+    if (!returnToGridTab) return;
+    const tab = returnToGridTab;
+    returnToGridTab = '';
+    openGridForTab(tab);
+  });
 
   /** Search the PostgreSQL table associated with the selected panel. */
   const runSearch = async () => {
@@ -670,7 +684,7 @@
         btn.title = gridI18n('psColEdit', 'Edit');
         btn.className = 'inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-[#042F8D] transition hover:border-[#042F8D] hover:bg-[#042F8D]/10';
         btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>';
-        btn.addEventListener('click', () => openRecordForm(editTab, row));
+        btn.addEventListener('click', () => openRecordForm(editTab, row, true));
         editTd.appendChild(btn);
         tr.appendChild(editTd);
       }
