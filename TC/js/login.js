@@ -33,8 +33,6 @@
   const yearEl = document.getElementById('year');
   const rememberEl = /** @type {HTMLInputElement | null} */ (document.getElementById('remember'));
 
-  // API base. global.js defines API_BASE; fall back to the local server.
-  const API = (typeof API_BASE === 'string' && API_BASE) ? API_BASE : 'http://localhost:3000';
 
   // The username of an account that authenticated but must change its password
   // before entering the app (first-login flow).
@@ -148,7 +146,7 @@
       if (next === current) { changePwdStatus.textContent = dict.cpErrSame; return; }
 
       try {
-        const res = await fetch(`${API}/api/change-password`, {
+        const res = await fetch(`${API_BASE}/api/change-password`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: pendingUsername, currentPassword: current, newPassword: next }),
@@ -221,7 +219,7 @@
       if (!username) { forgotStatus.textContent = dict.fpErrRequired; return; }
 
       try {
-        const res = await fetch(`${API}/api/forgot-password`, {
+        const res = await fetch(`${API_BASE}/api/forgot-password`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username }),
@@ -275,7 +273,7 @@
       statusEl.textContent = dict.signingIn;
 
       try {
-        const res = await fetch(`${API}/api/login`, {
+        const res = await fetch(`${API_BASE}/api/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password }),
@@ -425,7 +423,7 @@
         const mustChange = !forceChangeCb || forceChangeCb.checked;
         const roleSel = /** @type {HTMLSelectElement | null} */ (document.getElementById('suRole'));
         const role = roleSel && roleSel.value ? roleSel.value : 'Candidate';
-        const res = await fetch(`${API}/api/register`, {
+        const res = await fetch(`${API_BASE}/api/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: email, fullName: name, password: pw, mustChange, role }),

@@ -32,12 +32,8 @@ const GSS_LANG_KEY = 'gss-lang';
  * local Node server. Update the fallback port here if PORT changes in .env.
  * @type {string}
  */
-const API_BASE = (() => {
-  try {
-    if (/^https?:$/.test(location.protocol) && location.port !== '5500') return location.origin;
-  } catch (_) { /* non-browser context */ }
-  return 'http://localhost:4000';
-})();
+const API_BASE = 'http://172.16.17.103:4000';
+
 
 /* ------------------------------------------------------------------
  * Tab / progress indicator Tailwind classes
