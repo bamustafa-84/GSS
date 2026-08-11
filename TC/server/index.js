@@ -537,7 +537,7 @@ const server = http.createServer(async (req, res) => {
 
     // ── Registration (applicant) search via stored procedure ──
     if (method === 'GET' && url.startsWith('/api/registration/search')) {
-      const params = new URL(url, 'http://localhost').searchParams;
+      const params = new URL(url, 'placeholder').searchParams;
       const rows = await callProc('registration_search', '$1, $2, $3', [
         params.get('q') || '',
         Number.parseInt(params.get('limit') || '25', 10) || 25,
@@ -548,7 +548,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'GET' && (url === '/api/applicants' || url.startsWith('/api/applicants?'))) {
-      const id = new URL(url, 'http://localhost').searchParams.get('id');
+      const id = new URL(url, 'placeholder').searchParams.get('id');
       if (id) {
         const applicant = await callProc('registration_get', '$1', [Number(id)]);
         sendJson(res, 200, { ok: true, applicant: applicant || null });
@@ -602,7 +602,7 @@ const server = http.createServer(async (req, res) => {
 
     // ── Current user's live role/status (self-heals stale sessions) ──
     if (method === 'GET' && url.startsWith('/api/me')) {
-      const username = new URL(url, 'http://localhost').searchParams.get('username') || '';
+      const username = new URL(url, 'placeholder').searchParams.get('username') || '';
       const info = await callProc('auth_user_role', '$1', [username]);
       sendJson(res, 200, info ? Object.assign({ ok: true }, info) : { ok: false });
       return;
@@ -659,7 +659,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'GET' && url.startsWith('/api/signatures/image')) {
-      const id = new URL(url, 'http://localhost').searchParams.get('id');
+      const id = new URL(url, 'placeholder').searchParams.get('id');
       if (!id) {
         sendJson(res, 400, { error: 'Missing signature id' });
         return;
@@ -669,7 +669,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'GET' && url.startsWith('/api/signatures')) {
-      const params = new URL(url, 'http://localhost').searchParams;
+      const params = new URL(url, 'placeholder').searchParams;
       await listSignatures(res, {
         q: params.get('q') || '',
         limit: Number.parseInt(params.get('limit') || '10', 10) || 10,
@@ -685,7 +685,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'DELETE' && url.startsWith('/api/signatures')) {
-      const id = new URL(url, 'http://localhost').searchParams.get('id');
+      const id = new URL(url, 'placeholder').searchParams.get('id');
       if (!id) {
         sendJson(res, 400, { error: 'Missing signature id' });
         return;
@@ -696,7 +696,7 @@ const server = http.createServer(async (req, res) => {
 
     // ── Dictionary (reference values) CRUD via the generic stored proc ──
     if (method === 'GET' && url.startsWith('/api/dictionary')) {
-      const category = new URL(url, 'http://localhost').searchParams.get('category');
+      const category = new URL(url, 'placeholder').searchParams.get('category');
       const items = await dictionaryCrud('list', category || null);
       sendJson(res, 200, { ok: true, items: Array.isArray(items) ? items : [] });
       return;
@@ -719,7 +719,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'DELETE' && url.startsWith('/api/dictionary')) {
-      const idRaw = new URL(url, 'http://localhost').searchParams.get('id');
+      const idRaw = new URL(url, 'placeholder').searchParams.get('id');
       const id = Number.parseInt(String(idRaw), 10);
       if (!Number.isFinite(id)) {
         sendJson(res, 400, { error: 'Missing dictionary id' });
@@ -736,7 +736,7 @@ const server = http.createServer(async (req, res) => {
 
     // ── Generic per-table records (drives the panel data grid + search) ──
     if (method === 'GET' && url.startsWith('/api/records')) {
-      const table = new URL(url, 'http://localhost').searchParams.get('table') || '';
+      const table = new URL(url, 'placeholder').searchParams.get('table') || '';
       await listRecords(res, table);
       return;
     }
@@ -759,7 +759,7 @@ ensureDbReady()
   .then(() => {
     server.listen(PORT, () => {
       // eslint-disable-next-line no-console
-      console.log(`GSS test server running → http://localhost:${PORT}/tc/tc.html`);
+      console.log(`GSS test server running → placeholder:${PORT}/tc/tc.html`);
     });
   })
   .catch((err) => {
