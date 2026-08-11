@@ -50,7 +50,15 @@
   const CATEGORY_REFRESH = /** @type {Record<string, () => void>} */ ({
     edu_lvl: () => {
       const hook = /** @type {any} */ (window).GSSEducationLevel;
-      if (hook && typeof hook.setOptions === 'function') loadCategoryInto(hook);
+      if (hook && typeof hook.setOptions === 'function') loadCategoryInto('edu_lvl', hook);
+    },
+    training_title: () => {
+      const hook = /** @type {any} */ (window).GSSTrainingTitle;
+      if (hook && typeof hook.setOptions === 'function') loadCategoryInto('training_title', hook);
+    },
+    trainer: () => {
+      const hook = /** @type {any} */ (window).GSSTrainer;
+      if (hook && typeof hook.setOptions === 'function') loadCategoryInto('trainer', hook);
     },
   });
 
@@ -243,10 +251,13 @@
   refreshBtn?.addEventListener('click', loadValues);
 
   // ── Populate a linked dropdown from a category's values ─────────
-  /** @param {{ setOptions: (items: { code?: string, label: string }[]) => void }} hook */
-  const loadCategoryInto = (hook) => {
+  /**
+   * @param {string} cat
+   * @param {{ setOptions: (items: { code?: string, label: string }[]) => void }} hook
+   */
+  const loadCategoryInto = (cat, hook) => {
     const useFr = lang() === 'fr';
-    fetch(`${API_BASE}/api/dictionary?category=edu_lvl`, { headers: { Accept: 'application/json' } })
+    fetch(`${API_BASE}/api/dictionary?category=${encodeURIComponent(cat)}`, { headers: { Accept: 'application/json' } })
       .then((r) => r.json())
       .then((data) => {
         const items = Array.isArray(data.items) ? data.items : [];
@@ -260,25 +271,36 @@
       .catch(() => { /* keep the static options on failure */ });
   };
 
-  // On load, populate the Education Level dropdown from the dictionary.
-  const populateEducationLevel = () => {
-    const hook = /** @type {any} */ (window).GSSEducationLevel;
-    if (hook && typeof hook.setOptions === 'function') {
-      loadCategoryInto(hook);
-    } else {
-      // The registration module may not have exposed its hook yet.
-      window.setTimeout(populateEducationLevel, 150);
-    }
+  // On load, populate every dictionary-backed dropdown from the DB.
+  /** @type {{ hook: string, cat: string }[]} */
+  const LINKED_DROPDOWNS = [
+    { hook: 'GSSEducationLevel', cat: 'edu_lvl' },
+    { hook: 'GSSTrainingTitle', cat: 'training_title' },
+    { hook: 'GSSTrainer', cat: 'trainer' },
+  ];
+
+  const populateLinkedDropdowns = () => {
+    let pending = false;
+    LINKED_DROPDOWNS.forEach(({ hook, cat }) => {
+      const h = /** @type {any} */ (window)[hook];
+      if (h && typeof h.setOptions === 'function') {
+        loadCategoryInto(cat, h);
+      } else {
+        // The owning module may not have exposed its hook yet.
+        pending = true;
+      }
+    });
+    if (pending) window.setTimeout(populateLinkedDropdowns, 150);
   };
 
   // Re-populate the dropdown labels when the application language changes.
   document.querySelectorAll('[data-lang]').forEach((b) =>
-    b.addEventListener('click', () => { window.setTimeout(populateEducationLevel, 0); })
+    b.addEventListener('click', () => { window.setTimeout(populateLinkedDropdowns, 0); })
   );
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', populateEducationLevel);
+    document.addEventListener('DOMContentLoaded', populateLinkedDropdowns);
   } else {
-    populateEducationLevel();
+    populateLinkedDropdowns();
   }
 })();

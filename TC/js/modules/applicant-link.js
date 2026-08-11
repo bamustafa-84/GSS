@@ -97,12 +97,15 @@ const DATE_COLS = new Set(['registration_date', 'date_of_birth', 'applicant_date
   };
 
   const makeReadonly = (/** @type {HTMLInputElement | HTMLTextAreaElement | null} */ el) => {
-    // if (!el) return;
+    if (!el) return;
+
+    el.disabled = true;
+    el.classList.add('bg-slate-100', 'opacity-80', 'cursor-not-allowed');
+    el.classList.remove('bg-white');
+
     // el.readOnly = true;
-    // el.setAttribute('aria-readonly', 'true');
-    // el.tabIndex = -1;
-    // el.classList.add('bg-slate-100', 'opacity-80', 'cursor-not-allowed');
-    // el.classList.remove('bg-white');
+    el.setAttribute('aria-readonly', 'true');
+    el.tabIndex = -1;
     // if (String(el.type || '').toLowerCase() === 'date') el.classList.add('pointer-events-none');
 
     //  if (!el) return;
@@ -278,11 +281,35 @@ const DATE_COLS = new Set(['registration_date', 'date_of_birth', 'applicant_date
     // Never leave a fieldset disabled: a disabled <fieldset> also disables the
     // always-available Dictionary Management button nested inside it.
     form.querySelectorAll('fieldset').forEach((fs) => { /** @type {HTMLFieldSetElement} */ (fs).disabled = false; });
+    
     // Toggle the data controls directly (inputs, selects incl. the hidden
     // native selects behind the searchable combos, and textareas).
-    form.querySelectorAll('input, select, textarea').forEach((el) => {
-      /** @type {HTMLInputElement} */ (el).disabled = ro;
-    });
+   
+    /** @type {NodeListOf<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>} */
+      const elements = form.querySelectorAll('input, select, textarea');
+
+      elements.forEach((el) => {
+        if(el.id ==='CandidateNo') return; // the DB-generated candidate number is always read-only
+        
+          el.disabled = ro;
+           if(ro){
+            el.classList.add('bg-slate-100', 'opacity-80', 'cursor-not-allowed');
+            el.classList.remove('bg-white');
+            el.setAttribute('aria-readonly', 'true');
+            el.tabIndex = -1;
+           }
+           else{
+            el.classList.add('bg-white');
+            el.classList.remove(
+                'bg-slate-100',
+                'opacity-80',
+                'cursor-not-allowed'
+            );
+            el.setAttribute('aria-readonly', 'false');
+            el.removeAttribute('tabindex');
+           }
+      });
+    
     // Buttons: disable everything (submit/reset + searchable-select triggers +
     // signature clear) EXCEPT admin actions like Dictionary Management, which
     // must stay usable regardless of the form's read-only state.
