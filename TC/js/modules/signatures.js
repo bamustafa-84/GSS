@@ -1,4 +1,5 @@
 // @ts-check
+/// <reference path="../utils/translation.js" />
 /**
  * GSS · Signature manager
  * ------------------------------------------------------------------
@@ -35,11 +36,6 @@
 
   // Signature list is lazy: first PAGE_SIZE rows, then searched server-side.
   const PAGE_SIZE = 10;
-
-  // API base: relative when served by the Node server, otherwise the local
-  // test server (covers Live Server on :5500 and file:// previews).
-  const API_BASE =
-    (location.protocol.startsWith('http') && location.port !== '5500') ? location.origin : 'http://localhost:4000';
 
   const t = (/** @type {string} */ key, /** @type {string} */ fallback) => {
     try {

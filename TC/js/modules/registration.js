@@ -262,7 +262,6 @@ const initInscriptionForm = () => {
     }
 
     // Persist the applicant, then mark the Registration panel completed.
-    const API_BASE = (location.protocol.startsWith('http') && location.port !== '5500') ? location.origin : 'http://localhost:4000';
     try {
       let row;
       if (reviewOnly) {

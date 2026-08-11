@@ -13,8 +13,6 @@
 (() => {
   'use strict';
 
-  const API = (typeof API_BASE === 'string' && API_BASE) ? API_BASE : 'http://localhost:4000';
-
   const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
   let role = (session && session.role) ? String(session.role) : 'Candidate';
 
@@ -55,11 +53,11 @@
     const secretaryBell = document.getElementById('secretaryBell');
     try {
       if (pendingBell && !pendingBell.classList.contains('hidden')) {
-        const d = await fetch(`${API}/api/applicants/pending`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
+        const d = await fetch(`${API_BASE}/api/applicants/pending`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
         setBadge('pendingBadge', Number(d && d.count) || 0);
       }
       if (secretaryBell && !secretaryBell.classList.contains('hidden')) {
-        const d = await fetch(`${API}/api/applicants/secretary-queue`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
+        const d = await fetch(`${API_BASE}/api/applicants/secretary-queue`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
         setBadge('secretaryBadge', Number(d && d.count) || 0);
       }
     } catch (_) { /* server may be down */ }
@@ -81,7 +79,7 @@
       if (!grid || typeof grid.filterByPredicate !== 'function') return;
       let ids = new Set();
       try {
-        const d = await fetch(`${API}/api/applicants/secretary-queue`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
+        const d = await fetch(`${API_BASE}/api/applicants/secretary-queue`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
         (d && Array.isArray(d.applicants) ? d.applicants : []).forEach((a) => ids.add(Number(a.candidate_no)));
       } catch (_) { /* noop */ }
       grid.filterByPredicate('registration', (rec) => ids.has(Number(rec.candidate_no)));
@@ -222,7 +220,7 @@
 
   const loadUsers = async () => {
     try {
-      const d = await fetch(`${API}/api/users`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
+      const d = await fetch(`${API_BASE}/api/users`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
       renderUsers(Array.isArray(d.users) ? d.users : []);
       setUsersStatus('', true);
     } catch (_) {
@@ -233,7 +231,7 @@
 
   const updateUser = async (/** @type {Record<string, any>} */ payload, /** @type {boolean} */ fromRow) => {
     try {
-      const res = await fetch(`${API}/api/users`, {
+      const res = await fetch(`${API_BASE}/api/users`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => ({}));
@@ -291,7 +289,7 @@
     const s = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
     if (!s || !s.username) return;
     try {
-      const d = await fetch(`${API}/api/me?username=${encodeURIComponent(s.username)}`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
+      const d = await fetch(`${API_BASE}/api/me?username=${encodeURIComponent(s.username)}`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
       if (d && d.ok && d.role && d.role !== role) {
         role = String(d.role);
         if (typeof GSSSession !== 'undefined' && GSSSession.update) GSSSession.update({ role: role, full_name: d.full_name });
