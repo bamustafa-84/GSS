@@ -36,6 +36,30 @@
     <style>
           /* Let the intl-tel-input wrapper fill the field width like the other inputs. */
       .iti { width: 100%; }
+
+      /* ── Split date + time picker (24-hour format) ── */
+      .datetime-picker input[type="date"] {
+        border-radius: 0.75rem 0 0 0.75rem;
+        border-right: none;
+      }
+      .datetime-picker input[type="time"] {
+        border-radius: 0 0.75rem 0.75rem 0;
+      }
+      .datetime-picker input[type="time"]:focus {
+        position: relative;
+        z-index: 1;
+      }
+      /* Force time input to show 24-hour format (hide AM/PM) */
+      input[type="time"]::-webkit-calendar-picker-indicator {
+        cursor: pointer;
+      }
+      input[type="time"]::-webkit-datetime-edit-ampm-field {
+        display: none;
+      }
+      input[type="time"] {
+        -moz-appearance: textfield;
+        appearance: textfield;
+      }
     </style>
   </head>
   <body class="min-h-screen bg-white text-[#042F8D] font-sans">
@@ -103,6 +127,13 @@
           class="relative hidden shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white p-2.5 text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6a2 2 0 0 1 2 2v1h1a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h1V4a2 2 0 0 1 2-2z"/><path d="M9 5h6"/><path d="m9 14 2 2 4-4"/></svg>
           <span id="secretaryBadge" class="absolute -right-1 -top-1 hidden min-w-[1.15rem] rounded-full bg-amber-500 px-1 py-0.5 text-center text-[10px] font-bold leading-none text-white">0</span>
+        </button>
+
+        <!-- ── Monthly attendance tick sheet (Instructor edits · Admin / Head of Training view) ── -->
+        <button type="button" id="attSheetBtn" data-role-any="Admin,Instructor,Head of Training" data-role-display="inline-flex" title="Monthly attendance sheet"
+          class="hidden shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span class="hidden sm:inline" data-i18n="attSheetBtn">Attendance sheet</span>
         </button>
       </div>
     </div>
@@ -303,6 +334,51 @@
             <p id="dictListEmpty" class="hidden px-2 py-6 text-center text-sm text-slate-400" data-i18n="dictNone">No values yet.</p>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ MONTHLY ATTENDANCE TICK SHEET (Admin / Instructor) ═══════════════════ -->
+    <div id="attSheetOverlay" class="fixed inset-0 z-[1100] hidden bg-[rgba(1,7,16,0.6)] p-3 backdrop-blur-sm sm:p-6" aria-hidden="true">
+      <div class="mx-auto flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.35)]" role="dialog" aria-modal="true" aria-labelledby="attSheetTitle">
+        <header class="flex shrink-0 flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-5 py-4 text-white">
+          <div class="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
+            <h2 id="attSheetTitle" class="text-base font-semibold" data-i18n="attSheetTitle">Monthly attendance · tick sheet</h2>
+          </div>
+          <div class="flex items-center gap-2">
+            <input id="attSheetMonth" type="month" class="rounded-full border border-white/25 bg-white/15 px-3 py-1.5 text-sm font-semibold text-white [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-white/60" />
+            <button type="button" id="attSheetClose" class="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/25" data-i18n="closeBtn">Close</button>
+          </div>
+        </header>
+
+        <!-- Training-title tabs (one per title the instructor teaches) -->
+        <div id="attSheetTabs" class="flex shrink-0 flex-wrap gap-1.5 border-b border-slate-200 bg-slate-50 px-4 py-2.5" role="tablist" aria-label="Training titles"></div>
+
+        <div class="flex-1 overflow-auto bg-slate-50 p-4 sm:p-5">
+          <div id="attSheetEmpty" class="hidden rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-sm text-slate-400" data-i18n="attSheetNoTitles">No training titles are assigned to you yet.</div>
+          <div id="attSheetTableWrap" class="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <table id="attSheetTable" class="min-w-[700px] w-full border-collapse text-sm">
+              <thead>
+                <tr>
+                  <th class="sticky left-0 z-10 whitespace-nowrap rounded-tl-2xl border-b-2 border-slate-200 bg-slate-100 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600" data-i18n="attSheetColName">Name</th>
+                </tr>
+              </thead>
+              <tbody id="attSheetBody" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <footer class="flex shrink-0 flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-slate-200 bg-white px-5 py-3 text-xs text-slate-500">
+          <div class="flex flex-wrap items-center gap-x-5 gap-y-1">
+            <span class="inline-flex items-center gap-1.5">📅 <i id="attSheetMonthLabel" class="not-italic rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600"></i></span>
+            <span class="inline-flex items-center gap-1.5"><span class="inline-block h-3 w-3 rounded border border-[#0a6b3c] bg-[#0a6b3c]"></span> <span data-i18n="attSheetPresent">tick = present</span></span>
+            <span class="inline-flex items-center gap-1.5">⏺️ <span id="attSheetDaysLabel"></span> <span data-i18n="attSheetDays">days</span></span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" id="attSheetClear" class="rounded-full border border-slate-300 px-4 py-1.5 font-semibold text-slate-600 transition hover:border-[#042F8D] hover:bg-slate-50 hover:text-[#042F8D]" data-i18n="attSheetClear">Clear all ticks</button>
+            <button type="button" id="attSheetSave" class="rounded-full bg-[#042F8D] px-4 py-1.5 font-semibold text-white shadow-sm transition hover:-translate-y-px" data-i18n="attSheetSave">Save</button>
+          </div>
+        </footer>
       </div>
     </div>
 
@@ -884,11 +960,11 @@
                   <div class="mt-4 grid gap-4 md:grid-cols-2">
                     <div class="flex flex-col gap-1.5">
                       <label for="Cond-ApplicantName" class="text-sm font-semibold text-slate-700" data-i18n="condLbNom">Applicant's Name</label>
-                      <input id="Cond-ApplicantName" name="Cond-ApplicantName" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                      <input id="Cond-ApplicantName" name="Cond-ApplicantName" type="text" disabled class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] cursor-not-allowed bg-slate-100 opacity-80 px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                     <div class="flex flex-col gap-1.5">
                       <label for="Cond-ApplicantDate" class="text-sm font-semibold text-slate-700" data-i18n="condLbDate">Date</label>
-                      <input id="Cond-ApplicantDate" name="Cond-ApplicantDate" type="date" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                      <input id="Cond-ApplicantDate" name="Cond-ApplicantDate" type="date" disabled class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] cursor-not-allowed bg-slate-100 opacity-80 px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                     <div class="flex flex-col gap-1.5 md:col-span-2">
                       <label for="Cond-ApplicantSignature" class="text-sm font-semibold text-slate-700" data-i18n="condLbSig">Signature</label>
@@ -951,11 +1027,11 @@
                   <div class="mt-4 grid gap-4 md:grid-cols-2">
                     <div class="flex flex-col gap-1.5">
                       <label for="rules-ApplicantName" class="text-sm font-semibold text-slate-700" data-i18n="reglLbNomCandidat">Applicant's Name</label>
-                      <input id="rules-ApplicantName" name="rules-ApplicantName" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                      <input id="rules-ApplicantName" name="rules-ApplicantName" type="text" disabled class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] cursor-not-allowed  bg-slate-100 opacity-80 px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                     <div class="flex flex-col gap-1.5">
                       <label for="rules-ApplicantDate" class="text-sm font-semibold text-slate-700" data-i18n="reglLbDate">Date</label>
-                      <input id="rules-ApplicantDate" name="rules-ApplicantDate" type="date" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                      <input id="rules-ApplicantDate" name="rules-ApplicantDate" type="date" disabled class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] cursor-not-allowed  bg-slate-100 opacity-80 px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                     <div class="flex flex-col gap-1.5 md:col-span-2">
                       <label for="rules-ApplicantSignature" class="text-sm font-semibold text-slate-700" data-i18n="reglLbSig">Signature</label>
@@ -997,15 +1073,15 @@
                   <div class="grid gap-4 md:grid-cols-2">
                     <div class="flex flex-col gap-1.5 md:col-span-2">
                       <label for="Comm-ApplicantName" class="text-sm font-semibold text-slate-700" data-i18n="engLbNom">I, the undersigned</label>
-                      <input id="Comm-ApplicantName" name="Comm-ApplicantName" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                      <input id="Comm-ApplicantName" name="Comm-ApplicantName" type="text" disabled class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] cursor-not-allowed  bg-slate-100 opacity-80 px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                     <div class="flex flex-col gap-1.5">
                       <label for="Comm-DateOfBirth" class="text-sm font-semibold text-slate-700" data-i18n="engLbNaissance">Born on</label>
-                      <input id="Comm-DateOfBirth" name="Comm-DateOfBirth" type="date" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                      <input id="Comm-DateOfBirth" name="Comm-DateOfBirth" type="date" disabled class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] cursor-not-allowed  bg-slate-100 opacity-80 px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                     <div class="flex flex-col gap-1.5">
                       <label for="Comm-Phone1" class="text-sm font-semibold text-slate-700" data-i18n="engLbTelephone">Phone Number</label>
-                      <input id="Comm-Phone1" name="Comm-Phone1" type="tel" inputmode="tel" autocomplete="tel" pattern="^\+?[0-9\s().-]{7,20}$" placeholder="+243 999 000 000" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                      <input id="Comm-Phone1" name="Comm-Phone1" type="tel" inputmode="tel" autocomplete="tel" pattern="^\+?[0-9\s().-]{7,20}$" placeholder="+243 999 000 000" disabled class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] cursor-not-allowed  bg-slate-100 opacity-80 px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                     <div class="flex flex-col gap-1.5 md:col-span-2">
                       <label for="Comm-IDPassportNumber" class="text-sm font-semibold text-slate-700 after:content-['_*'] after:text-red-500 after:font-bold" data-i18n="engLbPiece">ID Card / Passport Number</label>
@@ -1049,11 +1125,11 @@
                     </div>
                     <div class="flex flex-col gap-1.5">
                       <label for="Comm-ApplicantDate" class="text-sm font-semibold text-slate-700" data-i18n="engLbLe">Date</label>
-                      <input id="Comm-ApplicantDate" name="Comm-ApplicantDate" type="date" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                      <input id="Comm-ApplicantDate" name="Comm-ApplicantDate" type="date" disabled class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] cursor-not-allowed bg-slate-100 opacity-80 px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                     <div class="flex flex-col gap-1.5">
                       <label for="Comm-ApplicantName1" class="text-sm font-semibold text-slate-700" data-i18n="engLbNomComplet">Full Name</label>
-                      <input id="Comm-ApplicantName1" name="Comm-ApplicantName1" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                      <input id="Comm-ApplicantName1" name="Comm-ApplicantName1" type="text" disabled class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] cursor-not-allowed bg-slate-100 opacity-80 px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                     <div class="flex flex-col gap-1.5 md:col-span-2">
                       <label for="Comm-ApplicantSignature" class="text-sm font-semibold text-slate-700" data-i18n="engLbSig">Signature</label>
@@ -1104,18 +1180,16 @@
                     <span data-i18n="presSecInfo">CANDIDATE INFORMATION</span>
                   </legend>
                   <div class="mt-4 grid gap-4 md:grid-cols-2">
-                    <div class="flex flex-col gap-1.5">
-                      <label for="att-CandidateNo" class="text-sm font-semibold text-slate-700" data-i18n="presLbNumCandidat">Candidate No.</label>
-                      <input id="att-CandidateNo" name="att-CandidateNo" type="text" placeholder="C10001" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                      <label for="att-FullName" class="text-sm font-semibold text-slate-700" data-i18n="presLbNom">Full Name</label>
-                      <input id="att-FullName" name="att-FullName" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-                    </div>
-                    <div class="flex flex-col gap-1.5 md:col-span-2">
-                      <label for="att-TrainingTitle" class="text-sm font-semibold text-slate-700" data-i18n="attLbIntitule">Training Title</label>
-                      <select id="att-TrainingTitle" name="att-TrainingTitle" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
-                        <option value=""></option>
+                    <div class="flex flex-col gap-2">
+                      <div class="flex items-center justify-between gap-2">
+                        <label for="att-TrainingTitle" class="text-sm font-semibold text-slate-700 after:content-['_*'] after:text-red-500 after:font-bold" data-i18n="attLbIntitule">Training Title</label>
+                        <button type="button" id="trainingTitleBtn" class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-[#042F8D] shadow-sm transition hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#042F8D]/20" data-dict-category="training_title" data-dict-title-i18n="dictTrainingTitle" title="Dictionary Management" data-i18n-title="dictManage">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                          <span data-i18n="dictManage">Dictionary Management</span>
+                        </button>
+                      </div>
+                      <select id="att-TrainingTitle" name="att-TrainingTitle" required class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+                        <option value="" disabled selected data-i18n="optSelectTrainingTitle"></option>
                         <option value="FIAS">FIAS - Initial Security Agent Training</option>
                         <option value="FRAS">FRAS - Security Agent Refresher Training</option>
                         <option value="FCP">FCP - Post Commander Training</option>
@@ -1123,17 +1197,34 @@
                         <option value="FINSP">FINSP - Inspector Training</option>
                       </select>
                     </div>
-                    <div class="flex flex-col gap-1.5 md:col-span-2">
-                      <label for="Trainer" class="text-sm font-semibold text-slate-700" data-i18n="presLbFormateur">Trainer</label>
-                      <input id="Trainer" name="Trainer" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                    <div class="flex flex-col gap-2">
+                      <div class="flex items-center justify-between gap-2">
+                        <label for="att-Trainer" class="text-sm font-semibold text-slate-700 after:content-['_*'] after:text-red-500 after:font-bold" data-i18n="presLbFormateur">Trainer</label>
+                        <button type="button" id="trainerBtn" class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-[#042F8D] shadow-sm transition hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#042F8D]/20" data-dict-category="trainer" data-dict-title-i18n="dictTrainerTitle" title="Dictionary Management" data-i18n-title="dictManage">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                          <span data-i18n="dictManage">Dictionary Management</span>
+                        </button>
+                      </div>
+                      <select id="att-Trainer" name="att-Trainer" required class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+                        <option value="" disabled selected data-i18n="optSelectTrainer"></option>
+                        <option value="Zaki Mustafa">Zaki Mustafa</option>
+                      </select>
                     </div>
                     <div class="flex flex-col gap-1.5">
-                      <label for="att-From" class="text-sm font-semibold text-slate-700" data-i18n="presLbPeriodeDu">From</label>
-                      <input id="att-From" name="att-From" type="date" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                      <label class="text-sm font-semibold text-slate-700" data-i18n="presLbPeriodeDu">From</label>
+                      <div class="datetime-picker flex">
+                        <input id="att-From-date" type="date" class="w-1/2 rounded-l-xl border-[1.5px] border-r-0 border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                        <input id="att-From-time" type="time" step="60" class="w-1/2 rounded-r-xl border-[1.5px] border-l-0 border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                      </div>
+                      <input id="att-From" name="att-From" type="hidden" />
                     </div>
                     <div class="flex flex-col gap-1.5">
-                      <label for="att-To" class="text-sm font-semibold text-slate-700" data-i18n="presLbPeriodeAu">To</label>
-                      <input id="att-To" name="att-To" type="date" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                      <label class="text-sm font-semibold text-slate-700" data-i18n="presLbPeriodeAu">To</label>
+                      <div class="datetime-picker flex">
+                        <input id="att-To-date" type="date" class="w-1/2 rounded-l-xl border-[1.5px] border-r-0 border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                        <input id="att-To-time" type="time" step="60" class="w-1/2 rounded-r-xl border-[1.5px] border-l-0 border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                      </div>
+                      <input id="att-To" name="att-To" type="hidden" />
                     </div>
                   </div>
                 </fieldset>
@@ -1155,7 +1246,6 @@
                             <th class="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide" data-i18n="presColArrivee">Arrival Time</th>
                             <th class="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide" data-i18n="presColDepart">Departure Time</th>
                             <th class="whitespace-nowrap px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide" data-i18n="presColObs">Observations</th>
-                            <th class="px-3 py-2.5"></th>
                           </tr>
                         </thead>
                         <tbody id="presences-tbody" class="divide-y divide-slate-100 bg-white">
@@ -1166,12 +1256,6 @@
                     <!-- Status legend -->
                     <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
                       <span data-i18n-html="presLegend"><span class="font-semibold text-[#042F8D]">AH</span> = On time &nbsp;·&nbsp; <span class="font-semibold text-amber-600">AR</span> = Late &nbsp;·&nbsp; <span class="font-semibold text-red-600">ABS</span> = Absent &nbsp;·&nbsp; <span class="font-semibold text-slate-700">EX</span> = Excluded</span>
-                    </div>
-                    <div class="mt-3 flex justify-end">
-                      <button type="button" id="pres-add-row-btn" class="inline-flex items-center gap-2 rounded-full bg-[#042F8D] px-4 py-2 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(4,47,141,0.2)] transition hover:-translate-y-px hover:shadow-[0_12px_28px_rgba(4,47,141,0.30)]">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        <span data-i18n="presBtnAddRow">Add row</span>
-                      </button>
                     </div>
                   </div>
                 </fieldset>
@@ -1216,7 +1300,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                     <span data-i18n="presSecSig">SIGNATURES</span>
                   </legend>
-                  <div class="mt-4 grid gap-4 md:grid-cols-2">
+                  <div class="mt-4 grid gap-4">
                     <div class="flex flex-col gap-1.5">
                       <label for="att-sig-cachet" class="text-sm font-semibold text-slate-700" data-i18n="presLbCachet">Training Centre Stamp</label>
                       <div class="gss-sign group relative w-full overflow-hidden rounded-xl border-[1.5px] border-[#dbe2f0] bg-white/40 transition focus-within:border-[#042F8D] focus-within:ring-4 focus-within:ring-[#042F8D]/10">
@@ -1224,15 +1308,6 @@
                         <span class="gss-sign-hint pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-slate-400" data-i18n="sigHint">Sign within the box</span>
                         <button type="button" class="gss-sign-clear absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-[#042F8D] hover:text-[#042F8D]" data-i18n="sigClear">Clear</button>
                         <input id="att-sig-cachet-data" name="att-sig-cachet" class="gss-sign-input" type="hidden">
-                      </div>
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                      <label for="pres-visa" class="text-sm font-semibold text-slate-700" data-i18n="presLbVisa">Director's Visa</label>
-                      <div class="gss-sign group relative w-full overflow-hidden rounded-xl border-[1.5px] border-[#dbe2f0] bg-white/40 transition focus-within:border-[#042F8D] focus-within:ring-4 focus-within:ring-[#042F8D]/10">
-                        <canvas id="pres-visa" class="gss-sign-canvas block h-44 w-full touch-none cursor-crosshair bg-transparent"></canvas>
-                        <span class="gss-sign-hint pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-slate-400" data-i18n="sigHint">Sign within the box</span>
-                        <button type="button" class="gss-sign-clear absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-[#042F8D] hover:text-[#042F8D]" data-i18n="sigClear">Clear</button>
-                        <input id="pres-visa-data" name="pres-visa" class="gss-sign-input" type="hidden" />
                       </div>
                     </div>
                   </div>
@@ -1960,6 +2035,7 @@
     <script src="./js/modules/signatures.js"></script>
     <script src="./js/modules/dictionary.js"></script>
     <script src="./js/modules/admin.js"></script>
+    <script src="./js/modules/att-sheet.js"></script>
    
     
     <!-- intl-tel-input plugin (bundled with utils for formatting/validation) -->
@@ -2014,6 +2090,71 @@
           document.addEventListener('DOMContentLoaded', initPhones);
         } else {
           initPhones();
+        }
+      })();
+    </script>
+    <script>
+      // Panel 5 (Présences) · split "From"/"To" into date + 24h time pickers.
+      // The hidden #att-From / #att-To fields keep the combined ISO value
+      // (YYYY-MM-DDTHH:mm) so existing serialization keeps working.
+      (() => {
+        const PAIRS = [
+          { date: 'att-From-date', time: 'att-From-time', hidden: 'att-From' },
+          { date: 'att-To-date',   time: 'att-To-time',   hidden: 'att-To'   },
+        ];
+
+        const pad = (n) => String(n).padStart(2, '0');
+
+        const syncHidden = ({ date, time, hidden }) => {
+          const d = document.getElementById(date)?.value;
+          const t = document.getElementById(time)?.value;
+          const h = document.getElementById(hidden);
+          if (h) h.value = d && t ? `${d}T${t}` : (d || '');
+        };
+
+        // Populate the split inputs from an existing hidden value
+        // (e.g. when reloading a saved applicant).
+        const hydrate = ({ date, time, hidden }) => {
+          const v = document.getElementById(hidden)?.value || '';
+          if (!v) return;
+          const [d, t] = v.split('T');
+          const dateEl = document.getElementById(date);
+          const timeEl = document.getElementById(time);
+          if (dateEl && d) dateEl.value = d;
+          if (timeEl && t) timeEl.value = t.slice(0, 5);
+        };
+
+        const initDateTimePickers = () => {
+          PAIRS.forEach((pair) => {
+            const dateEl = document.getElementById(pair.date);
+            const timeEl = document.getElementById(pair.time);
+            if (!dateEl || !timeEl) return;
+
+            // Empty by default; only prefill from a saved applicant value.
+            hydrate(pair);
+            syncHidden(pair);
+
+            dateEl.addEventListener('change', () => syncHidden(pair));
+            timeEl.addEventListener('change', () => syncHidden(pair));
+
+            // Enforce 24-hour format on blur.
+            timeEl.addEventListener('blur', function () {
+              const parts = (this.value || '').split(':');
+              if (parts.length !== 2) return;
+              let hours = parseInt(parts[0], 10);
+              const minutes = parts[1];
+              if (isNaN(hours) || hours < 0 || hours > 23) hours = 0;
+              const formatted = `${pad(hours)}:${minutes}`;
+              if (this.value !== formatted) this.value = formatted;
+              syncHidden(pair);
+            });
+          });
+        };
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', initDateTimePickers);
+        } else {
+          initDateTimePickers();
         }
       })();
     </script>
