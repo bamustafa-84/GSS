@@ -1,4 +1,6 @@
 // @ts-check
+/// <reference path="./translation.js" />
+
 /**
  * GSS – Top "Find in form" panel search
  * ------------------------------------------------------------------
@@ -433,11 +435,6 @@
   const gridColsApply = document.getElementById('gridColsApply');
   const gridColsCancel = document.getElementById('gridColsCancel');
   const gridColsReset = document.getElementById('gridColsReset');
-
-  // API base: the serving origin when opened from the Node server, otherwise
-  // the local test server (covers Live Server on :5500 and file:// previews).
-  const API_BASE =
-    (location.protocol.startsWith('http') && location.port !== '5500') ? location.origin : 'http://localhost:4000';
 
   // Localize a key from the shared translation dictionary (falls back to text).
   const gridI18n = (/** @type {string} */ key, /** @type {string} */ fallback) => {

@@ -246,13 +246,7 @@
       ? await gssForm.collectDbValues(form)
       : Object.fromEntries(new FormData(form).entries());
 
-    // The API lives on the Node server. Use the serving origin when opened from
-    // it, otherwise fall back to the local test server.
-    const apiBase = (location.protocol.startsWith('http') && location.port !== '5500')
-      ? location.origin
-      : 'http://localhost:4000';
-
-    fetch(`${apiBase}/api/applicants`, {
+    fetch(`${API_BASE}/api/applicants`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
