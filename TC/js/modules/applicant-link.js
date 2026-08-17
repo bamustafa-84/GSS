@@ -382,6 +382,9 @@ const DATE_COLS = new Set(['registration_date', 'date_of_birth', 'applicant_date
     const idpass = byId('Comm-IDPassportNumber');
     if (idpass) idpass.value = '';
 
+    // Clear the presences panel for a brand-new applicant.
+    clearPresences();
+
     // A brand-new form is not awaiting approval, and the applicant's declaration
     // date defaults to today.
     setPendingBanner(false);
@@ -450,7 +453,10 @@ const initApplicantForm = () => {
     Object.keys(ACCEPT).forEach(wireAcceptance);
 
     // Generic acks (panels without a DB acceptance column) just gate the flow.
+    // 'presences' is owned by attendance.js (it also saves the training + locks
+    // the panel + advances), so it is intentionally excluded here.
     GENERIC_TABS.forEach((tab) => {
+      if (tab === 'presences') return;
       const ack = byId('ack-' + tab);
       if (!ack) return;
       ack.addEventListener('change', () => {
@@ -568,8 +574,33 @@ const padParts = (/** @type {string} */ canvasId) => {
     const cfg = ACCEPT[key];
     const ack = byId(cfg.ack);
     if (!ack) return;
+
+    // Live-clear the mandatory-field error styling as the user types.
+    if (cfg.extra) {
+      Object.keys(cfg.extra).forEach((id) => {
+        const el = byId(id);
+        if (el) el.addEventListener('input', () => el.classList.remove('border-red-500', 'ring-2', 'ring-red-300'));
+      });
+    }
+
     ack.addEventListener('change', () => {
       if (!ack.checked) return;
+
+      // Mandatory extra fields (e.g. the Commitment ID Card / Passport Number)
+      // must be filled before the acknowledgement can be accepted.
+      if (cfg.extra) {
+        for (const id of Object.keys(cfg.extra)) {
+          const el = byId(id);
+          if (el && String(el.value || '').trim() === '') {
+            ack.checked = false;
+            el.classList.add('border-red-500', 'ring-2', 'ring-red-300');
+            try { /** @type {any} */ (el).focus(); } catch (_) { /* noop */ }
+            window.alert(t('engErrIdRequired', 'Please enter the ID Card / Passport Number before accepting.'));
+            return;
+          }
+        }
+      }
+
       const ok = window.confirm(t(cfg.confirmKey, cfg.confirmMsg));
       if (!ok) { ack.checked = false; return; }
       applyAcceptance(key, true, true);
@@ -578,6 +609,135 @@ const padParts = (/** @type {string} */ canvasId) => {
       goToNextTab(cfg.tab);
     });
   };
+
+// ── Individual Attendance Report (panel-presences) ─────────────
+// Populate the read-only presences panel from the DB when an applicant is
+// opened: Training Title / Trainer / From / To (from the training table) plus
+// the candidate's attendance history (sorted by date) and summary.
+
+/** @type {any[]} All attendance rows for the currently loaded candidate. */
+let presRowsAll = [];
+
+const presSetVal = (/** @type {string} */ id, /** @type {any} */ value) => {
+  const el = /** @type {HTMLInputElement | HTMLSelectElement | null} */ (document.getElementById(id));
+  if (el) el.value = value == null ? '' : String(value);
+};
+
+/** Ensure a <select> has an option for `value`, then select it. */
+const presEnsureOption = (/** @type {string} */ selectId, /** @type {string} */ value, /** @type {string} */ label) => {
+  const sel = /** @type {HTMLSelectElement | null} */ (document.getElementById(selectId));
+  if (!sel || !value) return;
+  let opt = Array.prototype.find.call(sel.options, (/** @type {HTMLOptionElement} */ o) => o.value === value);
+  if (!opt) {
+    opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = label || value;
+    sel.appendChild(opt);
+  }
+  sel.value = value;
+};
+
+const presTimeOf = (/** @type {any} */ isoTs) => {
+  if (!isoTs) return '';
+  const m = /T(\d{2}:\d{2})/.exec(String(isoTs));
+  if (m) return m[1];
+  const d = new Date(isoTs);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+
+const presDmyOf = (/** @type {any} */ isoTs) => {
+  if (!isoTs) return '';
+  const iso = String(isoTs).slice(0, 10);
+  return /** @type {any} */ (window).GSSDate ? /** @type {any} */ (window).GSSDate.toDMY(iso) : iso;
+};
+
+/** Render the header fields + history + summary for one training of the candidate. */
+const renderPresencesFor = (/** @type {any} */ trainingId) => {
+  const meta = presRowsAll.find((r) => String(r.training_id) === String(trainingId));
+  const pres = /** @type {any} */ (window).GSSPresences;
+  if (!meta) { if (pres) pres.setRows([]); return; }
+
+  presEnsureOption('att-Trainer', meta.trainer, meta.trainer);
+  presSetVal('att-From-date', presDmyOf(meta.date_from));
+  presSetVal('att-From-time', presTimeOf(meta.date_from));
+  presSetVal('att-To-date', presDmyOf(meta.date_to));
+  presSetVal('att-To-time', presTimeOf(meta.date_to));
+  presSetVal('att-From', meta.date_from || '');
+  presSetVal('att-To', meta.date_to || '');
+
+  const rows = presRowsAll
+    .filter((r) => String(r.training_id) === String(trainingId))
+    .map((r) => ({
+      date: r.attendance_date,
+      status: r.status || '',
+      arrival: r.arrival_time || '',
+      departure: r.departure_time || '',
+      observations: r.observation || '',
+    }));
+  if (pres) pres.setRows(rows);
+};
+
+const clearPresences = () => {
+  presRowsAll = [];
+  try { if (/** @type {any} */ (window).GSSPresences) /** @type {any} */ (window).GSSPresences.clear(); } catch (_) { /* noop */ }
+  ['att-TrainingTitle', 'att-Trainer', 'att-From-date', 'att-From-time', 'att-To-date', 'att-To-time', 'att-From', 'att-To']
+    .forEach((id) => presSetVal(id, ''));
+  // Unlock the panel so a freshly loaded applicant can be edited/acknowledged.
+  try { if (typeof /** @type {any} */ (window).setPresencesReadonly === 'function') /** @type {any} */ (window).setPresencesReadonly(false); } catch (_) { /* noop */ }
+};
+
+/**
+ * Fetch and display the candidate's attendance. Defaults to their most recent
+ * training; switching the Training Title select re-scopes the report.
+ * @param {number|null} candidateNo
+ */
+const loadPresences = async (candidateNo) => {
+  clearPresences();
+  if (candidateNo == null) return;
+  try {
+    const data = await fetch(
+      `${API_BASE}/api/attendance/candidate?candidate_no=${encodeURIComponent(String(candidateNo))}`,
+      { headers: { Accept: 'application/json' } }
+    ).then((r) => r.json());
+    presRowsAll = Array.isArray(data.attendance) ? data.attendance : [];
+    const pres = /** @type {any} */ (window).GSSPresences;
+    if (!presRowsAll.length) { if (pres) pres.setRows([]); return; }
+
+    // Distinct trainings, and the "primary" one = the most recent (max date_from).
+    /** @type {Record<string, any>} */
+    const metaById = {};
+    presRowsAll.forEach((r) => { if (!metaById[r.training_id]) metaById[r.training_id] = r; });
+    let primary = presRowsAll[0].training_id;
+    let bestFrom = '';
+    Object.keys(metaById).forEach((tid) => {
+      const f = String(metaById[tid].date_from || '');
+      if (f > bestFrom) { bestFrom = f; primary = metaById[tid].training_id; }
+    });
+
+    // Populate the Training Title select with this candidate's trainings.
+    Object.keys(metaById).forEach((tid) => {
+      presEnsureOption('att-TrainingTitle', metaById[tid].training_title, metaById[tid].training_title);
+    });
+    presEnsureOption('att-TrainingTitle', metaById[primary].training_title, metaById[primary].training_title);
+
+    renderPresencesFor(primary);
+  } catch (_) {
+    const pres = /** @type {any} */ (window).GSSPresences;
+    if (pres) pres.setRows([]);
+  }
+};
+
+// Switching the Training Title re-scopes the report to that training.
+(() => {
+  const sel = document.getElementById('att-TrainingTitle');
+  if (!sel) return;
+  sel.addEventListener('change', () => {
+    const title = /** @type {HTMLSelectElement} */ (sel).value;
+    const match = presRowsAll.find((r) => r.training_title === title);
+    if (match) renderPresencesFor(match.training_id);
+  });
+})();
 
 const load = (/** @type {Record<string, any> | null | undefined} */ record) => {
     if (!record) return;
@@ -614,6 +774,9 @@ const load = (/** @type {Record<string, any> | null | undefined} */ record) => {
     // Commitment ID/passport number (editable until accepted).
     const idpass = byId('Comm-IDPassportNumber');
     if (idpass) idpass.value = record.id_pass_no != null ? String(record.id_pass_no) : '';
+
+    // Individual Attendance Report: pull the candidate's attendance from the DB.
+    loadPresences(currentId);
 
     // Applicant signature: show on the form pad + the read-only panels.
     const sigId = record.applicant_signature_id;
