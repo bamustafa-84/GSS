@@ -54,6 +54,11 @@
         },
       };
     </script>
+    <style>
+      /* While an existing session is being validated, hide the auth UI to
+         avoid a flash of the login form before the auto-redirect. */
+      body.gss-auto-login { visibility: hidden; }
+    </style>
   </head>
 
   <body class="relative min-h-screen overflow-hidden bg-white font-sans text-[#042F8D]">

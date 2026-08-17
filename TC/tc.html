@@ -135,6 +135,13 @@
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
           <span class="hidden sm:inline" data-i18n="attSheetBtn">Attendance sheet</span>
         </button>
+
+        <!-- ── Exam configuration (Admin only) ── -->
+        <button type="button" id="examConfigBtn" data-role-any="Admin" data-role-display="inline-flex" title="Configure exams"
+          class="hidden shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          <span class="hidden sm:inline" data-i18n="examBtn">Exams</span>
+        </button>
       </div>
     </div>
 
@@ -338,21 +345,46 @@
     </div>
 
     <!-- ═══════════════════ MONTHLY ATTENDANCE TICK SHEET (Admin / Instructor) ═══════════════════ -->
-    <div id="attSheetOverlay" class="fixed inset-0 z-[1100] hidden bg-[rgba(1,7,16,0.6)] p-3 backdrop-blur-sm sm:p-6" aria-hidden="true">
-      <div class="mx-auto flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.35)]" role="dialog" aria-modal="true" aria-labelledby="attSheetTitle">
+    <div id="attSheetOverlay" class="fixed inset-0 z-[1100] hidden items-center justify-center bg-[rgba(1,7,16,0.6)] p-3 backdrop-blur-sm sm:p-6 flex" aria-hidden="true">
+      <div class="mx-auto flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.35)]" role="dialog" aria-modal="true" aria-labelledby="attSheetTitle">
         <header class="flex shrink-0 flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-5 py-4 text-white">
           <div class="flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
             <h2 id="attSheetTitle" class="text-base font-semibold" data-i18n="attSheetTitle">Monthly attendance · tick sheet</h2>
           </div>
           <div class="flex items-center gap-2">
-            <input id="attSheetMonth" type="month" class="rounded-full border border-white/25 bg-white/15 px-3 py-1.5 text-sm font-semibold text-white [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-white/60" />
+            <div id="attSheetYearWrap" class="relative flex cursor-pointer items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 transition hover:bg-white/25" title="Pick a year">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-white/80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <span data-i18n="attSheetYear" class="text-[11px] font-medium uppercase tracking-wide text-white/70">Year</span>
+              <span id="attSheetYearLabel" class="text-sm font-semibold tabular-nums text-white">—</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-white/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              <!-- Real date picker; only its year is surfaced to the user. -->
+              <input id="attSheetDate" type="date" class="absolute inset-0 h-full w-full cursor-pointer opacity-0" aria-label="Pick a year" />
+            </div>
             <button type="button" id="attSheetClose" class="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/25" data-i18n="closeBtn">Close</button>
           </div>
         </header>
 
+        <!-- Month picker: all 12 months of the selected year, colour-coded by course state. -->
+        <div id="attSheetRangeBar" class="flex shrink-0 flex-col gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-600">
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span class="font-semibold text-slate-600" data-i18n="attSheetPickMonth">Select a month:</span>
+            <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-orange-300 ring-1 ring-orange-400"></span> <span data-i18n="attSheetLegendActive">Active</span></span>
+            <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-emerald-300 ring-1 ring-emerald-400"></span> <span data-i18n="attSheetLegendDone">Completed</span></span>
+            <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-slate-200 ring-1 ring-slate-300"></span> <span data-i18n="attSheetLegendNone">No course</span></span>
+          </div>
+          <div id="attSheetRangePills" class="grid grid-cols-4 gap-1.5 sm:grid-cols-6 lg:grid-cols-12"></div>
+        </div>
+
         <!-- Training-title tabs (one per title the instructor teaches) -->
         <div id="attSheetTabs" class="flex shrink-0 flex-wrap gap-1.5 border-b border-slate-200 bg-slate-50 px-4 py-2.5" role="tablist" aria-label="Training titles"></div>
+
+        <!-- Instructor assigned to the selected training -->
+        <div id="attSheetInstructorBar" class="hidden shrink-0 items-center gap-1.5 border-b border-slate-200 bg-white px-4 py-2 text-xs text-slate-600">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-[#042F8D]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span data-i18n="attSheetInstructor">Instructor</span>:
+          <strong id="attSheetInstructorName" class="font-semibold text-slate-800"></strong>
+        </div>
 
         <div class="flex-1 overflow-auto bg-slate-50 p-4 sm:p-5">
           <div id="attSheetEmpty" class="hidden rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-sm text-slate-400" data-i18n="attSheetNoTitles">No training titles are assigned to you yet.</div>
@@ -366,17 +398,112 @@
               <tbody id="attSheetBody" class="divide-y divide-slate-100"></tbody>
             </table>
           </div>
+          <!-- Status legend (below the sheet, in place of per-cell status codes) -->
+          <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500">
+            <span class="font-semibold uppercase tracking-wide text-slate-600" data-i18n="attSheetLegendTitle">Status</span>
+            <span class="inline-flex items-center gap-1.5"><span class="flex h-4 w-4 items-center justify-center rounded-md bg-emerald-50 text-[10px] font-bold text-emerald-700 ring-1 ring-emerald-300">✓</span> <span data-i18n="attSheetLegendAH">On time (AH)</span></span>
+            <span class="inline-flex items-center gap-1.5"><span class="flex h-4 w-4 items-center justify-center rounded-md bg-amber-50 text-[10px] font-bold text-amber-700 ring-1 ring-amber-300">✓</span> <span data-i18n="attSheetLegendAR">Late (AR)</span></span>
+            <span class="inline-flex items-center gap-1.5"><span class="h-4 w-4 rounded-md bg-red-50 ring-1 ring-red-300"></span> <span data-i18n="attSheetLegendABS">Absent (ABS)</span></span>
+            <span class="inline-flex items-center gap-1.5"><span class="h-4 w-4 rounded-md bg-slate-100 ring-1 ring-slate-300"></span> <span data-i18n="attSheetLegendEX">Excluded (EX)</span></span>
+          </div>
         </div>
 
-        <footer class="flex shrink-0 flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-slate-200 bg-white px-5 py-3 text-xs text-slate-500">
-          <div class="flex flex-wrap items-center gap-x-5 gap-y-1">
-            <span class="inline-flex items-center gap-1.5">📅 <i id="attSheetMonthLabel" class="not-italic rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600"></i></span>
-            <span class="inline-flex items-center gap-1.5"><span class="inline-block h-3 w-3 rounded border border-[#0a6b3c] bg-[#0a6b3c]"></span> <span data-i18n="attSheetPresent">tick = present</span></span>
-            <span class="inline-flex items-center gap-1.5">⏺️ <span id="attSheetDaysLabel"></span> <span data-i18n="attSheetDays">days</span></span>
+        <!-- <footer class="flex shrink-0 flex-wrap items-center justify-end gap-x-6 gap-y-2 border-t border-slate-200 bg-white px-5 py-3 text-xs text-slate-500">
+          <div class="flex items-center gap-2">
+            <button type="button" id="attSheetSave" class="rounded-full bg-[#042F8D] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-px" data-i18n="attSheetSave">Save</button>
+          </div>
+        </footer> -->
+      </div>
+    </div>
+
+    <!-- ═══════════════════ ATTENDANCE CELL EDITOR (status / times / observation) ═══════════════════ -->
+    <div id="attCellOverlay" class="fixed inset-0 z-[1200] hidden bg-[rgba(1,7,16,0.6)] p-3 backdrop-blur-sm sm:p-6" aria-hidden="true">
+      <div class="mx-auto flex w-full max-w-md flex-col overflow-hidden rounded-[20px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.35)]" role="dialog" aria-modal="true" aria-labelledby="attCellTitle">
+        <header class="flex shrink-0 items-center justify-between gap-3 bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-5 py-4 text-white">
+          <h2 id="attCellTitle" class="text-base font-semibold" data-i18n="attCellTitle">Edit attendance</h2>
+          <div class="flex items-center gap-2">
+            <button type="button" id="attCellSave" class="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/25" data-i18n="attCellSave">Save</button>
+            <button type="button" id="attCellClose" class="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/25" data-i18n="closeBtn">Close</button>
+          </div>
+        </header>
+        <div class="flex flex-col gap-4 p-5">
+          <p id="attCellMeta" class="text-sm font-semibold text-slate-500"></p>
+
+          <div class="flex flex-col gap-1.5">
+            <label for="attCellStatus" class="text-sm font-semibold text-slate-700" data-i18n="attCellStatus">Status</label>
+            <select id="attCellStatus" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+              <option value="AH" data-i18n="attCellStatusAH">AH – On Time</option>
+              <option value="AR" data-i18n="attCellStatusAR">AR – Late</option>
+              <option value="ABS" data-i18n="attCellStatusABS">ABS – Absent</option>
+              <option value="EX" data-i18n="attCellStatusEX">EX – Excluded</option>
+            </select>
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="flex flex-col gap-1.5">
+              <label for="attCellArrival" class="text-sm font-semibold text-slate-700" data-i18n="attCellArrival">Arrival Time</label>
+              <input id="attCellArrival" type="time" step="60" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label for="attCellDeparture" class="text-sm font-semibold text-slate-700" data-i18n="attCellDeparture">Departure Time</label>
+              <input id="attCellDeparture" type="time" step="60" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <label for="attCellObs" class="text-sm font-semibold text-slate-700" data-i18n="attCellObservation">Observation</label>
+            <textarea id="attCellObs" rows="3" class="w-full resize-y rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ EXAM CONFIGURATION (Admin) ═══════════════════ -->
+    <div id="examOverlay" class="fixed inset-0 z-[1100] hidden items-center justify-center bg-[rgba(1,7,16,0.6)] p-3 backdrop-blur-sm sm:p-6" aria-hidden="true">
+      <div class="mx-auto flex h-full max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.35)]" role="dialog" aria-modal="true" aria-labelledby="examTitle">
+        <header class="flex shrink-0 flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-5 py-4 text-white">
+          <div class="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            <h2 id="examTitle" class="text-base font-semibold" data-i18n="examTitle">Exam configuration</h2>
           </div>
           <div class="flex items-center gap-2">
-            <button type="button" id="attSheetClear" class="rounded-full border border-slate-300 px-4 py-1.5 font-semibold text-slate-600 transition hover:border-[#042F8D] hover:bg-slate-50 hover:text-[#042F8D]" data-i18n="attSheetClear">Clear all ticks</button>
-            <button type="button" id="attSheetSave" class="rounded-full bg-[#042F8D] px-4 py-1.5 font-semibold text-white shadow-sm transition hover:-translate-y-px" data-i18n="attSheetSave">Save</button>
+            <label for="examTraining" class="text-xs font-semibold uppercase tracking-wide text-white/80" data-i18n="examCourse">Training course</label>
+            <select id="examTraining" class="rounded-full border border-white/25 bg-white/15 px-3 py-1.5 text-sm font-semibold text-white [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-white/60">
+              <option value="" data-i18n="examPickCourse">Select a course…</option>
+            </select>
+            <button type="button" id="examClose" class="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/25" data-i18n="closeBtn">Close</button>
+          </div>
+        </header>
+
+        <div class="grid flex-1 grid-cols-1 gap-0 overflow-hidden md:grid-cols-2">
+          <!-- Left · Question library -->
+          <section class="flex min-h-0 flex-col border-b border-slate-200 md:border-b-0 md:border-r">
+            <div class="flex shrink-0 items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
+              <h3 class="text-sm font-bold uppercase tracking-wide text-[#042F8D]" data-i18n="examLibrary">Question library</h3>
+              <span id="examLibCount" class="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-600"></span>
+            </div>
+            <div id="examLibrary" class="flex-1 space-y-2 overflow-auto bg-slate-50/60 p-3">
+              <p id="examLibHint" class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-sm text-slate-400" data-i18n="examSelectFirst">Please select a training course to load its questions.</p>
+            </div>
+          </section>
+
+          <!-- Right · Exam configuration -->
+          <section class="flex min-h-0 flex-col">
+            <div class="flex shrink-0 items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
+              <h3 class="text-sm font-bold uppercase tracking-wide text-[#042F8D]" data-i18n="examConfig">Exam questions</h3>
+              <span id="examConfigCount" class="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-600">0</span>
+            </div>
+            <div id="examDropzone" class="flex-1 space-y-3 overflow-auto p-3 transition-colors">
+              <p id="examEmpty" class="flex h-full min-h-[200px] items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 text-center text-sm text-slate-400" data-i18n="examDropHint">Drag and drop questions here to configure the exam.</p>
+            </div>
+          </section>
+        </div>
+
+        <footer class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-5 py-3">
+          <p id="examStatus" class="text-xs font-semibold text-slate-500"></p>
+          <div class="flex items-center gap-2">
+            <button type="button" id="examCancel" class="rounded-full border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-[#042F8D] hover:bg-slate-50 hover:text-[#042F8D]" data-i18n="examCancel">Cancel</button>
+            <button type="button" id="examSave" class="rounded-full bg-[#042F8D] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-px" data-i18n="examSave">Save configuration</button>
           </div>
         </footer>
       </div>
@@ -698,7 +825,7 @@
                   <div class="flex flex-col gap-2">
                     <div class="flex items-center justify-between gap-2">
                       <label class="text-sm font-semibold text-slate-700" data-i18n="lbNiveauEtudes">Education Level</label>
-                      <button type="button" id="eduDictBtn" class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-[#042F8D] shadow-sm transition hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#042F8D]/20" data-dict-category="edu_lvl" data-dict-title-i18n="dictEduTitle" title="Dictionary Management" data-i18n-title="dictManage">
+                      <button type="button" id="eduDictBtn" data-role-any="Admin" class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-[#042F8D] shadow-sm transition hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#042F8D]/20" data-dict-category="edu_lvl" data-dict-title-i18n="dictEduTitle" title="Dictionary Management" data-i18n-title="dictManage">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
                         <span data-i18n="dictManage">Dictionary Management</span>
                       </button>
@@ -1183,7 +1310,7 @@
                     <div class="flex flex-col gap-2">
                       <div class="flex items-center justify-between gap-2">
                         <label for="att-TrainingTitle" class="text-sm font-semibold text-slate-700 after:content-['_*'] after:text-red-500 after:font-bold" data-i18n="attLbIntitule">Training Title</label>
-                        <button type="button" id="trainingTitleBtn" class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-[#042F8D] shadow-sm transition hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#042F8D]/20" data-dict-category="training_title" data-dict-title-i18n="dictTrainingTitle" title="Dictionary Management" data-i18n-title="dictManage">
+                        <button type="button" id="trainingTitleBtn" data-role-any="Admin" class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-[#042F8D] shadow-sm transition hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#042F8D]/20" data-dict-category="training_title" data-dict-title-i18n="dictTrainingTitle" title="Dictionary Management" data-i18n-title="dictManage">
                           <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
                           <span data-i18n="dictManage">Dictionary Management</span>
                         </button>
@@ -1200,7 +1327,7 @@
                     <div class="flex flex-col gap-2">
                       <div class="flex items-center justify-between gap-2">
                         <label for="att-Trainer" class="text-sm font-semibold text-slate-700 after:content-['_*'] after:text-red-500 after:font-bold" data-i18n="presLbFormateur">Trainer</label>
-                        <button type="button" id="trainerBtn" class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-[#042F8D] shadow-sm transition hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#042F8D]/20" data-dict-category="trainer" data-dict-title-i18n="dictTrainerTitle" title="Dictionary Management" data-i18n-title="dictManage">
+                        <button type="button" id="trainerBtn" data-role-any="Admin" class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-[#042F8D] shadow-sm transition hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#042F8D]/20" data-dict-category="trainer" data-dict-title-i18n="dictTrainerTitle" title="Dictionary Management" data-i18n-title="dictManage">
                           <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
                           <span data-i18n="dictManage">Dictionary Management</span>
                         </button>
@@ -1295,7 +1422,7 @@
                 </fieldset>
 
                 <!-- Signatures -->
-                <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
+                <!-- <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
                   <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                     <span data-i18n="presSecSig">SIGNATURES</span>
@@ -1311,15 +1438,7 @@
                       </div>
                     </div>
                   </div>
-                </fieldset>
-
-                <!-- Acknowledgment -->
-                <div class="rounded-[16px] border border-green-200 bg-green-50 p-4">
-                  <label class="flex cursor-pointer items-start gap-3">
-                    <input type="checkbox" id="ack-presences" class="gss-ack-check mt-0.5 h-4 w-4 rounded accent-green-600" data-tab="presences" />
-                    <span class="text-sm leading-6 text-slate-700" data-i18n-html="ackPresences">I certify the accuracy of the information in this <strong>Attendance Report</strong>.</span>
-                  </label>
-                </div>
+                </fieldset> -->
 
               </div>
             </div>
@@ -2036,6 +2155,7 @@
     <script src="./js/modules/dictionary.js"></script>
     <script src="./js/modules/admin.js"></script>
     <script src="./js/modules/att-sheet.js"></script>
+    <script src="./js/modules/exam.js"></script>
    
     
     <!-- intl-tel-input plugin (bundled with utils for formatting/validation) -->
