@@ -506,6 +506,120 @@ const dictionaryCrud = (action, category, data = {}, id = null) =>
     id,
   ]);
 
+/**
+ * Upsert the training row for a Training Title via `training_upsert`.
+ * @param {http.ServerResponse} res
+ * @param {Record<string, any>} body
+ */
+const upsertTraining = async (res, body) => {
+  const title = String((body && body.training_title) || '').trim();
+  if (!title) {
+    sendJson(res, 400, { error: 'A training title is required.' });
+    return;
+  }
+  const result = await callProc('training_upsert', '$1::jsonb', [JSON.stringify(body || {})]);
+  sendJson(res, result && result.ok ? 200 : 400, result || { ok: false, status: 'invalid' });
+};
+
+/**
+ * List trainings, optionally filtered to a single trainer, via `training_list`.
+ * @param {http.ServerResponse} res
+ * @param {string} trainer
+ */
+const listTraining = async (res, trainer) => {
+  const rows = await callProc('training_list', '$1', [trainer || '']);
+  sendJson(res, 200, { ok: true, trainings: Array.isArray(rows) ? rows : [] });
+};
+
+/**
+ * List the students assigned to a training (candidates with attendance rows),
+ * via `training_students`.
+ * @param {http.ServerResponse} res
+ * @param {string} title
+ */
+const listTrainingStudents = async (res, title) => {
+  if (!title) {
+    sendJson(res, 400, { error: 'A training title is required.' });
+    return;
+  }
+  const rows = await callProc('training_students', '$1', [title]);
+  sendJson(res, 200, { ok: true, students: Array.isArray(rows) ? rows : [] });
+};
+
+/**
+ * Assign or unassign an applicant to/from a training (applicant_training).
+ * @param {http.ServerResponse} res
+ * @param {Record<string, any>} body
+ */
+const assignTraining = async (res, body) => {
+  const fn = body && (body.unassign === true || body.remove === true)
+    ? 'applicant_training_unassign'
+    : 'applicant_training_assign';
+  const result = await callProc(fn, '$1::jsonb', [JSON.stringify(body || {})]);
+  sendJson(res, result && result.ok ? 200 : 400, result || { ok: false, status: 'invalid' });
+};
+
+/**
+ * List the trainings an applicant is assigned to, via `applicant_trainings`.
+ * @param {http.ServerResponse} res
+ * @param {string} candidateNo
+ */
+const listApplicantTrainings = async (res, candidateNo) => {
+  const id = Number.parseInt(String(candidateNo), 10);
+  if (!Number.isFinite(id)) {
+    sendJson(res, 400, { error: 'A valid candidate number is required.' });
+    return;
+  }
+  const rows = await callProc('applicant_trainings', '$1', [id]);
+  sendJson(res, 200, { ok: true, trainings: Array.isArray(rows) ? rows : [] });
+};
+
+/**
+ * Upsert (or delete) a single attendance cell.
+ * @param {http.ServerResponse} res
+ * @param {Record<string, any>} body
+ */
+const saveAttendance = async (res, body) => {
+  const fn = body && (body.delete === true || body._delete === true) ? 'attendance_delete' : 'attendance_upsert';
+  const result = await callProc(fn, '$1::jsonb', [JSON.stringify(body || {})]);
+  sendJson(res, result && result.ok ? 200 : 400, result || { ok: false, status: 'invalid' });
+};
+
+/**
+ * List attendance cells for a training title within an optional date range.
+ * @param {http.ServerResponse} res
+ * @param {{ title: string, from?: string|null, to?: string|null }} opts
+ */
+const listAttendance = async (res, opts) => {
+  const title = (opts.title || '').toString();
+  if (!title) {
+    sendJson(res, 400, { error: 'A training title is required.' });
+    return;
+  }
+  const rows = await callProc('attendance_list', '$1, $2, $3', [
+    title,
+    opts.from || null,
+    opts.to || null,
+  ]);
+  sendJson(res, 200, { ok: true, attendance: Array.isArray(rows) ? rows : [] });
+};
+
+/**
+ * Every attendance record for one candidate (joined to its training meta),
+ * sorted by attendance_date ascending — drives the presences panel.
+ * @param {http.ServerResponse} res
+ * @param {string} candidateNo
+ */
+const listCandidateAttendance = async (res, candidateNo) => {
+  const id = Number.parseInt(String(candidateNo), 10);
+  if (!Number.isFinite(id)) {
+    sendJson(res, 400, { error: 'A valid candidate number is required.' });
+    return;
+  }
+  const rows = await callProc('attendance_for_candidate', '$1', [id]);
+  sendJson(res, 200, { ok: true, attendance: Array.isArray(rows) ? rows : [] });
+};
+
 const server = http.createServer(async (req, res) => {
   const method = req.method || 'GET';
   const url = req.url || '/';
@@ -537,7 +651,7 @@ const server = http.createServer(async (req, res) => {
 
     // ── Registration (applicant) search via stored procedure ──
     if (method === 'GET' && url.startsWith('/api/registration/search')) {
-      const params = new URL(url, 'placeholder').searchParams;
+      const params = new URL(url, 'http://localhost').searchParams;
       const rows = await callProc('registration_search', '$1, $2, $3', [
         params.get('q') || '',
         Number.parseInt(params.get('limit') || '25', 10) || 25,
@@ -548,7 +662,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'GET' && (url === '/api/applicants' || url.startsWith('/api/applicants?'))) {
-      const id = new URL(url, 'placeholder').searchParams.get('id');
+      const id = new URL(url, 'http://localhost').searchParams.get('id');
       if (id) {
         const applicant = await callProc('registration_get', '$1', [Number(id)]);
         sendJson(res, 200, { ok: true, applicant: applicant || null });
@@ -602,7 +716,7 @@ const server = http.createServer(async (req, res) => {
 
     // ── Current user's live role/status (self-heals stale sessions) ──
     if (method === 'GET' && url.startsWith('/api/me')) {
-      const username = new URL(url, 'placeholder').searchParams.get('username') || '';
+      const username = new URL(url, 'http://localhost').searchParams.get('username') || '';
       const info = await callProc('auth_user_role', '$1', [username]);
       sendJson(res, 200, info ? Object.assign({ ok: true }, info) : { ok: false });
       return;
@@ -659,7 +773,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'GET' && url.startsWith('/api/signatures/image')) {
-      const id = new URL(url, 'placeholder').searchParams.get('id');
+      const id = new URL(url, 'http://localhost').searchParams.get('id');
       if (!id) {
         sendJson(res, 400, { error: 'Missing signature id' });
         return;
@@ -669,7 +783,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'GET' && url.startsWith('/api/signatures')) {
-      const params = new URL(url, 'placeholder').searchParams;
+      const params = new URL(url, 'http://localhost').searchParams;
       await listSignatures(res, {
         q: params.get('q') || '',
         limit: Number.parseInt(params.get('limit') || '10', 10) || 10,
@@ -685,7 +799,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'DELETE' && url.startsWith('/api/signatures')) {
-      const id = new URL(url, 'placeholder').searchParams.get('id');
+      const id = new URL(url, 'http://localhost').searchParams.get('id');
       if (!id) {
         sendJson(res, 400, { error: 'Missing signature id' });
         return;
@@ -694,9 +808,85 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // ── Training (panel-presences) ─────────────────────────────
+    if (method === 'GET' && url.startsWith('/api/training/students')) {
+      const title = new URL(url, 'http://localhost').searchParams.get('title') || '';
+      await listTrainingStudents(res, title);
+      return;
+    }
+
+    // Assign / unassign an applicant to a training (applicant_training).
+    if (method === 'POST' && url.startsWith('/api/training/assign')) {
+      const body = await readJsonBody(req);
+      await assignTraining(res, body);
+      return;
+    }
+
+    // Trainings an applicant is enrolled in.
+    if (method === 'GET' && url.startsWith('/api/applicant-trainings')) {
+      const candidateNo = new URL(url, 'http://localhost').searchParams.get('candidate_no') || '';
+      await listApplicantTrainings(res, candidateNo);
+      return;
+    }
+
+    if (method === 'GET' && url.startsWith('/api/training')) {
+      const trainer = new URL(url, 'http://localhost').searchParams.get('trainer') || '';
+      await listTraining(res, trainer);
+      return;
+    }
+
+    if (method === 'POST' && url.startsWith('/api/training')) {
+      const body = await readJsonBody(req);
+      await upsertTraining(res, body);
+      return;
+    }
+
+    // ── Attendance sheet (attSheetTable) ───────────────────────
+    if (method === 'GET' && url.startsWith('/api/attendance/candidate')) {
+      const candidateNo = new URL(url, 'http://localhost').searchParams.get('candidate_no') || '';
+      await listCandidateAttendance(res, candidateNo);
+      return;
+    }
+
+    if (method === 'GET' && url.startsWith('/api/attendance')) {
+      const params = new URL(url, 'http://localhost').searchParams;
+      await listAttendance(res, {
+        title: params.get('title') || '',
+        from: params.get('from'),
+        to: params.get('to'),
+      });
+      return;
+    }
+
+    if (method === 'POST' && url.startsWith('/api/attendance')) {
+      const body = await readJsonBody(req);
+      await saveAttendance(res, body);
+      return;
+    }
+
+    // ── Exam configuration (questions per training) ───────────
+    if (method === 'GET' && url.startsWith('/api/questions')) {
+      const trainingId = new URL(url, 'http://localhost').searchParams.get('training_id') || '';
+      const id = Number.parseInt(String(trainingId), 10);
+      if (!Number.isFinite(id)) {
+        sendJson(res, 400, { error: 'A valid training_id is required.' });
+        return;
+      }
+      const rows = await callProc('questions_for_training', '$1', [id]);
+      sendJson(res, 200, { ok: true, questions: Array.isArray(rows) ? rows : [] });
+      return;
+    }
+
+    if (method === 'POST' && url.startsWith('/api/exams')) {
+      const body = await readJsonBody(req);
+      const result = await callProc('exam_save', '$1::jsonb', [JSON.stringify(body || {})]);
+      sendJson(res, result && result.ok ? 201 : 400, result || { ok: false, status: 'invalid' });
+      return;
+    }
+
     // ── Dictionary (reference values) CRUD via the generic stored proc ──
     if (method === 'GET' && url.startsWith('/api/dictionary')) {
-      const category = new URL(url, 'placeholder').searchParams.get('category');
+      const category = new URL(url, 'http://localhost').searchParams.get('category');
       const items = await dictionaryCrud('list', category || null);
       sendJson(res, 200, { ok: true, items: Array.isArray(items) ? items : [] });
       return;
@@ -719,7 +909,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'DELETE' && url.startsWith('/api/dictionary')) {
-      const idRaw = new URL(url, 'placeholder').searchParams.get('id');
+      const idRaw = new URL(url, 'http://localhost').searchParams.get('id');
       const id = Number.parseInt(String(idRaw), 10);
       if (!Number.isFinite(id)) {
         sendJson(res, 400, { error: 'Missing dictionary id' });
@@ -736,7 +926,7 @@ const server = http.createServer(async (req, res) => {
 
     // ── Generic per-table records (drives the panel data grid + search) ──
     if (method === 'GET' && url.startsWith('/api/records')) {
-      const table = new URL(url, 'placeholder').searchParams.get('table') || '';
+      const table = new URL(url, 'http://localhost').searchParams.get('table') || '';
       await listRecords(res, table);
       return;
     }
