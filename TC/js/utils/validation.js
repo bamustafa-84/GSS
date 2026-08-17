@@ -285,7 +285,10 @@
     rule.fields.filter((field) => field.requiredIf).forEach((field) => updateRequiredMarker(form, field));
 
     form.querySelectorAll('.gss-sign .gss-sign-canvas').forEach((canvas) => {
-      const revalidate = () => clearSignatureErrors(form, 'registration');
+      // Defer to the next tick so the signature pad's own `mouseup`/`touchend`
+      // handler (which writes the data URL into the hidden input) runs first —
+      // otherwise the border clears only on a second interaction.
+      const revalidate = () => setTimeout(() => clearSignatureErrors(form, 'registration'), 0);
       canvas.addEventListener('mouseup', revalidate);
       canvas.addEventListener('touchend', revalidate);
     });

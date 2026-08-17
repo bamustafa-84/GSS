@@ -1,5 +1,5 @@
 // @ts-check
-
+/// <reference path="./translation.js" />
 
 /**
  * @param {HTMLSelectElement} select

@@ -92,6 +92,7 @@
     initCollapsibleLegends();
   }
 
+  // @ts-ignore
   window.GSSCollapsible = {
     init: initCollapsibleLegends,
     // Expand a fieldset if it is currently collapsed.
