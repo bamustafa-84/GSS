@@ -116,6 +116,40 @@
     }
   };
 
+  // ── Auto-login / session persistence (GitHub-like) ──────────────
+  // If a user is already signed in and their account is still valid, skip the
+  // login form and enter the app directly. The stored session is reconciled
+  // against the live account (/api/me) so disabled/deleted users are forced to
+  // sign in again; a network error falls back to the stored session (offline).
+  const attemptAutoLogin = async () => {
+    const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
+    if (!session || !session.username) return;
+
+    // Optimistically hide the auth UI to avoid a flash of the login form.
+    document.body.classList.add('gss-auto-login');
+
+    try {
+      const info = await fetch(`${API_BASE}/api/me?username=${encodeURIComponent(session.username)}`, {
+        headers: { Accept: 'application/json' },
+      }).then((r) => r.json());
+
+      if (info && info.ok && info.is_active !== false) {
+        // Refresh the stored role/name from the live account, then enter.
+        if (typeof GSSSession !== 'undefined' && GSSSession.update) {
+          GSSSession.update({ role: info.role, full_name: info.full_name });
+        }
+        enterApp();
+        return;
+      }
+      // Account is disabled or no longer exists → force a fresh sign-in.
+      if (typeof GSSSession !== 'undefined') GSSSession.clear();
+      document.body.classList.remove('gss-auto-login');
+    } catch (_) {
+      // Server unreachable — trust the stored session and enter the app.
+      enterApp();
+    }
+  };
+
   const openChangePwd = (/** @type {string} */ username) => {
     pendingUsername = username;
     if (!changePwdModal) { enterApp(); return; }
@@ -458,4 +492,10 @@
 
   // ── Initial apply (default English unless French was chosen) ────
   applyLanguage(currentLang);
+
+  // Default "remember me" on so sessions persist across browser restarts.
+  if (rememberEl) rememberEl.checked = true;
+
+  // Enter the app automatically when a valid session already exists.
+  attemptAutoLogin();
 })();

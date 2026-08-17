@@ -67,6 +67,7 @@ let defaultTab = Object.keys(tabState)[0];; //'registration';
 const openModal = () => {
   modal?.classList.add('flex');
   modal?.classList.remove('hidden');
+  modal?.setAttribute('aria-hidden', 'false');
   switchTab(defaultTab);
 };
 openFormBtn?.addEventListener('click', openModal);
@@ -206,7 +207,15 @@ updateTabLocks();
 
 //#region CLOSE MODAL
 const closeModal = () => {
+  // Move focus out first so no focused descendant is left inside an
+  // aria-hidden ancestor (accessibility requirement).
+  try {
+    const active = document.activeElement;
+    if (active && modal && modal.contains(active)) /** @type {HTMLElement} */ (active).blur();
+  } catch (_) { /* noop */ }
   modal?.classList.add('hidden');
+  modal?.classList.remove('flex');
+  modal?.setAttribute('aria-hidden', 'true');
 };
 closeModalBtn?.addEventListener('click', closeModal);
 //#endregion
