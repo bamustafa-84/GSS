@@ -24,3 +24,17 @@ ALTER TABLE applicant ADD COLUMN IF NOT EXISTS ack_commitment boolean DEFAULT fa
 
 -- Signature: flags the designated Training Officer.
 ALTER TABLE signature ADD COLUMN IF NOT EXISTS is_training_officer boolean DEFAULT false;
+
+-- ── Exam question management additions ───────────────────────────
+-- Optional image associated with a question (stored inline as a base64
+-- data URL so no separate file storage is required).
+ALTER TABLE questions ADD COLUMN IF NOT EXISTS image_url text;
+
+-- Separates the training's *question library* from the *exam*. A question
+-- can exist for a training (library) without being part of the exam; it is
+-- only delivered to candidates once it has been explicitly added to the exam.
+-- Existing rows default to TRUE so previously-configured exams are unchanged.
+ALTER TABLE questions ADD COLUMN IF NOT EXISTS in_exam boolean NOT NULL DEFAULT true;
+
+-- Free-text instructions shown to the candidate at the top of the exam.
+ALTER TABLE exams ADD COLUMN IF NOT EXISTS instructions text;
