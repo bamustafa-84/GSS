@@ -384,6 +384,17 @@ const DATE_COLS = new Set(['registration_date', 'date_of_birth', 'applicant_date
 
     // Clear the presences panel for a brand-new applicant.
     clearPresences();
+    // Reset the Panel-Exam + Attendance panels to follow the normal sequential
+    // lock again (they are force-unlocked only when editing existing applicants).
+    try {
+      const banner = document.getElementById('exam-result-status');
+      if (banner) banner.classList.add('hidden');
+      const tabs = /** @type {any} */ (window).GSSTabs;
+      if (tabs && typeof tabs.setForcedUnlock === 'function') {
+        tabs.setForcedUnlock('exam', false);
+        tabs.setForcedUnlock('presences', false);
+      }
+    } catch (_) { /* noop */ }
 
     // A brand-new form is not awaiting approval, and the applicant's declaration
     // date defaults to today.
@@ -739,6 +750,104 @@ const loadPresences = async (candidateNo) => {
   });
 })();
 
+/**
+ * Populate the "Individual Exam Result" panel (Panel-Exam) from the candidate's
+ * real exam attempt. The Panel-Exam only opens with the final result once the
+ * exam has been finished AND corrected (the backend decides via `viewable`);
+ * otherwise a status banner explains the current state and the panel is not
+ * force-opened. Nothing here is trusted from the client — the score, pass/fail
+ * and correction status all come from the server.
+ * @param {number|null} candidateNo
+ */
+const loadExamResult = async (candidateNo) => {
+  const banner = document.getElementById('exam-result-status');
+  const setBanner = (/** @type {string} */ html, /** @type {string} */ cls) => {
+    if (!banner) return;
+    banner.className = 'rounded-2xl border px-4 py-3 text-sm font-semibold ' + cls;
+    banner.innerHTML = html;
+    banner.classList.remove('hidden');
+  };
+  // Default: exam panel follows the normal sequential flow.
+  try { if (/** @type {any} */ (window).GSSTabs) /** @type {any} */ (window).GSSTabs.setForcedUnlock('exam', false); } catch (_) { /* noop */ }
+  if (banner) banner.classList.add('hidden');
+  if (candidateNo == null) return;
+
+  const tt = (/** @type {string} */ k, /** @type {string} */ f) => {
+    try {
+      const lang = document.documentElement.lang || 'en';
+      const d = /** @type {any} */ (typeof translations !== 'undefined' ? translations : null);
+      if (d && d[lang] && d[lang][k]) return d[lang][k];
+    } catch (_) { /* noop */ }
+    return f;
+  };
+  const byIdLocal = (/** @type {string} */ id) => document.getElementById(id);
+  const setVal = (/** @type {string} */ id, /** @type {any} */ v) => {
+    const el = /** @type {HTMLInputElement|HTMLSelectElement|null} */ (byIdLocal(id));
+    if (el && v != null && v !== '') el.value = String(v);
+  };
+  const ensureOption = (/** @type {string} */ id, /** @type {string} */ val) => {
+    const sel = /** @type {HTMLSelectElement|null} */ (byIdLocal(id));
+    if (!sel || !val) return;
+    if (!Array.from(sel.options).some((o) => o.value === val)) {
+      const opt = document.createElement('option');
+      opt.value = val; opt.textContent = val; sel.appendChild(opt);
+    }
+    sel.value = val;
+  };
+
+  try {
+    const data = await fetch(
+      `${API_BASE}/api/exam/candidate-result?candidate_no=${encodeURIComponent(String(candidateNo))}`,
+      { headers: { Accept: 'application/json' } }
+    ).then((r) => r.json());
+
+    if (!data || !data.ok || !data.has_attempt) {
+      setBanner(tt('examPanelNone', 'This candidate has not taken an exam yet.'),
+        'border-slate-200 bg-slate-50 text-slate-500');
+      return;
+    }
+
+    // Always reflect the candidate identity + exam meta on the panel.
+    setVal('exam-CandidateNo', data.candidate_no);
+    setVal('exam-FullName', data.candidate_name);
+    setVal('exam-Trainer', data.instructor);
+    if (data.exam_date) setVal('exam-ExamDate', String(data.exam_date).slice(0, 10));
+    ensureOption('exam-TrainingTitle', data.training_title);
+
+    if (!data.viewable) {
+      // Finished-but-waiting or still in progress → do NOT open with a result.
+      const msg = data.state === 'in_progress'
+        ? tt('examPanelInProgress', 'The candidate is currently taking the exam. The result will appear here once it is submitted and corrected.')
+        : tt('examPanelWaiting', 'The candidate has finished the exam. It is awaiting correction — the result will appear here once corrected.');
+      setBanner('⏳ ' + msg, 'border-amber-200 bg-amber-50 text-amber-800');
+      return;
+    }
+
+    // Corrected → open the Panel-Exam with the final result.
+    setVal('Score', data.total_score != null ? data.total_score : '');
+    const resInputs = document.querySelectorAll('input[name="Result"]');
+    resInputs.forEach((el) => {
+      const r = /** @type {HTMLInputElement} */ (el);
+      r.checked = (data.passed === true && r.value === 'Reussi') || (data.passed === false && r.value === 'Echec');
+    });
+
+    const scoreLine = `${data.total_score}${data.max_score != null ? ' / ' + data.max_score : ''}`;
+    const passLine = data.passed == null ? ''
+      : (data.passed
+        ? ` · <span class="text-emerald-700">${tt('examPanelPass', 'PASS')}</span>`
+        : ` · <span class="text-red-700">${tt('examPanelFail', 'FAIL')}</span>`);
+    setBanner(
+      `✓ ${tt('examPanelCorrected', 'Exam completed and corrected')} — <span class="font-bold">${scoreLine}</span>${passLine}` +
+      (data.passing_score != null ? ` <span class="font-normal text-slate-500">(${tt('examPanelPassMark', 'pass mark')}: ${data.passing_score})</span>` : ''),
+      'border-emerald-200 bg-emerald-50 text-emerald-800');
+
+    // Make the Panel-Exam reachable now that the exam is finished + corrected.
+    try { if (/** @type {any} */ (window).GSSTabs) /** @type {any} */ (window).GSSTabs.setForcedUnlock('exam', true); } catch (_) { /* noop */ }
+  } catch (_) {
+    if (banner) banner.classList.add('hidden');
+  }
+};
+
 const load = (/** @type {Record<string, any> | null | undefined} */ record) => {
     if (!record) return;
     currentId = record.candidate_no != null ? Number(record.candidate_no) : null;
@@ -777,6 +886,18 @@ const load = (/** @type {Record<string, any> | null | undefined} */ record) => {
 
     // Individual Attendance Report: pull the candidate's attendance from the DB.
     loadPresences(currentId);
+
+    // Editing an existing applicant from the grid: the attendance phase is
+    // treated as recorded, so mark the Attendance panel completed (green ✓) and
+    // lock all its fields read-only.
+    try {
+      const pres = /** @type {any} */ (window).GSSPresences;
+      if (pres && typeof pres.markComplete === 'function') pres.markComplete();
+    } catch (_) { /* noop */ }
+
+    // Individual Exam Result (Panel-Exam): reflect the candidate's real exam
+    // attempt. Opens with the final result only once the exam is corrected.
+    loadExamResult(currentId);
 
     // Applicant signature: show on the form pad + the read-only panels.
     const sigId = record.applicant_signature_id;

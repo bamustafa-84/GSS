@@ -133,9 +133,32 @@ function setPresenceRows(rows) {
 }
 
 // Exposed so applicant loading / other modules can feed read-only rows.
+/**
+ * Mark the Attendance (presences) panel as completed: green tab checkmark +
+ * fully read-only. Does NOT change the current tab (unlike markPresencesDone,
+ * which also advances the flow). Safe to call more than once.
+ */
+function markPresencesComplete() {
+  const dot = document.querySelector('#tab-btn-presences .gss-tab-dot');
+  if (dot && typeof markTab === 'function') markTab('presences', dot);
+  else { try { if (typeof tabState !== 'undefined' && tabState) tabState.presences = true; } catch (_) { /* noop */ } }
+  const ack = /** @type {HTMLInputElement | null} */ (document.getElementById('ack-presences'));
+  if (ack) { ack.checked = true; ack.disabled = true; }
+  // A completed Attendance panel should be viewable regardless of the earlier
+  // sequential steps (e.g. when editing an existing applicant from the grid).
+  try {
+    const tabs = /** @type {any} */ (window).GSSTabs;
+    if (tabs && typeof tabs.setForcedUnlock === 'function') tabs.setForcedUnlock('presences', true);
+  } catch (_) { /* noop */ }
+  try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
+  setPresencesReadonly(true);
+}
+
 /** @type {any} */ (window).GSSPresences = {
   setRows: setPresenceRows,
   clear: () => setPresenceRows([]),
+  markComplete: markPresencesComplete,
+  setReadonly: setPresencesReadonly,
 };
 
 // ── Dictionary-backed dropdown hooks (Training Title & Trainer) ──
