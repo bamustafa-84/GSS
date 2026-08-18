@@ -81,10 +81,16 @@ const TAB_ORDER = Object.keys(tabState);
 /** @type {Set<string>} */
 const forcedLockedTabs = new Set();
 
+// Tabs that are force-UNLOCKED regardless of the sequential flow (e.g. the
+// Exam result panel becomes reachable once the candidate has finished the exam).
+/** @type {Set<string>} */
+const forcedUnlockedTabs = new Set();
+
 // A tab unlocks only once the previous tab in the flow is completed (green).
 /** @param {string} name @returns {boolean} */
 const isTabUnlocked = (name) => {
-  if (forcedLockedTabs.has(name)) return false; // explicit override wins.
+  if (forcedLockedTabs.has(name)) return false; // explicit lock wins.
+  if (forcedUnlockedTabs.has(name)) return true; // explicit unlock overrides sequence.
   const idx = TAB_ORDER.indexOf(name);
   if (idx <= 0) return true; // Registration is always reachable.
   return !!tabState[TAB_ORDER[idx - 1]];
@@ -169,6 +175,15 @@ const switchTab = (tabName) => {
     } catch (_) { /* noop */ }
   }
 
+  // Opening the Exam Result panel means the candidate's attendance phase is over,
+  // so mark the Attendance panel completed (green ✓) and lock all its fields.
+  if (tabName === 'exam') {
+    try {
+      const pres = /** @type {any} */ (window).GSSPresences;
+      if (pres && typeof pres.markComplete === 'function') pres.markComplete();
+    } catch (_) { /* noop */ }
+  }
+
   defaultTab = tabName;
   updateTabLocks();
 }
@@ -200,6 +215,11 @@ updateTabLocks();
   setForcedLock: (/** @type {string} */ tab, /** @type {boolean} */ locked) => {
     if (locked) forcedLockedTabs.add(tab);
     else forcedLockedTabs.delete(tab);
+    updateTabLocks();
+  },
+  setForcedUnlock: (/** @type {string} */ tab, /** @type {boolean} */ unlocked) => {
+    if (unlocked) forcedUnlockedTabs.add(tab);
+    else forcedUnlockedTabs.delete(tab);
     updateTabLocks();
   },
 };
