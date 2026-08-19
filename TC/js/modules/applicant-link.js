@@ -877,112 +877,6 @@ const loadExamResult = async (candidateNo) => {
   }
 };
 
-/**
- * Populate the "Individual Exam Result" panel (Panel-Exam) from the candidate's
- * real exam attempt. The Panel-Exam only opens with the final result once the
- * exam has been finished AND corrected (the backend decides via `viewable`);
- * otherwise a status banner explains the current state and the panel is not
- * force-opened. Nothing here is trusted from the client — the score, pass/fail
- * and correction status all come from the server.
- * @param {number|null} candidateNo
- */
-const loadExamResult = async (candidateNo) => {
-  const banner = document.getElementById('exam-result-status');
-  const setBanner = (/** @type {string} */ html, /** @type {string} */ cls) => {
-    if (!banner) return;
-    banner.className = 'rounded-2xl border px-4 py-3 text-sm font-semibold ' + cls;
-    banner.innerHTML = html;
-    banner.classList.remove('hidden');
-  };
-  // Default: exam panel follows the normal sequential flow.
-  try { if (/** @type {any} */ (window).GSSTabs) /** @type {any} */ (window).GSSTabs.setForcedUnlock('exam', false); } catch (_) { /* noop */ }
-  if (banner) banner.classList.add('hidden');
-  if (candidateNo == null) return;
-
-  const tt = (/** @type {string} */ k, /** @type {string} */ f) => {
-    try {
-      const lang = document.documentElement.lang || 'en';
-      const d = /** @type {any} */ (typeof translations !== 'undefined' ? translations : null);
-      if (d && d[lang] && d[lang][k]) return d[lang][k];
-    } catch (_) { /* noop */ }
-    return f;
-  };
-  const byIdLocal = (/** @type {string} */ id) => document.getElementById(id);
-  const setVal = (/** @type {string} */ id, /** @type {any} */ v) => {
-    const el = /** @type {HTMLInputElement|HTMLSelectElement|null} */ (byIdLocal(id));
-    if (el && v != null && v !== '') el.value = String(v);
-  };
-  const ensureOption = (/** @type {string} */ id, /** @type {string} */ val) => {
-    const sel = /** @type {HTMLSelectElement|null} */ (byIdLocal(id));
-    if (!sel || !val) return;
-    if (!Array.from(sel.options).some((o) => o.value === val)) {
-      const opt = document.createElement('option');
-      opt.value = val; opt.textContent = val; sel.appendChild(opt);
-    }
-    sel.value = val;
-  };
-
-  try {
-    const data = await fetch(
-      `${API_BASE}/api/exam/candidate-result?candidate_no=${encodeURIComponent(String(candidateNo))}`,
-      { headers: { Accept: 'application/json' } }
-    ).then((r) => r.json());
-
-    if (!data || !data.ok || !data.has_attempt) {
-      setBanner(tt('examPanelNone', 'This candidate has not taken an exam yet.'),
-        'border-slate-200 bg-slate-50 text-slate-500');
-      return;
-    }
-
-    // Always reflect the candidate identity + exam meta on the panel.
-    setVal('exam-CandidateNo', data.candidate_no);
-    setVal('exam-FullName', data.candidate_name);
-    setVal('exam-Trainer', data.instructor);
-    if (data.exam_date) setVal('exam-ExamDate', String(data.exam_date).slice(0, 10));
-    ensureOption('exam-TrainingTitle', data.training_title);
-
-    if (!data.viewable) {
-      // Finished-but-waiting or still in progress → do NOT open with a result.
-      const msg = data.state === 'in_progress'
-        ? tt('examPanelInProgress', 'The candidate is currently taking the exam. The result will appear here once it is submitted and corrected.')
-        : tt('examPanelWaiting', 'The candidate has finished the exam. It is awaiting correction — the result will appear here once corrected.');
-      setBanner('⏳ ' + msg, 'border-amber-200 bg-amber-50 text-amber-800');
-      return;
-    }
-
-    // Corrected → open the Panel-Exam with the final result.
-    // Score and Pass/Fail result are computed by the server and reflected here.
-    setVal('Score', data.total_score != null ? data.total_score : '');
-
-    // Automatically tick the Result radio based on the corrected attempt.
-    document.querySelectorAll('input[name="Result"]').forEach((el) => {
-      /** @type {HTMLInputElement} */ (el).checked =
-        (data.passed === true && el.value === 'Reussi') ||
-        (data.passed === false && el.value === 'Echec');
-    });
-
-    const scoreLine = `${data.total_score}${data.max_score != null ? ' / ' + data.max_score : ''}`;
-    const passLine = data.passed == null ? ''
-      : (data.passed
-        ? ` · <span class="text-emerald-700">${tt('examPanelPass', 'PASS')}</span>`
-        : ` · <span class="text-red-700">${tt('examPanelFail', 'FAIL')}</span>`);
-    setBanner(
-      `✓ ${tt('examPanelCorrected', 'Exam completed and corrected')} — <span class="font-bold">${scoreLine}</span>${passLine}` +
-      (data.passing_score != null ? ` <span class="font-normal text-slate-500">(${tt('examPanelPassMark', 'pass mark')}: ${data.passing_score})</span>` : ''),
-      'border-emerald-200 bg-emerald-50 text-emerald-800');
-
-    // Make the Panel-Exam reachable now that the exam is finished + corrected.
-    // The panel is only exposed to Instructor / Admin / Head of Training.
-    if (canAckExam()) {
-      try { if (/** @type {any} */ (window).GSSTabs) /** @type {any} */ (window).GSSTabs.setForcedUnlock('exam', true); } catch (_) { /* noop */ }
-    }
-    return true;
-  } catch (_) {
-    if (banner) banner.classList.add('hidden');
-  }
-  return false;
-};
-
 /** Current signed-in role, used to gate the Exam panel ack/signature flow. */
 const getCurrentRole = () => {
   const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
@@ -1177,6 +1071,7 @@ const load = async (/** @type {Record<string, any> | null | undefined} */ record
     // Interview outcome drives navigation: Accepted → jump to the Conditions
     // tab; otherwise stay on Registration and show a "Pending Approval" banner.
     const accepted = String(record.interview_result || '').toLowerCase() === 'accepted';
+    const examCorrected = isTruthy(record.ack_exam);
     setPendingBanner(!accepted);
     // The Conditions tab is only reachable once the interview is Accepted.
     try { if (/** @type {any} */ (window).GSSTabs) /** @type {any} */ (window).GSSTabs.setForcedLock('conditions', !accepted); } catch (_) { /* noop */ }
