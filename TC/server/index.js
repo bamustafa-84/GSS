@@ -86,6 +86,7 @@ const ensureDbReady = async () => {
  * @returns {Promise<any>} The affected row, or an array of rows for 'select'.
  */
 const crud = async (action, table, data = {}, filters = {}) => {
+  debugger;
   const result = await db.query(
     'SELECT dynamic_crud($1, $2, $3::jsonb, $4::jsonb) AS result',
     [action, table, JSON.stringify(data), JSON.stringify(filters)]
@@ -228,6 +229,7 @@ const serveStatic = (res, urlPath) => {
         sendJson(res, 404, { error: 'Not found' });
         return;
       }
+      // @ts-ignore
       const type = MIME_TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream';
       // Never let the browser serve a stale copy of the app's HTML/JS/CSS during
       // development — always revalidate so code edits take effect on reload.
@@ -772,6 +774,13 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (method === 'GET' && url.startsWith('/api/signatures/by-contact')) {
+      const name = new URL(url, 'http://localhost').searchParams.get('name') || '';
+      const sig = await callProc('signature_find_by_contact', '$1', [name]);
+      sendJson(res, 200, { ok: true, signature: sig || null });
+      return;
+    }
+
     if (method === 'GET' && url.startsWith('/api/signatures/image')) {
       const id = new URL(url, 'http://localhost').searchParams.get('id');
       if (!id) {
@@ -877,10 +886,158 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (method === 'POST' && url.startsWith('/api/exams')) {
+    // Create / edit a single library question (+ its answers).
+    if (method === 'POST' && url.startsWith('/api/question/save')) {
       const body = await readJsonBody(req);
-      const result = await callProc('exam_save', '$1::jsonb', [JSON.stringify(body || {})]);
-      sendJson(res, result && result.ok ? 201 : 400, result || { ok: false, status: 'invalid' });
+      const result = await callProc('question_save', '$1::jsonb', [JSON.stringify(body || {})]);
+      sendJson(res, result && result.ok ? 200 : 400, result || { ok: false, status: 'invalid' });
+      return;
+    }
+
+    // Delete a single library question.
+    if (method === 'POST' && url.startsWith('/api/question/delete')) {
+      const body = await readJsonBody(req);
+      const id = Number.parseInt(String(body && body.question_id), 10);
+      if (!Number.isFinite(id)) { sendJson(res, 400, { error: 'question_id required' }); return; }
+      const result = await callProc('question_delete', '$1', [id]);
+      sendJson(res, result && result.ok ? 200 : 400, result || { ok: false, status: 'invalid' });
+      return;
+    }
+
+    // Save which questions belong to the exam (order/points/instructions).
+    if (method === 'POST' && url.startsWith('/api/exam/config')) {
+      const body = await readJsonBody(req);
+      const result = await callProc('exam_config_save', '$1::jsonb', [JSON.stringify(body || {})]);
+      sendJson(res, result && result.ok ? 200 : 400, result || { ok: false, status: 'invalid' });
+      return;
+    }
+
+    // Admin "preview as candidate" (questions WITHOUT the answer key).
+    if (method === 'GET' && url.startsWith('/api/exam/preview')) {
+      const id = Number.parseInt(new URL(url, 'http://localhost').searchParams.get('training_id') || '', 10);
+      if (!Number.isFinite(id)) { sendJson(res, 400, { error: 'training_id required' }); return; }
+      const result = await callProc('exam_preview_for_training', '$1', [id]);
+      sendJson(res, 200, result || { ok: false, status: 'no_exam' });
+      return;
+    }
+
+    // ── Publish an exam + generate temporary exam accounts ─────
+    if (method === 'POST' && url.startsWith('/api/exam/publish')) {
+      const body = await readJsonBody(req);
+      const result = await callProc('exam_publish', '$1::jsonb', [JSON.stringify(body || {})]);
+      sendJson(res, result && result.ok ? 200 : 400, result || { ok: false, status: 'invalid' });
+      return;
+    }
+
+    // ── Credential management table (Admin / Instructor / Head of Training) ──
+    if (method === 'GET' && url.startsWith('/api/exam/credentials')) {
+      const p = new URL(url, 'http://localhost').searchParams;
+      const payload = { exam_id: p.get('exam_id') || null, training_id: p.get('training_id') || null };
+      const result = await callProc('exam_credentials_list', '$1::jsonb', [JSON.stringify(payload)]);
+      sendJson(res, 200, result || { ok: false, rows: [] });
+      return;
+    }
+
+    if (method === 'POST' && url.startsWith('/api/exam/credential/reveal')) {
+      const body = await readJsonBody(req);
+      const id = Number.parseInt(String(body && body.access_id), 10);
+      if (!Number.isFinite(id)) { sendJson(res, 400, { error: 'access_id required' }); return; }
+      const result = await callProc('exam_access_reveal', '$1', [id]);
+      sendJson(res, result && result.ok ? 200 : 400, result || { ok: false });
+      return;
+    }
+
+    if (method === 'POST' && url.startsWith('/api/exam/credential/send')) {
+      const body = await readJsonBody(req);
+      const result = await callProc('exam_access_send', '$1::jsonb', [JSON.stringify(body || {})]);
+      sendJson(res, result && result.ok ? 200 : 400, result || { ok: false });
+      return;
+    }
+
+    if (method === 'POST' && url.startsWith('/api/exam/credential/disable')) {
+      const body = await readJsonBody(req);
+      const result = await callProc('exam_access_disable', '$1::jsonb', [JSON.stringify(body || {})]);
+      sendJson(res, result && result.ok ? 200 : 400, result || { ok: false });
+      return;
+    }
+
+    // ── Candidate exam session (temporary credentials, server-timed) ──
+    if (method === 'POST' && url.startsWith('/api/exam/login')) {
+      const body = await readJsonBody(req);
+      const username = String((body && body.username) || '').trim();
+      const password = String((body && body.password) || '');
+      const result = await callProc('exam_login', '$1, $2', [username, password]);
+      sendJson(res, 200, result || { ok: false, status: 'invalid' });
+      return;
+    }
+
+    if (method === 'POST' && url.startsWith('/api/exam/answer')) {
+      const body = await readJsonBody(req);
+      const result = await callProc('exam_answer_save', '$1::jsonb', [JSON.stringify(body || {})]);
+      sendJson(res, result && result.ok ? 200 : 400, result || { ok: false, status: 'invalid' });
+      return;
+    }
+
+    if (method === 'POST' && url.startsWith('/api/exam/submit')) {
+      const body = await readJsonBody(req);
+      const result = await callProc('exam_submit_token', '$1::jsonb', [JSON.stringify(body || {})]);
+      sendJson(res, result && result.ok ? 200 : 400, result || { ok: false, status: 'invalid' });
+      return;
+    }
+
+    if (method === 'POST' && url.startsWith('/api/exam/result')) {
+      const body = await readJsonBody(req);
+      const result = await callProc('exam_result_for_token', '$1', [String((body && body.token) || '')]);
+      sendJson(res, 200, result || { ok: false, status: 'invalid' });
+      return;
+    }
+
+    // Candidate's exam result summary for the applicant form's Panel-Exam.
+    if (method === 'GET' && url.startsWith('/api/exam/candidate-result')) {
+      const id = Number.parseInt(new URL(url, 'http://localhost').searchParams.get('candidate_no') || '', 10);
+      if (!Number.isFinite(id)) { sendJson(res, 400, { error: 'candidate_no required' }); return; }
+      const result = await callProc('exam_candidate_result', '$1', [id]);
+      sendJson(res, 200, result || { ok: false });
+      return;
+    }
+
+    // ── Correction (Admin / Instructor / Head of Training) ─────
+    if (method === 'GET' && url.startsWith('/api/exam/correction')) {
+      const id = Number.parseInt(new URL(url, 'http://localhost').searchParams.get('attempt_id') || '', 10);
+      if (!Number.isFinite(id)) { sendJson(res, 400, { error: 'attempt_id required' }); return; }
+      const result = await callProc('exam_attempt_for_correction', '$1', [id]);
+      sendJson(res, result && result.ok ? 200 : 404, result || { ok: false });
+      return;
+    }
+
+    if (method === 'POST' && url.startsWith('/api/exam/grade/start')) {
+      const body = await readJsonBody(req);
+      const result = await callProc('exam_grade_start', '$1::jsonb', [JSON.stringify(body || {})]);
+      sendJson(res, result && result.ok ? 200 : 400, result || { ok: false });
+      return;
+    }
+
+    if (method === 'POST' && url.startsWith('/api/exam/grade')) {
+      const body = await readJsonBody(req);
+      const result = await callProc('exam_grade_save', '$1::jsonb', [JSON.stringify(body || {})]);
+      sendJson(res, result && result.ok ? 200 : 400, result || { ok: false });
+      return;
+    }
+
+    // Candidate's exam(s) list + single template (legacy anonymous preview path).
+    if (method === 'GET' && url.startsWith('/api/exam/available')) {
+      const id = Number.parseInt(new URL(url, 'http://localhost').searchParams.get('candidate_no') || '', 10);
+      if (!Number.isFinite(id)) { sendJson(res, 400, { error: 'candidate_no required' }); return; }
+      const rows = await callProc('exams_for_candidate', '$1', [id]);
+      sendJson(res, 200, { ok: true, exams: Array.isArray(rows) ? rows : [] });
+      return;
+    }
+
+    if (method === 'GET' && url.startsWith('/api/exam/by-id')) {
+      const id = Number.parseInt(new URL(url, 'http://localhost').searchParams.get('exam_id') || '', 10);
+      if (!Number.isFinite(id)) { sendJson(res, 400, { error: 'exam_id required' }); return; }
+      const result = await callProc('exam_template_by_id', '$1', [id]);
+      sendJson(res, 200, result || { ok: false, status: 'no_exam' });
       return;
     }
 
@@ -951,6 +1108,14 @@ ensureDbReady()
       // eslint-disable-next-line no-console
       console.log(`GSS test server running → placeholder:${PORT}/tc/tc.html`);
     });
+    // Server-authoritative expiry: auto-close overdue attempts and deactivate
+    // expired temporary credentials every minute (also enforced on each login).
+    setInterval(() => {
+      db.query('SELECT exam_expire_due()').catch((err) => {
+        // eslint-disable-next-line no-console
+        console.error('exam_expire_due sweep failed:', err.message);
+      });
+    }, 60 * 1000).unref();
   })
   .catch((err) => {
     // eslint-disable-next-line no-console

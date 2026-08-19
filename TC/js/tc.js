@@ -74,17 +74,34 @@ openFormBtn?.addEventListener('click', openModal);
 //#endregion
 
 //#region SWITCH TABS
-const TAB_ORDER = Object.keys(tabState);
+const TAB_ORDER = ['registration', 'conditions', 'reglement', 'engagement', 'presences', 'exam', 'evaluation', 'mensuration', 'dossier'];
 
 // Tabs that are force-locked regardless of the sequential flow (e.g. the
 // Conditions tab stays disabled until an applicant's interview is Accepted).
 /** @type {Set<string>} */
 const forcedLockedTabs = new Set();
 
+// Tabs that are force-UNLOCKED regardless of the sequential flow (e.g. the
+// Exam result panel becomes reachable once the candidate has finished the exam).
+/** @type {Set<string>} */
+const forcedUnlockedTabs = new Set();
+
+/** @returns {boolean} */
+const isAuthorizedExamRole = () => {
+  const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
+  const role = session && session.role ? String(session.role) : '';
+  return role === 'Admin' || role === 'Head of Training' || role === 'Instructor';
+};
+
 // A tab unlocks only once the previous tab in the flow is completed (green).
 /** @param {string} name @returns {boolean} */
 const isTabUnlocked = (name) => {
-  if (forcedLockedTabs.has(name)) return false; // explicit override wins.
+  if (forcedLockedTabs.has(name)) return false; // explicit lock wins.
+  if (forcedUnlockedTabs.has(name)) return true; // explicit unlock overrides sequence.
+  // Instructors / heads of training / admins may always open the Exam panel,
+  // and the Dossier (checklist) panel is reachable for every user.
+  if (name === 'dossier') return true;
+  if (name === 'exam' && isAuthorizedExamRole()) return true;
   const idx = TAB_ORDER.indexOf(name);
   if (idx <= 0) return true; // Registration is always reachable.
   return !!tabState[TAB_ORDER[idx - 1]];
@@ -169,6 +186,15 @@ const switchTab = (tabName) => {
     } catch (_) { /* noop */ }
   }
 
+  // Opening the Exam Result panel means the candidate's attendance phase is over,
+  // so mark the Attendance panel completed (green ✓) and lock all its fields.
+  if (tabName === 'exam') {
+    try {
+      const pres = /** @type {any} */ (window).GSSPresences;
+      if (pres && typeof pres.markComplete === 'function') pres.markComplete();
+    } catch (_) { /* noop */ }
+  }
+
   defaultTab = tabName;
   updateTabLocks();
 }
@@ -191,6 +217,14 @@ document.querySelectorAll('.gss-tab-btn').forEach(btn => {
   tabBtn.addEventListener('click', () => switchTab(tabBtn.dataset.tab ?? defaultTab));
 });
 
+// Role-based tab overrides: the Dossier (checklist) panel is always reachable,
+// and instructors / heads of training / admins may always open the Exam panel.
+const currentRole = (typeof GSSSession !== 'undefined' ? GSSSession.get()?.role : '') || '';
+if (['Instructor', 'Head of Training', 'Admin'].includes(currentRole)) {
+  forcedUnlockedTabs.add('exam');
+}
+forcedUnlockedTabs.add('dossier');
+
 // Apply the initial lock state (only Registration is reachable at first).
 updateTabLocks();
 
@@ -200,6 +234,11 @@ updateTabLocks();
   setForcedLock: (/** @type {string} */ tab, /** @type {boolean} */ locked) => {
     if (locked) forcedLockedTabs.add(tab);
     else forcedLockedTabs.delete(tab);
+    updateTabLocks();
+  },
+  setForcedUnlock: (/** @type {string} */ tab, /** @type {boolean} */ unlocked) => {
+    if (unlocked) forcedUnlockedTabs.add(tab);
+    else forcedUnlockedTabs.delete(tab);
     updateTabLocks();
   },
 };

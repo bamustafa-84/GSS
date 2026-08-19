@@ -142,6 +142,13 @@
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
           <span class="hidden sm:inline" data-i18n="examBtn">Exams</span>
         </button>
+
+        <!-- ── Take exam (Candidate) ── -->
+        <button type="button" id="examTakeBtn" data-role-any="Candidate" data-role-display="inline-flex" title="Take your exam"
+          class="hidden shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>
+          <span class="hidden sm:inline" data-i18n="examTakeBtn">Take exam</span>
+        </button>
       </div>
     </div>
 
@@ -464,11 +471,14 @@
         <header class="flex shrink-0 flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-5 py-4 text-white">
           <div class="flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-            <h2 id="examTitle" class="text-base font-semibold" data-i18n="examTitle">Exam configuration</h2>
+            <div>
+              <h2 id="examTitle" class="text-base font-semibold" data-i18n="examConfigTitle">Exam configuration</h2>
+              <p id="examInstructor" class="hidden text-xs text-white/80"></p>
+            </div>
           </div>
           <div class="flex items-center gap-2">
             <label for="examTraining" class="text-xs font-semibold uppercase tracking-wide text-white/80" data-i18n="examCourse">Training course</label>
-            <select id="examTraining" class="rounded-full border border-white/25 bg-white/15 px-3 py-1.5 text-sm font-semibold text-white [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-white/60">
+            <select id="examTraining" class="rounded-full border border-white/25 bg-gray-700 px-3 py-1.5 text-sm font-semibold text-white [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-white/60">
               <option value="" data-i18n="examPickCourse">Select a course…</option>
             </select>
             <button type="button" id="examClose" class="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/25" data-i18n="closeBtn">Close</button>
@@ -480,7 +490,10 @@
           <section class="flex min-h-0 flex-col border-b border-slate-200 md:border-b-0 md:border-r">
             <div class="flex shrink-0 items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
               <h3 class="text-sm font-bold uppercase tracking-wide text-[#042F8D]" data-i18n="examLibrary">Question library</h3>
-              <span id="examLibCount" class="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-600"></span>
+              <div class="flex items-center gap-2">
+                <span id="examLibCount" class="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-600"></span>
+                <button type="button" id="examNewQuestion" class="inline-flex items-center gap-1 rounded-full bg-[#042F8D] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-px disabled:opacity-50" data-i18n="examNewQuestion">+ New question</button>
+              </div>
             </div>
             <div id="examLibrary" class="flex-1 space-y-2 overflow-auto bg-slate-50/60 p-3">
               <p id="examLibHint" class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-sm text-slate-400" data-i18n="examSelectFirst">Please select a training course to load its questions.</p>
@@ -493,6 +506,29 @@
               <h3 class="text-sm font-bold uppercase tracking-wide text-[#042F8D]" data-i18n="examConfig">Exam questions</h3>
               <span id="examConfigCount" class="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-600">0</span>
             </div>
+            <div class="shrink-0 border-b border-slate-200 bg-white px-4 py-2.5">
+              <!-- Exam publishing settings -->
+              <div class="mb-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div>
+                  <label for="examDate" class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500" data-i18n="examDateLabel">Exam date *</label>
+                  <input id="examDate" type="date" class="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:border-[#042F8D] focus:outline-none" />
+                </div>
+                <div>
+                  <label for="examDuration" class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500" data-i18n="examDurationLabel">Duration (min)</label>
+                  <input id="examDuration" type="number" min="1" class="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:border-[#042F8D] focus:outline-none" />
+                </div>
+                <div>
+                  <label for="examPassing" class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500" data-i18n="examPassingLabel">Pass mark</label>
+                  <input id="examPassing" type="number" min="0" step="0.5" class="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm focus:border-[#042F8D] focus:outline-none" />
+                </div>
+                <div class="flex flex-col justify-end">
+                  <span class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500" data-i18n="examStatusLabel">Status</span>
+                  <span id="examStatusBadge" class="inline-flex items-center justify-center rounded-full bg-slate-100 px-2 py-1.5 text-xs font-semibold text-slate-600">DRAFT</span>
+                </div>
+              </div>
+              <label for="examInstructions" class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500" data-i18n="examInstructionsLabel">Exam instructions (shown to candidates)</label>
+              <textarea id="examInstructions" rows="2" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-[#042F8D] focus:outline-none disabled:bg-slate-50" placeholder="e.g. Read each question carefully. Answer all questions." data-i18n-placeholder="examInstructionsPlaceholder"></textarea>
+            </div>
             <div id="examDropzone" class="flex-1 space-y-3 overflow-auto p-3 transition-colors">
               <p id="examEmpty" class="flex h-full min-h-[200px] items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 text-center text-sm text-slate-400" data-i18n="examDropHint">Drag and drop questions here to configure the exam.</p>
             </div>
@@ -501,9 +537,89 @@
 
         <footer class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-5 py-3">
           <p id="examStatus" class="text-xs font-semibold text-slate-500"></p>
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" id="examPreview" class="inline-flex items-center gap-1 rounded-full border border-[#042F8D]/30 px-5 py-2.5 text-sm font-semibold text-[#042F8D] transition hover:bg-[#042F8D]/5 disabled:opacity-50" data-i18n="examPreview">Preview as candidate</button>
+            <button type="button" id="examCredentialsBtn" class="inline-flex items-center gap-1 rounded-full border border-[#042F8D]/30 px-5 py-2.5 text-sm font-semibold text-[#042F8D] transition hover:bg-[#042F8D]/5" data-i18n="examCredentialsBtn">Credentials</button>
             <button type="button" id="examCancel" class="rounded-full border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-[#042F8D] hover:bg-slate-50 hover:text-[#042F8D]" data-i18n="examCancel">Cancel</button>
             <button type="button" id="examSave" class="rounded-full bg-[#042F8D] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-px" data-i18n="examSave">Save configuration</button>
+            <button type="button" id="examPublish" disabled class="rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-50" data-i18n="examPublish">Publish exam</button>
+          </div>
+        </footer>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ TAKE EXAM OVERLAY (Candidate) ═══════════════════ -->
+    <div id="examTakeOverlay" class="fixed inset-0 z-[1100] hidden items-center justify-center bg-[rgba(1,7,16,0.6)] p-3 backdrop-blur-sm sm:p-6" aria-hidden="true">
+      <div class="mx-auto flex h-full max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.35)]" role="dialog" aria-modal="true" aria-labelledby="examTakeTitle">
+        <header class="flex shrink-0 flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-5 py-4 text-white">
+          <div>
+            <h2 id="examTakeTitle" class="text-base font-semibold" data-i18n="examTakeTitle">Your exam</h2>
+            <p id="examTakeSubtitle" class="text-xs text-white/80"></p>
+          </div>
+          <button type="button" id="examTakeClose" class="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/25" data-i18n="closeBtn">Close</button>
+        </header>
+        <div id="examTakeBody" class="flex-1 space-y-4 overflow-auto bg-slate-50/60 p-4 sm:p-5">
+          <p class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-sm text-slate-400" data-i18n="examTakeLoading">Loading your exam…</p>
+        </div>
+        <footer class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-5 py-3">
+          <p id="examTakeStatus" class="text-xs font-semibold text-slate-500"></p>
+          <button type="button" id="examTakeSubmit" class="hidden rounded-full bg-[#042F8D] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-px" data-i18n="examTakeSubmit">Submit exam</button>
+        </footer>
+      </div>
+    </div>
+
+    <!-- ═══════════════ EXAM CREDENTIALS OVERLAY (Admin / Instructor / Head of Training) ═══════════════ -->
+    <div id="examCredsOverlay" class="fixed inset-0 z-[1100] hidden items-center justify-center bg-[rgba(1,7,16,0.6)] p-3 backdrop-blur-sm sm:p-6" aria-hidden="true">
+      <div class="mx-auto flex h-full max-h-full w-full max-w-7xl flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.35)]" role="dialog" aria-modal="true" aria-labelledby="examCredsTitle">
+        <header class="flex shrink-0 flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-5 py-4 text-white">
+          <div>
+            <h2 id="examCredsTitle" class="text-base font-semibold" data-i18n="credsTitle">Exam credentials</h2>
+            <p id="examCredsSubtitle" class="text-xs text-white/80"></p>
+          </div>
+          <div class="flex items-center gap-2">
+            <label for="examCredsTraining" class="text-xs font-semibold uppercase tracking-wide text-white/80" data-i18n="examCourse">Training course</label>
+            <select id="examCredsTraining" class="rounded-full border border-white/25 bg-gray-700 px-3 py-1.5 text-sm font-semibold text-white [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-white/60">
+              <option value="" data-i18n="examPickCourse">Select a course…</option>
+            </select>
+            <button type="button" id="examCredsExportCsv" title="Export to CSV" aria-label="Export to CSV" class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-2 text-sm font-semibold transition-colors hover:bg-white/25">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+            <button type="button" id="examCredsRefresh" title="Refresh" aria-label="Refresh" class="inline-flex items-center justify-center rounded-full bg-white/15 p-2 text-sm font-semibold transition-colors hover:bg-white/25">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+            </button>
+            <button type="button" id="examCredsClose" title="Close" aria-label="Close" class="inline-flex items-center justify-center rounded-full bg-white/15 p-2 text-sm font-semibold transition-colors hover:bg-white/25">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </header>
+        <div class="flex-1 overflow-auto bg-slate-50/60 p-3 sm:p-4">
+          <div id="examCredsBody" class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+            <p class="px-4 py-10 text-center text-sm text-slate-400" data-i18n="credsPick">Select a training course to view its assigned candidates and credentials.</p>
+          </div>
+        </div>
+        <footer class="flex shrink-0 items-center justify-between gap-3 border-t border-slate-200 bg-white px-5 py-3">
+          <p id="examCredsStatus" class="text-xs font-semibold text-slate-500"></p>
+        </footer>
+      </div>
+    </div>
+
+    <!-- ═══════════════ EXAM CORRECTION OVERLAY (Admin / Instructor / Head of Training) ═══════════════ -->
+    <div id="examCorrectOverlay" class="fixed inset-0 z-[1150] hidden items-center justify-center bg-[rgba(1,7,16,0.6)] p-3 backdrop-blur-sm sm:p-6" aria-hidden="true">
+      <div class="mx-auto flex h-full max-h-full w-full max-w-4xl flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.35)]" role="dialog" aria-modal="true" aria-labelledby="examCorrectTitle">
+        <header class="flex shrink-0 flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-5 py-4 text-white">
+          <div>
+            <h2 id="examCorrectTitle" class="text-base font-semibold" data-i18n="correctTitle">Correct exam</h2>
+            <p id="examCorrectSubtitle" class="text-xs text-white/80"></p>
+          </div>
+          <button type="button" id="examCorrectClose" class="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/25" data-i18n="closeBtn">Close</button>
+        </header>
+        <div id="examCorrectBody" class="flex-1 space-y-4 overflow-auto bg-slate-50/60 p-4"></div>
+        <footer class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-5 py-3">
+          <p id="examCorrectStatus" class="text-xs font-semibold text-slate-500"></p>
+          <div class="flex items-center gap-2">
+            <span id="examCorrectTotal" class="text-sm font-bold text-[#042F8D]"></span>
+            <button type="button" id="examCorrectSaveDraft" class="rounded-full border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-[#042F8D] hover:text-[#042F8D]" data-i18n="correctSaveDraft">Save progress</button>
+            <button type="button" id="examCorrectFinalize" class="rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-px" data-i18n="correctFinalize">Finish correction</button>
           </div>
         </footer>
       </div>
@@ -1317,11 +1433,7 @@
                       </div>
                       <select id="att-TrainingTitle" name="att-TrainingTitle" required class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
                         <option value="" disabled selected data-i18n="optSelectTrainingTitle"></option>
-                        <option value="FIAS">FIAS - Initial Security Agent Training</option>
-                        <option value="FRAS">FRAS - Security Agent Refresher Training</option>
-                        <option value="FCP">FCP - Post Commander Training</option>
-                        <option value="FSUP">FSUP - Supervisor Training</option>
-                        <option value="FINSP">FINSP - Inspector Training</option>
+                        <option value="Safety Training" data-i18n="trainingTitleSafety">Safety Training</option>
                       </select>
                     </div>
                     <div class="flex flex-col gap-2">
@@ -1456,42 +1568,9 @@
               </div>
               <div class="space-y-6 p-5 sm:p-7">
 
-                <!-- Candidate info -->
-                <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
-                  <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    <span data-i18n="examSecInfo">CANDIDATE INFORMATION</span>
-                  </legend>
-                  <div class="mt-4 grid gap-4 md:grid-cols-2">
-                    <div class="flex flex-col gap-1.5">
-                      <label for="exam-CandidateNo" class="text-sm font-semibold text-slate-700" data-i18n="examLbNumCandidat">Candidate No.</label>
-                      <input id="exam-CandidateNo" name="exam-CandidateNo" type="text" placeholder="C10001" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                      <label for="exam-FullName" class="text-sm font-semibold text-slate-700" data-i18n="examLbNom">Full Name</label>
-                      <input id="exam-FullName" name="exam-FullName" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-                    </div>
-                    <div class="flex flex-col gap-1.5 md:col-span-2">
-                      <label for="exam-TrainingTitle" class="text-sm font-semibold text-slate-700" data-i18n="examLbIntitule">Training Title</label>
-                      <select id="exam-TrainingTitle" name="exam-TrainingTitle" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
-                        <option value=""></option>
-                        <option value="FIAS">FIAS - Initial Security Agent Training</option>
-                        <option value="FRAS">FRAS - Security Agent Refresher Training</option>
-                        <option value="FCP">FCP - Post Commander Training</option>
-                        <option value="FSUP">FSUP - Supervisor Training</option>
-                        <option value="FINSP">FINSP - Inspector Training</option>
-                      </select>
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                      <label for="exam-ExamDate" class="text-sm font-semibold text-slate-700" data-i18n="examLbDate">Exam Date</label>
-                      <input id="exam-ExamDate" name="exam-ExamDate" type="date" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                      <label for="exam-Trainer" class="text-sm font-semibold text-slate-700" data-i18n="examLbFormateur">Trainer</label>
-                      <input id="exam-Trainer" name="exam-Trainer" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-                    </div>
-                  </div>
-                </fieldset>
+                <!-- Live exam-result status (populated from the candidate's real
+                     exam attempt). Hidden until an applicant with an attempt is loaded. -->
+                <div id="exam-result-status" class="hidden rounded-2xl border px-4 py-3 text-sm font-semibold"></div>
 
                 <!-- Exam result table -->
                 <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
@@ -1540,11 +1619,11 @@
                           <td class="px-4 py-3">
                             <div class="flex flex-col gap-2">
                               <label class="inline-flex cursor-pointer items-center gap-2 rounded-full px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)] self-start">
-                                <input type="radio" name="Decision" value="recommande" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="examOptRecommande"> Recommended for recruitment</span></label>
+                                <input type="radio" name="Decision" value="recommande" dbname="exam_decision" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="examOptRecommande"> Recommended for recruitment</span></label>
                               <label class="inline-flex cursor-pointer items-center gap-2 rounded-full px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)] self-start">
-                                <input type="radio" name="Decision" value="attente" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="examOptAttente"> Waiting list</span></label>
+                                <input type="radio" name="Decision" value="attente" dbname="exam_decision" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="examOptAttente"> Waiting list</span></label>
                               <label class="inline-flex cursor-pointer items-center gap-2 rounded-full px-3 py-2 text-sm transition hover:border-[#042F8D] hover:shadow-[0_4px_12px_rgba(4,47,141,0.10)] has-[:checked]:border-[#042F8D] has-[:checked]:bg-[#042F8D]/[0.06] has-[:checked]:font-semibold has-[:checked]:text-[#042F8D] has-[:checked]:shadow-[0_4px_12px_rgba(4,47,141,0.14)] self-start">
-                                <input type="radio" name="Decision" value="non-recommande" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="examOptNonRecommande"> Not recommended</span></label>
+                                <input type="radio" name="Decision" value="non-recommande" dbname="exam_decision" class="h-4 w-4 accent-[#042F8D]" /><span data-i18n="examOptNonRecommande"> Not recommended</span></label>
                             </div>
                           </td>
                         </tr>
@@ -1560,7 +1639,7 @@
                     <span data-i18n="examSecObs">TRAINER'S OBSERVATIONS</span>
                   </legend>
                   <div class="mt-4">
-                    <textarea id="exam-observation" name="exam-observation" rows="5" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10 resize-none" data-i18n-placeholder="examLbObs"></textarea>
+                    <textarea id="exam-observation" name="exam-observation" dbname="exam_observations" rows="5" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10 resize-none" data-i18n-placeholder="examLbObs"></textarea>
                   </div>
                 </fieldset>
 
@@ -1570,23 +1649,13 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
                     <span data-i18n="examSecValidation">VALIDATION</span>
                   </legend>
-                  <div class="mt-4 grid gap-4 md:grid-cols-2">
+                  <div class="mt-4 grid gap-4">
                     <div class="flex flex-col gap-1.5">
-                      <label class="text-sm font-semibold text-slate-700" data-i18n="examLbCachet">Training Centre Stamp</label>
+                      <label class="text-sm font-semibold text-slate-700" data-i18n="examLbCachet">Signature</label>
                       <div class="gss-sign group relative w-full overflow-hidden rounded-xl border-[1.5px] border-[#dbe2f0] bg-white/40 transition focus-within:border-[#042F8D] focus-within:ring-4 focus-within:ring-[#042F8D]/10">
-                        <canvas id="exam-sig-cachet" class="gss-sign-canvas block h-44 w-full touch-none cursor-crosshair bg-transparent"></canvas>
+                        <canvas id="exam-sig-cachet" class="gss-sign-canvas block h-44 w-full touch-none cursor-default bg-transparent" style="pointer-events:none"></canvas>
                         <span class="gss-sign-hint pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-slate-400" data-i18n="sigHint">Sign within the box</span>
-                        <button type="button" class="gss-sign-clear absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-[#042F8D] hover:text-[#042F8D]" data-i18n="sigClear">Clear</button>
-                        <input id="exam-sig-cachet-data" name="exam-sig-cachet" class="gss-sign-input" type="hidden" />
-                      </div>
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                      <label class="text-sm font-semibold text-slate-700" data-i18n="examLbVisa">Director's Visa</label>
-                      <div class="gss-sign group relative w-full overflow-hidden rounded-xl border-[1.5px] border-[#dbe2f0] bg-white/40 transition focus-within:border-[#042F8D] focus-within:ring-4 focus-within:ring-[#042F8D]/10">
-                        <canvas id="exam-sig-visa" class="gss-sign-canvas block h-44 w-full touch-none cursor-crosshair bg-transparent"></canvas>
-                        <span class="gss-sign-hint pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-slate-400" data-i18n="sigHint">Sign within the box</span>
-                        <button type="button" class="gss-sign-clear absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-[#042F8D] hover:text-[#042F8D]" data-i18n="sigClear">Clear</button>
-                        <input id="exam-sig-visa-data" name="exam-sig-visa" class="gss-sign-input" type="hidden" />
+                        <input id="exam-sig-cachet-data" name="exam-sig-cachet" dbname="exam_instructor_signature_id" class="gss-sign-input" type="hidden" />
                       </div>
                     </div>
                   </div>
@@ -1595,7 +1664,7 @@
                 <!-- Acknowledgment -->
                 <div class="rounded-[16px] border border-green-200 bg-green-50 p-4">
                   <label class="flex cursor-pointer items-start gap-3">
-                    <input type="checkbox" id="ack-exam" class="gss-ack-check mt-0.5 h-4 w-4 rounded accent-green-600" data-tab="exam" />
+                    <input type="checkbox" id="ack-exam" dbname="ack_exam" class="gss-ack-check mt-0.5 h-4 w-4 rounded accent-green-600" data-tab="exam" />
                     <span class="text-sm leading-6 text-slate-700" data-i18n-html="ackExam">I certify the accuracy of the information in this <strong>Exam Result</strong>.</span>
                   </label>
                 </div>
@@ -1615,43 +1684,6 @@
                 <p class="mt-0.5 text-sm text-blue-200" data-i18n="evalSubtitle">Competency Assessment — GSS</p>
               </div>
               <div class="space-y-6 p-5 sm:p-7">
-
-                <!-- Candidate info -->
-                <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
-                  <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    <span data-i18n="evalSecInfo">CANDIDATE INFORMATION</span>
-                  </legend>
-                  <div class="mt-4 grid gap-4 md:grid-cols-2">
-                    <div class="flex flex-col gap-1.5">
-                      <label for="eval-CandidateNo" class="text-sm font-semibold text-slate-700" data-i18n="evalLbNumCandidat">Candidate No.</label>
-                      <input id="eval-CandidateNo" name="eval-CandidateNo" type="text" placeholder="C10001" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                      <label for="eval-FullName" class="text-sm font-semibold text-slate-700" data-i18n="evalLbNom">Full Name</label>
-                      <input id="eval-FullName" name="eval-FullName" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-                    </div>
-                    <div class="flex flex-col gap-1.5 md:col-span-2">
-                        <label for="eval-TrainingTitle" class="text-sm font-semibold text-slate-700" data-i18n="evalLbIntitule">Training Title</label>
-                        <select id="eval-TrainingTitle" name="eval-TrainingTitle" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
-                          <option value=""></option>
-                          <option value="FIAS">FIAS - Initial Security Agent Training</option>
-                          <option value="FRAS">FRAS - Security Agent Refresher Training</option>
-                          <option value="FCP">FCP - Post Commander Training</option>
-                          <option value="FSUP">FSUP - Supervisor Training</option>
-                          <option value="FINSP">FINSP - Inspector Training</option>
-                        </select>
-                    </div>
-                    <div class="flex flex-col gap-1.5 md:col-span-2">
-                      <label for="eval-Trainer" class="text-sm font-semibold text-slate-700" data-i18n="evalLbFormateur">Trainer</label>
-                      <input id="eval-Trainer" name="eval-Trainer" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                      <label for="EvaluationDate" class="text-sm font-semibold text-slate-700" data-i18n="evalLbDate">Evaluation Date</label>
-                      <input id="EvaluationDate" name="EvaluationDate" type="date" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-                    </div>
-                  </div>
-                </fieldset>
 
                 <!-- Evaluation grid -->
                 <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
@@ -1820,44 +1852,11 @@
               </div>
               <div class="space-y-6 p-5 sm:p-7">
 
-                <!-- A. Informations du candidat -->
-                <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
-                  <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    <span data-i18n="measSecInfo">A. CANDIDATE INFORMATION</span>
-                  </legend>
-                  <div class="mt-4 grid gap-4 md:grid-cols-2">
-                    <div class="flex flex-col gap-1.5">
-                      <label for="meas-CandidateNo" class="text-sm font-semibold text-slate-700" data-i18n="measLbNumCandidat">Candidate No.</label>
-                      <input id="meas-CandidateNo" name="meas-CandidateNo" type="text" placeholder="C10001" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-                    </div>
-                    <div class="flex flex-col gap-1.5 md:col-span-2">
-                      <label for="meas-TrainingTitle" class="text-sm font-semibold text-slate-700" data-i18n="attLbIntitule">Training Title</label>
-                      <select id="meas-TrainingTitle" name="meas-TrainingTitle" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
-                        <option value=""></option>
-                        <option value="FIAS">FIAS - Initial Security Agent Training</option>
-                        <option value="FRAS">FRAS - Security Agent Refresher Training</option>
-                        <option value="FCP">FCP - Post Commander Training</option>
-                        <option value="FSUP">FSUP - Supervisor Training</option>
-                        <option value="FINSP">FINSP - Inspector Training</option>
-                      </select>
-                    </div>
-                    <div class="flex flex-col gap-1.5 md:col-span-2">
-                      <label for="meas-FullName" class="text-sm font-semibold text-slate-700" data-i18n="measLbNom">Full Name</label>
-                      <input id="meas-FullName" name="meas-FullName" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                      <label for="meas-Date" class="text-sm font-semibold text-slate-700" data-i18n="measLbDate">Date</label>
-                      <input id="meas-Date" name="meas-Date" type="date" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-                    </div>
-                  </div>
-                </fieldset>
-
-                <!-- B. Mensurations -->
+                <!-- A. Mensurations -->
                 <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
                   <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 0 0 6.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 0 0 6.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
-                    <span data-i18n="measSecMens">B. MEASUREMENTS</span>
+                    <span data-i18n="measSecMens">A. MEASUREMENTS</span>
                   </legend>
                   <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200">
                     <table class="w-full border-collapse text-sm">
@@ -1897,11 +1896,11 @@
                   </div>
                 </fieldset>
 
-                <!-- C. Informations Médicales -->
+                <!-- B. Informations Médicales -->
                 <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
                   <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                    <span data-i18n="measSecMedical">C. MEDICAL INFORMATION</span>
+                    <span data-i18n="measSecMedical">B. MEDICAL INFORMATION</span>
                   </legend>
                   <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200">
                     <table class="w-full border-collapse text-sm">
@@ -1935,11 +1934,11 @@
                   </div>
                 </fieldset>
 
-                <!-- D. Personne à contacter en cas d'urgence -->
+                <!-- C. Personne à contacter en cas d'urgence -->
                 <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
                   <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.82 9.82 19.79 19.79 0 0 1 1.82 1.18 2 2 0 0 1 3.8 0h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 7.91a16 16 0 0 0 5.55 5.55l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 14.92z"/></svg>
-                    <span data-i18n="measSecUrgence">D. EMERGENCY CONTACT PERSON</span>
+                    <span data-i18n="measSecUrgence">C. EMERGENCY CONTACT PERSON</span>
                   </legend>
                   <div class="mt-4 grid gap-4 md:grid-cols-2">
                     <div class="flex flex-col gap-1.5 md:col-span-2">
@@ -1961,22 +1960,22 @@
                   </div>
                 </fieldset>
 
-                <!-- E. Observations -->
+                <!-- D. Observations -->
                 <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
                   <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                    <span data-i18n="measSecObs">E. OBSERVATIONS</span>
+                    <span data-i18n="measSecObs">D. OBSERVATIONS</span>
                   </legend>
                   <div class="mt-4">
                     <textarea id="meas-observations" name="meas-observations" rows="5" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10 resize-none"></textarea>
                   </div>
                 </fieldset>
 
-                <!-- F. Validation -->
+                <!-- E. Validation -->
                 <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
                   <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
-                    <span data-i18n="measSecValidation">F. VALIDATION</span>
+                    <span data-i18n="measSecValidation">E. VALIDATION</span>
                   </legend>
                   <div class="mt-4 flex flex-col gap-1.5">
                     <label class="text-sm font-semibold text-slate-700" data-i18n="measLbCachet">Training Centre Stamp</label>
@@ -2018,57 +2017,11 @@
               </div>
               <div class="space-y-6 p-5 sm:p-7">
 
-                <!-- 1. Informations Générales -->
-                <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
-                  <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                    <span data-i18n="dossierSec1">1. GENERAL INFORMATION</span>
-                  </legend>
-                  <div class="mt-4 grid gap-4 md:grid-cols-2">
-                    <div class="flex flex-col gap-1.5">
-                      <label for="file-CandidateNo" class="text-sm font-semibold text-slate-700" data-i18n="dossierLbNumCandidat">Candidate No.</label>
-                      <input id="file-CandidateNo" name="file-CandidateNo" type="text" placeholder="C10001" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                      <label for="file-FullName" class="text-sm font-semibold text-slate-700" data-i18n="dossierLbNom">Full Name</label>
-                      <input id="file-FullName" name="file-FullName" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-                    </div>
-                    <div class="flex flex-col gap-1.5 md:col-span-2">
-                      <label for="file-TrainingTitle" class="text-sm font-semibold text-slate-700" data-i18n="attLbIntitule">Training Title</label>
-                      <select id="file-TrainingTitle" name="file-TrainingTitle" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
-                        <option value=""></option>
-                        <option value="FIAS">FIAS - Initial Security Agent Training</option>
-                        <option value="FRAS">FRAS - Security Agent Refresher Training</option>
-                        <option value="FCP">FCP - Post Commander Training</option>
-                        <option value="FSUP">FSUP - Supervisor Training</option>
-                        <option value="FINSP">FINSP - Inspector Training</option>
-                      </select>
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                      <label for="file-Phone" class="text-sm font-semibold text-slate-700" data-i18n="dossierLbTel">Phone</label>
-                      <input id="file-Phone" name="file-Phone" type="tel" inputmode="tel" autocomplete="tel" pattern="^\+?[0-9\s().-]{7,20}$" placeholder="+243 999 000 000" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-                    </div>
-                    <div></div>
-                    <div class="flex flex-col gap-1.5">
-                      <label for="file-StartDate" class="text-sm font-semibold text-slate-700" data-i18n="dossierLbDateDebut">Start date</label>
-                      <input id="file-StartDate" name="file-StartDate" type="date" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                      <label for="file-EndDate" class="text-sm font-semibold text-slate-700" data-i18n="dossierLbDateFin">End date</label>
-                      <input id="file-EndDate" name="file-EndDate" type="date" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-                    </div>
-                    <div class="flex flex-col gap-1.5 md:col-span-2">
-                      <label for="file-Observations" class="text-sm font-semibold text-slate-700" data-i18n="dossierLbObs">Observations</label>
-                      <textarea id="file-Observations" name="file-Observations" rows="4" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10 resize-none"></textarea>
-                    </div>
-                  </div>
-                </fieldset>
-
                 <!-- 2. Liste de Vérification des Documents -->
                 <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
                   <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                    <span data-i18n="dossierSec2">2. DOCUMENT CHECKLIST</span>
+                    <span data-i18n="dossierSec2">1. DOCUMENT CHECKLIST</span>
                   </legend>
                   <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200">
                     <table class="w-full border-collapse text-sm">
@@ -2107,15 +2060,6 @@
                         </tr>
                         <tr class="hover:bg-slate-50/50"><td class="px-4 py-2.5 pl-8 text-slate-700" data-i18n="dossierDoc31">Individual Evaluation Form</td><td class="px-4 py-2.5 text-center"><input type="checkbox" name="doss-doc-3-1" class="h-5 w-5 cursor-pointer accent-[#042F8D]" /></td></tr>
                         <tr class="hover:bg-slate-50/50"><td class="px-4 py-2.5 pl-8 text-slate-700" data-i18n="dossierDoc32">Final Exam Result</td><td class="px-4 py-2.5 text-center"><input type="checkbox" name="doss-doc-3-2" class="h-5 w-5 cursor-pointer accent-[#042F8D]" /></td></tr>
-  
-                        <!-- Cat 4: Recrutement -->
-                        <!-- <tr class="bg-[#042F8D]/[0.07]">
-                          <td colspan="2" class="px-4 py-2 text-xs font-bold uppercase tracking-wide text-[#042F8D]" data-i18n="dossierCat4">4. Recruitment</td>
-                        </tr>
-                        <tr class="hover:bg-slate-50/50"><td class="px-4 py-2.5 pl-8 text-slate-700" data-i18n="dossierDoc41">Letter of Engagement</td><td class="px-4 py-2.5 text-center"><input type="checkbox" name="doss-doc-4-1" class="h-5 w-5 cursor-pointer accent-[#042F8D]" /></td></tr>
-                        <tr class="hover:bg-slate-50/50"><td class="px-4 py-2.5 pl-8 text-slate-700" data-i18n="dossierDoc42">Uniform Equipment Handover Commitment</td><td class="px-4 py-2.5 text-center"><input type="checkbox" name="doss-doc-4-2" class="h-5 w-5 cursor-pointer accent-[#042F8D]" /></td></tr>
-                        <tr class="hover:bg-slate-50/50"><td class="px-4 py-2.5 pl-8 text-slate-700" data-i18n="dossierDoc43">Other Documents</td><td class="px-4 py-2.5 text-center"><input type="checkbox" name="doss-doc-4-3" class="h-5 w-5 cursor-pointer accent-[#042F8D]" /></td></tr> -->
-
                       </tbody>
                     </table>
                   </div>
@@ -2156,6 +2100,9 @@
     <script src="./js/modules/admin.js"></script>
     <script src="./js/modules/att-sheet.js"></script>
     <script src="./js/modules/exam.js"></script>
+    <script src="./js/modules/exam-take.js"></script>
+    <script src="./js/modules/exam-credentials.js"></script>
+    <script src="./js/modules/exam-correct.js"></script>
    
     
     <!-- intl-tel-input plugin (bundled with utils for formatting/validation) -->

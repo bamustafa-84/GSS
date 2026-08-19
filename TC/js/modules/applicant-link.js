@@ -384,6 +384,24 @@ const DATE_COLS = new Set(['registration_date', 'date_of_birth', 'applicant_date
 
     // Clear the presences panel for a brand-new applicant.
     clearPresences();
+    // Reset the Panel-Exam + Attendance panels to follow the normal sequential
+    // lock again (they are force-unlocked only when editing existing applicants).
+    try {
+      const banner = document.getElementById('exam-result-status');
+      if (banner) banner.classList.add('hidden');
+      const tabs = /** @type {any} */ (window).GSSTabs;
+      if (tabs && typeof tabs.setForcedUnlock === 'function') {
+        tabs.setForcedUnlock('exam', false);
+        tabs.setForcedUnlock('presences', false);
+      }
+    } catch (_) { /* noop */ }
+
+    // Clear the Exam panel fields so no stale decision/observation/signature
+    // lingers when switching from an existing applicant to a new one.
+    loadExamPanelFields({});
+    loadExamInstructorSignature({});
+    const ackExam = byId('ack-exam');
+    if (ackExam) { ackExam.checked = false; ackExam.disabled = !canAckExam(); }
 
     // A brand-new form is not awaiting approval, and the applicant's declaration
     // date defaults to today.
@@ -455,8 +473,9 @@ const initApplicantForm = () => {
     // Generic acks (panels without a DB acceptance column) just gate the flow.
     // 'presences' is owned by attendance.js (it also saves the training + locks
     // the panel + advances), so it is intentionally excluded here.
+    // 'exam' has its own dedicated handler below.
     GENERIC_TABS.forEach((tab) => {
-      if (tab === 'presences') return;
+      if (tab === 'presences' || tab === 'exam') return;
       const ack = byId('ack-' + tab);
       if (!ack) return;
       ack.addEventListener('change', () => {
@@ -466,6 +485,45 @@ const initApplicantForm = () => {
         try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
       });
     });
+
+    // Exam panel ack: restricted to Instructor / Head of Training / Admin.
+    // When ticked, the instructor signature is auto-populated from the
+    // signatures table by matching the current user's full_name.
+    const examAck = byId('ack-exam');
+    if (examAck) {
+      examAck.disabled = !canAckExam();
+      examAck.addEventListener('change', async () => {
+        if (!examAck.checked) return;
+        if (!canAckExam()) {
+          examAck.checked = false;
+          return;
+        }
+
+        const confirmed = window.confirm(
+          'Are you sure you want to acknowledge the exam?'
+        );
+
+        if (!confirmed) {
+          examAck.checked = false;
+          return;
+        }
+
+        const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
+        const userName = session ? (session.full_name || session.username || '') : '';
+        const sig = userName ? await findTrainerSignature(userName) : null;
+        if (sig && sig.signature_id) {
+          showSignatureImage('exam-sig-cachet', `${API_BASE}/api/signatures/image?id=${encodeURIComponent(String(sig.signature_id))}`);
+          const input = byId('exam-sig-cachet-data');
+          if (input) input.value = String(sig.signature_id);
+        }
+        setGreenTab('exam', true, DOT_ALL['exam']);
+        examAck.disabled = true;
+        setExamPanelReadonly(true);
+        await saveExamAck();
+        try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
+        try { goToNextTab('exam'); } catch (_) { /* noop */ }
+      });
+    }
 
     // Show the current Training Officer signature (read-only) on Panel 4.
     loadOfficerSignature();
@@ -739,7 +797,216 @@ const loadPresences = async (candidateNo) => {
   });
 })();
 
-const load = (/** @type {Record<string, any> | null | undefined} */ record) => {
+/**
+ * Populate the "Individual Exam Result" panel (Panel-Exam) from the candidate's
+ * real exam attempt. The Panel-Exam only opens with the final result once the
+ * exam has been finished AND corrected (the backend decides via `viewable`);
+ * otherwise a status banner explains the current state and the panel is not
+ * force-opened. Nothing here is trusted from the client — the score, pass/fail
+ * and correction status all come from the server.
+ * @param {number|null} candidateNo
+ */
+const loadExamResult = async (candidateNo) => {
+  const banner = document.getElementById('exam-result-status');
+  const setBanner = (/** @type {string} */ html, /** @type {string} */ cls) => {
+    if (!banner) return;
+    banner.className = 'rounded-2xl border px-4 py-3 text-sm font-semibold ' + cls;
+    banner.innerHTML = html;
+    banner.classList.remove('hidden');
+  };
+  // Default: exam panel follows the normal sequential flow.
+  try { if (/** @type {any} */ (window).GSSTabs) /** @type {any} */ (window).GSSTabs.setForcedUnlock('exam', false); } catch (_) { /* noop */ }
+  if (banner) banner.classList.add('hidden');
+  if (candidateNo == null) return;
+
+  const tt = (/** @type {string} */ k, /** @type {string} */ f) => {
+    try {
+      const lang = document.documentElement.lang || 'en';
+      const d = /** @type {any} */ (typeof translations !== 'undefined' ? translations : null);
+      if (d && d[lang] && d[lang][k]) return d[lang][k];
+    } catch (_) { /* noop */ }
+    return f;
+  };
+  const byIdLocal = (/** @type {string} */ id) => document.getElementById(id);
+  const setVal = (/** @type {string} */ id, /** @type {any} */ v) => {
+    const el = /** @type {HTMLInputElement|HTMLSelectElement|null} */ (byIdLocal(id));
+    if (el && v != null && v !== '') el.value = String(v);
+  };
+  const ensureOption = (/** @type {string} */ id, /** @type {string} */ val) => {
+    const sel = /** @type {HTMLSelectElement|null} */ (byIdLocal(id));
+    if (!sel || !val) return;
+    if (!Array.from(sel.options).some((o) => o.value === val)) {
+      const opt = document.createElement('option');
+      opt.value = val; opt.textContent = val; sel.appendChild(opt);
+    }
+    sel.value = val;
+  };
+
+  try {
+    const data = await fetch(
+      `${API_BASE}/api/exam/candidate-result?candidate_no=${encodeURIComponent(String(candidateNo))}`,
+      { headers: { Accept: 'application/json' } }
+    ).then((r) => r.json());
+
+    if (!data || !data.ok || !data.has_attempt) {
+      setBanner(tt('examPanelNone', 'This candidate has not taken an exam yet.'),
+        'border-slate-200 bg-slate-50 text-slate-500');
+      return;
+    }
+
+    // Always reflect the candidate identity + exam meta on the panel.
+    setVal('exam-CandidateNo', data.candidate_no);
+    setVal('exam-FullName', data.candidate_name);
+    setVal('exam-Trainer', data.instructor);
+    if (data.exam_date) setVal('exam-ExamDate', String(data.exam_date).slice(0, 10));
+    ensureOption('exam-TrainingTitle', data.training_title);
+
+    if (!data.viewable) {
+      // Finished-but-waiting or still in progress → do NOT open with a result.
+      const msg = data.state === 'in_progress'
+        ? tt('examPanelInProgress', 'The candidate is currently taking the exam. The result will appear here once it is submitted and corrected.')
+        : tt('examPanelWaiting', 'The candidate has finished the exam. It is awaiting correction — the result will appear here once corrected.');
+      setBanner('⏳ ' + msg, 'border-amber-200 bg-amber-50 text-amber-800');
+      return;
+    }
+
+    // Corrected → open the Panel-Exam with the final result.
+    // Score and Pass/Fail result are computed by the server and reflected here.
+    setVal('Score', data.total_score != null ? data.total_score : '');
+
+    // Automatically tick the Result radio based on the corrected attempt.
+    document.querySelectorAll('input[name="Result"]').forEach((el) => {
+      /** @type {HTMLInputElement} */ (el).checked =
+        (data.passed === true && el.value === 'Reussi') ||
+        (data.passed === false && el.value === 'Echec');
+    });
+
+    const scoreLine = `${data.total_score}${data.max_score != null ? ' / ' + data.max_score : ''}`;
+    const passLine = data.passed == null ? ''
+      : (data.passed
+        ? ` · <span class="text-emerald-700">${tt('examPanelPass', 'PASS')}</span>`
+        : ` · <span class="text-red-700">${tt('examPanelFail', 'FAIL')}</span>`);
+    setBanner(
+      `✓ ${tt('examPanelCorrected', 'Exam completed and corrected')} — <span class="font-bold">${scoreLine}</span>${passLine}` +
+      (data.passing_score != null ? ` <span class="font-normal text-slate-500">(${tt('examPanelPassMark', 'pass mark')}: ${data.passing_score})</span>` : ''),
+      'border-emerald-200 bg-emerald-50 text-emerald-800');
+
+    // Make the Panel-Exam reachable now that the exam is finished + corrected.
+    // The panel is only exposed to Instructor / Admin / Head of Training.
+    if (canAckExam()) {
+      try { if (/** @type {any} */ (window).GSSTabs) /** @type {any} */ (window).GSSTabs.setForcedUnlock('exam', true); } catch (_) { /* noop */ }
+    }
+    return true;
+  } catch (_) {
+    if (banner) banner.classList.add('hidden');
+  }
+  return false;
+};
+
+/** Current signed-in role, used to gate the Exam panel ack/signature flow. */
+const getCurrentRole = () => {
+  const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
+  return session && session.role ? String(session.role) : '';
+};
+
+/** True for the three roles allowed to acknowledge / sign the Exam panel. */
+const canAckExam = () => {
+  const role = getCurrentRole();
+  return role === 'Admin' || role === 'Head of Training' || role === 'Instructor';
+};
+
+/** Populate the Exam panel decision / observations fields from the record.
+    These controls live outside the registration form, so applyDbValues does
+    not reach them. */
+const loadExamPanelFields = (/** @type {Record<string, any> | null | undefined} */ record) => {
+  const decision = record && record.exam_decision;
+  document.querySelectorAll('input[name="Decision"][dbname="exam_decision"]').forEach((el) => {
+    /** @type {HTMLInputElement} */ (el).checked = decision != null && decision !== '' && el.value === String(decision);
+  });
+  const obs = byId('exam-observation');
+  if (obs) obs.value = (record && record.exam_observations) || '';
+};
+
+/** Render the stored instructor signature image on the Exam panel. */
+const loadExamInstructorSignature = (/** @type {Record<string, any> | null | undefined} */ record) => {
+  const sigId = record && record.exam_instructor_signature_id;
+  if (sigId != null && sigId !== '') {
+    const url = `${API_BASE}/api/signatures/image?id=${encodeURIComponent(String(sigId))}`;
+    showSignatureImage('exam-sig-cachet', url);
+    const input = byId('exam-sig-cachet-data');
+    if (input) input.value = String(sigId);
+  } else {
+    showSignatureImage('exam-sig-cachet', '');
+    const input = byId('exam-sig-cachet-data');
+    if (input) input.value = '';
+  }
+};
+
+/** Lock or unlock the Exam panel decision/observation/ack fields. */
+const setExamPanelReadonly = (/** @type {boolean} */ ro) => {
+  const panel = document.getElementById('panel-exam');
+  if (!panel) return;
+  const locked = ro || !canAckExam();
+  const ack = byId('ack-exam');
+  if (ack) {
+    ack.disabled = locked;
+    if (ro) ack.checked = true;
+  }
+  panel.querySelectorAll('input[name="Decision"], input[name="Result"], #Score, textarea#exam-observation').forEach((el) => {
+    /** @type {HTMLInputElement | HTMLTextAreaElement} */ (el).disabled = locked;
+  });
+  const canvas = document.getElementById('exam-sig-cachet');
+  if (canvas) canvas.style.pointerEvents = 'none';
+};
+
+/** Fetch the signature whose contact_name matches the supplied name. */
+const findTrainerSignature = async (/** @type {string} */ name) => {
+  if (!name) return null;
+  try {
+    const resp = await fetch(`${API_BASE}/api/signatures/by-contact?name=${encodeURIComponent(name)}`, {
+      headers: { Accept: 'application/json' },
+    });
+    const data = await resp.json().catch(() => null);
+    return data && data.ok && data.signature ? data.signature : null;
+  } catch (_) {
+    return null;
+  }
+};
+
+/** Persist the Exam panel decision/observations/signature/ack state. */
+const saveExamAck = async () => {
+  if (!currentId) return;
+  const decision = /** @type {HTMLInputElement | null} */ (document.querySelector('input[name="Decision"]:checked'));
+  const observations = byId('exam-observation');
+  const sigInput = byId('exam-sig-cachet-data');
+  const payload = {
+    candidate_no: currentId,
+    ack_exam: true,
+    exam_decision: decision ? decision.value : '',
+    exam_observations: observations ? observations.value : '',
+    exam_instructor_signature_id: sigInput && sigInput.value ? Number(sigInput.value) : null,
+  };
+  try {
+    await fetch(`${API_BASE}/api/applicants`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch (_) { /* noop */ }
+};
+
+/** Return the most advanced workflow tab that is completed or unlocked. */
+const findLatestWorkflowTab = () => {
+  if (typeof TAB_ORDER === 'undefined' || typeof isTabUnlocked !== 'function') return null;
+  let latest = null;
+  for (const tab of TAB_ORDER) {
+    if (tab === 'dossier') continue; // checklist is always unlocked, ignore for auto-jump
+    if (tabState[tab] || isTabUnlocked(tab)) latest = tab;
+  }
+  return latest;
+};
+
+const load = async (/** @type {Record<string, any> | null | undefined} */ record) => {
     if (!record) return;
     currentId = record.candidate_no != null ? Number(record.candidate_no) : null;
 
@@ -777,6 +1044,27 @@ const load = (/** @type {Record<string, any> | null | undefined} */ record) => {
 
     // Individual Attendance Report: pull the candidate's attendance from the DB.
     loadPresences(currentId);
+
+    // Editing an existing applicant from the grid: the attendance phase is
+    // treated as recorded, so mark the Attendance panel completed (green ✓) and
+    // lock all its fields read-only.
+    try {
+      const pres = /** @type {any} */ (window).GSSPresences;
+      if (pres && typeof pres.markComplete === 'function') pres.markComplete();
+    } catch (_) { /* noop */ }
+
+    // Individual Exam Result (Panel-Exam): reflect the candidate's real exam
+    // attempt. Opens with the final result only once the exam is corrected.
+    const examCorrected = await loadExamResult(currentId);
+
+    // Exam panel: restore the stored instructor signature and lock the panel
+    // when it has already been acknowledged. Keep the tab green if acked.
+    loadExamPanelFields(record);
+    loadExamInstructorSignature(record);
+    if (isTruthy(record.ack_exam)) {
+      setGreenTab('exam', true, DOT_ALL['exam']);
+    }
+    setExamPanelReadonly(isTruthy(record.ack_exam));
 
     // Applicant signature: show on the form pad + the read-only panels.
     const sigId = record.applicant_signature_id;
@@ -834,7 +1122,14 @@ const load = (/** @type {Record<string, any> | null | undefined} */ record) => {
     // The Conditions tab is only reachable once the interview is Accepted.
     try { if (/** @type {any} */ (window).GSSTabs) /** @type {any} */ (window).GSSTabs.setForcedLock('conditions', !accepted); } catch (_) { /* noop */ }
     try {
-      if (typeof switchTab === 'function') switchTab(accepted ? 'conditions' : 'registration');
+      let targetTab = accepted ? 'conditions' : 'registration';
+      // Once the exam has been corrected, jump straight to the most advanced
+      // reachable tab (e.g. Exam, Evaluation, or beyond).
+      if (examCorrected) {
+        const latest = findLatestWorkflowTab();
+        if (latest) targetTab = latest;
+      }
+      if (typeof switchTab === 'function') switchTab(targetTab);
     } catch (_) { /* noop */ }
 
     // On edit, drill straight down to the "For Administration Use" section so

@@ -74,7 +74,21 @@ AS $$
   ORDER BY s.signature_id DESC
   LIMIT 1;
 $$;
-
+-- Signature_FindByContact: the most recent signature whose contact_name
+-- matches the supplied name (case-insensitive). Used to auto-populate the
+-- instructor signature on the Exam panel from the selected trainer.
+CREATE OR REPLACE FUNCTION signature_find_by_contact(p_contact_name text)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT (to_jsonb(s.*) - 'signature_image')
+  FROM signature s
+  WHERE coalesce(p_contact_name, '') <> ''
+    AND coalesce(s.contact_name, '') ILIKE p_contact_name
+  ORDER BY s.signature_id DESC
+  LIMIT 1;
+$$;
 -- Signature_Delete: remove a signature by id. Any applicant rows that
 -- reference it keep their data but lose the (now-deleted) foreign key.
 -- Returns TRUE when a row was actually deleted.
