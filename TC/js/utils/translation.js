@@ -81,14 +81,11 @@ const translations = {
     examPublishErr: 'Impossible de publier l\'examen.', examPublishedTitle: 'Examen publié — comptes temporaires',
     examPwOnce: 'Ces mots de passe sont affichés une seule fois. Copiez-les maintenant ou utilisez « Envoyer l\'identifiant » plus tard.',
     examCopyAll: 'Tout copier', examManageCreds: 'Gérer les identifiants', examNoNewAccounts: 'Aucun nouveau compte généré (les candidats assignés ont déjà des identifiants).',
-<<<<<<< HEAD
+
     credsTitle: 'Identifiants d\'examen', credsRefresh: 'Actualiser', credsCopyAll: 'Tout copier', credsExportCsv: 'Exporter en CSV', credsPick: 'Sélectionnez une formation pour voir ses candidats et identifiants.',
     credsCopyNone: 'Aucun identifiant à copier.', credsCopying: 'Récupération des mots de passe…', credsCopiedAll: 'Tous les identifiants copiés dans le presse-papiers ✓', credsCopyErr: 'Impossible de copier les identifiants.',
     credsExportNone: 'Aucun identifiant à exporter.', credsExporting: 'Récupération des mots de passe…', credsExported: 'Identifiants exportés ✓', credsExportErr: 'Impossible d\'exporter les identifiants.',
-=======
-    credsTitle: 'Identifiants d\'examen', credsRefresh: 'Actualiser', credsCopyAll: 'Tout copier', credsPick: 'Sélectionnez une formation pour voir ses candidats et identifiants.',
-    credsCopyNone: 'Aucun identifiant à copier.', credsCopying: 'Récupération des mots de passe…', credsCopiedAll: 'Tous les identifiants copiés dans le presse-papiers ✓', credsCopyErr: 'Impossible de copier les identifiants.',
->>>>>>> 58843b751bc0aaa1d0cd6dd2761671070c1334b5
+
     credsEmpty: 'Aucun candidat assigné, ou l\'examen n\'est pas encore publié.', credsLoading: 'Chargement…', credsError: 'Impossible de charger les identifiants.',
     credsCandidates: 'candidats', credCandidateNo: 'N°', credCandidate: 'Candidat', credTraining: 'Formation', credInstructor: 'Formateur',
     credExamDate: 'Date', credUsername: 'Identifiant', credPassword: 'Mot de passe', credStatus: 'Identifiant', credExamStatus: 'Statut d\'examen',
@@ -410,11 +407,8 @@ const translations = {
     examSecObs: 'OBSERVATIONS DU FORMATEUR',
     examLbObs: 'Observations…',
     examSecValidation: 'VALIDATION',
-<<<<<<< HEAD
+
     examLbCachet: 'Signature',
-=======
-    examLbCachet: 'Signature du formateur',
->>>>>>> 58843b751bc0aaa1d0cd6dd2761671070c1334b5
     examLbVisa: 'Visa de la Direction',
     ackExam: "Je certifie l'exactitude des informations du présent <strong>Résultat d'Examen</strong>.",
     // ── Panel 8 · Fiche de Mensuration et Informations Complémentaires ──
@@ -620,14 +614,11 @@ const translations = {
     examPublishErr: 'Could not publish the exam.', examPublishedTitle: 'Exam published — temporary accounts',
     examPwOnce: 'These passwords are shown once. Copy them now or use “Send credential” later.',
     examCopyAll: 'Copy all', examManageCreds: 'Manage credentials', examNoNewAccounts: 'No new accounts were generated (all assigned candidates already have credentials).',
-<<<<<<< HEAD
+
     credsTitle: 'Exam credentials', credsRefresh: 'Refresh', credsCopyAll: 'Copy all', credsExportCsv: 'Export to CSV', credsPick: 'Select a training course to view its assigned candidates and credentials.',
     credsCopyNone: 'No credentials to copy yet.', credsCopying: 'Fetching passwords…', credsCopiedAll: 'All credentials copied to the clipboard ✓', credsCopyErr: 'Could not copy the credentials.',
     credsExportNone: 'No credentials to export yet.', credsExporting: 'Fetching passwords…', credsExported: 'Credentials exported ✓', credsExportErr: 'Could not export the credentials.',
-=======
-    credsTitle: 'Exam credentials', credsRefresh: 'Refresh', credsCopyAll: 'Copy all', credsPick: 'Select a training course to view its assigned candidates and credentials.',
-    credsCopyNone: 'No credentials to copy yet.', credsCopying: 'Fetching passwords…', credsCopiedAll: 'All credentials copied to the clipboard ✓', credsCopyErr: 'Could not copy the credentials.',
->>>>>>> 58843b751bc0aaa1d0cd6dd2761671070c1334b5
+
     credsEmpty: 'No candidates are assigned to this training yet, or the exam has not been published.', credsLoading: 'Loading…', credsError: 'Could not load credentials. Is the server running?',
     credsCandidates: 'candidates', credCandidateNo: 'No.', credCandidate: 'Candidate', credTraining: 'Training', credInstructor: 'Instructor',
     credExamDate: 'Exam date', credUsername: 'Username', credPassword: 'Password', credStatus: 'Credential', credExamStatus: 'Exam status',
@@ -950,11 +941,9 @@ const translations = {
     examSecObs: "TRAINER'S OBSERVATIONS",
     examLbObs: 'Observations…',
     examSecValidation: 'VALIDATION',
-<<<<<<< HEAD
+
     examLbCachet: 'Signature',
-=======
-    examLbCachet: 'Instructor Signature',
->>>>>>> 58843b751bc0aaa1d0cd6dd2761671070c1334b5
+
     examLbVisa: "Director's Visa",
     ackExam: 'I certify the accuracy of the information in this <strong>Exam Result</strong>.',
     // ── Panel 8 · Measurements and Additional Information Sheet ──
