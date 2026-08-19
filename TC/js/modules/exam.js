@@ -804,6 +804,7 @@
   };
 
   // The Publish button stays disabled until a valid Exam Date is entered.
+<<<<<<< HEAD
   // Once an exam has been published and accounts generated, hide the button.
   const updatePublishState = () => {
     if (!publishBtn) return;
@@ -816,6 +817,14 @@
     const ok = !!examConfig.training_id && validExamDate();
     publishBtn.disabled = !ok;
     publishBtn.textContent = t('examPublish', 'Publish exam');
+=======
+  const updatePublishState = () => {
+    if (!publishBtn) return;
+    const ok = !!examConfig.training_id && validExamDate();
+    publishBtn.disabled = !ok;
+    const published = (examConfig.status || '').toUpperCase() === 'PUBLISHED';
+    publishBtn.textContent = published ? t('examRepublish', 'Update & re-publish') : t('examPublish', 'Publish exam');
+>>>>>>> 58843b751bc0aaa1d0cd6dd2761671070c1334b5
   };
 
   const publish = async () => {
