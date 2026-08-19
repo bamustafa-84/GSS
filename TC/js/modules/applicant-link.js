@@ -407,6 +407,12 @@ const DATE_COLS = new Set(['registration_date', 'date_of_birth', 'applicant_date
     try { if (/** @type {any} */ (window).GSSTabs) /** @type {any} */ (window).GSSTabs.setForcedLock('conditions', false); } catch (_) { /* noop */ }
     try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
 
+    // Clear the Dossier checklist + certification for a brand-new applicant.
+    try { resetDossierChecklist(); } catch (_) { /* noop */ }
+
+    // Clear the Evaluation panel for a brand-new applicant.
+    try { resetEvaluation(); } catch (_) { /* noop */ }
+
     try { if (typeof switchTab === 'function') switchTab('registration'); } catch (_) { /* noop */ }
   };
   ///** @type {any} */ (window).GSSApplicant = { initApplicantForm, load, mirrorFromForm, reset: resetToNewMode, completeRegistration, loadOfficerSignature };
@@ -457,7 +463,7 @@ const initApplicantForm = () => {
     // the panel + advances), so it is intentionally excluded here.
     // 'exam' has its own dedicated handler below.
     GENERIC_TABS.forEach((tab) => {
-      if (tab === 'presences' || tab === 'exam') return;
+      if (tab === 'presences' || tab === 'exam' || tab === 'dossier' || tab === 'evaluation') return;
       const ack = byId('ack-' + tab);
       if (!ack) return;
       ack.addEventListener('change', () => {
@@ -478,6 +484,18 @@ const initApplicantForm = () => {
         if (!examAck.checked) return;
         if (!canAckExam()) {
           examAck.checked = false;
+          return;
+        }
+
+        // Required Exam-panel fields before the result can be acknowledged:
+        // Score Obtained, Result (Pass/Fail) and Decision.
+        const scoreEl = byId('Score');
+        const scoreVal = scoreEl ? String(scoreEl.value).trim() : '';
+        const resultChecked = document.querySelector('input[name="Result"]:checked');
+        const decisionChecked = document.querySelector('input[name="Decision"]:checked');
+        if (scoreVal === '' || !resultChecked || !decisionChecked) {
+          examAck.checked = false;
+          window.alert(t('examErrRequired', 'Please provide the Score, Result and Decision before acknowledging the exam.'));
           return;
         }
 
@@ -509,6 +527,154 @@ const initApplicantForm = () => {
 
     // Show the current Training Officer signature (read-only) on Panel 4.
     loadOfficerSignature();
+
+    // ── Individual Evaluation Sheet (Panel-Evaluation) ───────────
+    // The two eval signatures are always auto-applied, never hand-drawn.
+    ['eval-sig-formateur', 'eval-sig-resp'].forEach((cid) => {
+      const canvas = document.getElementById(cid);
+      if (canvas) canvas.style.pointerEvents = 'none';
+      const wrap = canvas ? canvas.closest('.gss-sign') : null;
+      const clear = wrap ? wrap.querySelector('.gss-sign-clear') : null;
+      if (clear) clear.classList.add('hidden');
+    });
+
+    // Recompute the auto-graded cells + refresh the workflow state whenever the
+    // Evaluation panel is opened.
+    const evalBtn = document.getElementById('tab-btn-evaluation');
+    if (evalBtn) evalBtn.addEventListener('click', () => window.setTimeout(() => {
+      if (!evalInstructorAck) populateEvalAutoFields();
+      applyEvaluationState();
+    }, 0));
+
+    // Keep the summary total live as the Instructor edits the manual cells.
+    EVAL_MANUAL_IDS.forEach((id) => {
+      const el = byId(id);
+      if (el) el.addEventListener('input', () => { try { if (typeof updateEvalSummary === 'function') updateEvalSummary(); } catch (_) { /* noop */ } });
+    });
+
+    // ack-evaluation: two-stage sign-off (Instructor → Admin).
+    const evalAck = byId('ack-evaluation');
+    if (evalAck) {
+      evalAck.addEventListener('change', async () => {
+        if (!evalAck.checked) return;
+
+        // Stage 2 — Admin finalises.
+        if (evalInstructorAck && !evalAdminAck) {
+          if (!isEvalAdminRole()) {
+            evalAck.checked = false;
+            window.alert(t('evalErrAdminOnly', 'Only an Admin can set the Final Result and finalise the evaluation.'));
+            return;
+          }
+          const fd = document.querySelector('#panel-evaluation input[name="Final_Decision"]:checked');
+          if (!fd) {
+            evalAck.checked = false;
+            window.alert(t('evalErrFinalRequired', 'Please select the Final Result before finalising the evaluation.'));
+            return;
+          }
+          if (!window.confirm(t('evalConfirmAdmin', 'Finalise this evaluation and record the Manager/Director signature? This will be saved.'))) {
+            evalAck.checked = false;
+            return;
+          }
+          const sig = await currentUserSignature();
+          if (sig && sig.signature_id) setEvalSignature('resp', sig.signature_id);
+          evalAdminAck = true;
+          const respInput = byId('eval-sig-resp-data');
+          await saveEvaluation({
+            eval_final_decision: /** @type {HTMLInputElement} */ (fd).value,
+            eval_observations: (byId('eval-Observations') || {}).value || '',
+            eval_manager_signature_id: respInput && respInput.value ? Number(respInput.value) : null,
+            eval_admin_ack: true,
+          });
+          setGreenTab('evaluation', true, DOT_ALL['evaluation']);
+          setEvalFullReadonly();
+          if (evalAck) { evalAck.checked = true; evalAck.disabled = true; }
+          applyEvaluationState();
+          try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
+          // Req 12: open the Measurements panel once the Admin finalises.
+          try { if (/** @type {any} */ (window).GSSTabs) /** @type {any} */ (window).GSSTabs.setForcedUnlock('mensuration', true); } catch (_) { /* noop */ }
+          try { if (typeof switchTab === 'function') switchTab('mensuration'); } catch (_) { /* noop */ }
+          return;
+        }
+
+        // Stage 1 — Instructor completes + signs.
+        if (!evalInstructorAck) {
+          if (!isEvalTrainerRole()) {
+            evalAck.checked = false;
+            window.alert(t('evalErrInstructorOnly', 'Only the Instructor can complete and sign the evaluation.'));
+            return;
+          }
+          if (!evalGradesFilled()) {
+            evalAck.checked = false;
+            window.alert(t('evalErrGradesRequired', 'Please fill in every grade before signing the evaluation.'));
+            return;
+          }
+          if (!window.confirm(t('evalConfirmInstructor', 'Sign this evaluation as Instructor? The grades will be locked and saved.'))) {
+            evalAck.checked = false;
+            return;
+          }
+          const sig = await currentUserSignature();
+          if (sig && sig.signature_id) setEvalSignature('formateur', sig.signature_id);
+          evalInstructorAck = true;
+          setEvalGradesEditable(false);
+          const trainerInput = byId('eval-sig-formateur-data');
+          /** @type {Record<string, any>} */
+          const payload = { eval_instructor_ack: true, eval_total: evalTotalObtained() };
+          Object.entries(EVAL_FIELD_COLS).forEach(([id, col]) => {
+            const el = byId(id);
+            if (el && el.value !== '') payload[col] = Number(el.value);
+          });
+          payload.eval_trainer_signature_id = trainerInput && trainerInput.value ? Number(trainerInput.value) : null;
+          await saveEvaluation(payload);
+          // The Instructor's part is done; hand over to the Admin.
+          applyEvaluationState();
+          return;
+        }
+
+        // Already fully acknowledged.
+        evalAck.checked = true;
+      });
+    }
+
+    // ── Individual Candidate File (Dossier) checklist ────────────
+    // Recompute the read-only checklist every time the Dossier panel is opened,
+    // so it reflects the latest panel-completion state.
+    const dossierBtn = document.getElementById('tab-btn-dossier');
+    if (dossierBtn) dossierBtn.addEventListener('click', () => window.setTimeout(syncDossierChecklist, 0));
+
+    // Establish the initial read-only checklist + ack lock state.
+    try { syncDossierChecklist(); } catch (_) { /* noop */ }
+
+    // ack-dossier: certifies the whole file. Restricted to Admin / Secretary /
+    // Head of Training, only allowed once every checklist item is present, and
+    // confirmed + persisted before it is committed.
+    const dossierAck = byId('ack-dossier');
+    if (dossierAck) {
+      dossierAck.addEventListener('change', async () => {
+        if (!dossierAck.checked) return;
+        if (dossierAck.dataset.committed === 'true') return;
+
+        if (!canAckDossier()) {
+          dossierAck.checked = false;
+          window.alert(t('dossierAckRole', 'You are not authorised to certify this candidate file.'));
+          return;
+        }
+        if (!allDossierChecked()) {
+          dossierAck.checked = false;
+          window.alert(t('dossierAckIncomplete', 'All checklist documents must be present before certifying the file.'));
+          return;
+        }
+
+        const ok = window.confirm(t('dossierAckConfirm',
+          'Are you sure you want to certify this Individual Candidate File? This will be saved.'));
+        if (!ok) { dossierAck.checked = false; return; }
+
+        setGreenTab('dossier', true, DOT_ALL['dossier']);
+        dossierAck.disabled = true;
+        dossierAck.dataset.committed = 'true';
+        try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
+        await saveAcceptance({ ack_dossier: true });
+      });
+    }
 
     // Fill-the-form button → open a blank form in New mode.
     document.getElementById('openFormBtn')?.addEventListener('click', resetToNewMode);
@@ -658,6 +824,9 @@ const padParts = (/** @type {string} */ canvasId) => {
 /** @type {any[]} All attendance rows for the currently loaded candidate. */
 let presRowsAll = [];
 
+/** @type {number | null} The corrected exam score (out of 100) of the loaded candidate. */
+let lastExamScore = null;
+
 const presSetVal = (/** @type {string} */ id, /** @type {any} */ value) => {
   const el = /** @type {HTMLInputElement | HTMLSelectElement | null} */ (document.getElementById(id));
   if (el) el.value = value == null ? '' : String(value);
@@ -797,6 +966,7 @@ const loadExamResult = async (candidateNo) => {
     banner.classList.remove('hidden');
   };
   // Default: exam panel follows the normal sequential flow.
+  lastExamScore = null;
   try { if (/** @type {any} */ (window).GSSTabs) /** @type {any} */ (window).GSSTabs.setForcedUnlock('exam', false); } catch (_) { /* noop */ }
   if (banner) banner.classList.add('hidden');
   if (candidateNo == null) return;
@@ -854,11 +1024,19 @@ const loadExamResult = async (candidateNo) => {
 
     // Corrected → open the Panel-Exam with the final result.
     setVal('Score', data.total_score != null ? data.total_score : '');
+    lastExamScore = data.total_score != null ? Number(data.total_score) : null;
     const resInputs = document.querySelectorAll('input[name="Result"]');
     resInputs.forEach((el) => {
       const r = /** @type {HTMLInputElement} */ (el);
       r.checked = (data.passed === true && r.value === 'Reussi') || (data.passed === false && r.value === 'Echec');
     });
+
+    // The Exam Result (Score + Pass/Fail) is now set → the Attendance phase is
+    // finished, so mark the Attendance panel green + read-only.
+    try {
+      const pres = /** @type {any} */ (window).GSSPresences;
+      if (pres && typeof pres.markComplete === 'function') pres.markComplete();
+    } catch (_) { /* noop */ }
 
     const scoreLine = `${data.total_score}${data.max_score != null ? ' / ' + data.max_score : ''}`;
     const passLine = data.passed == null ? ''
@@ -969,7 +1147,364 @@ const saveExamAck = async () => {
   } catch (_) { /* noop */ }
 };
 
-/** Return the most advanced workflow tab that is completed or unlocked. */
+// ── Individual Candidate File (Dossier) checklist ──────────────
+// The checklist mirrors the completion state of the other panels: each row is
+// auto-ticked from the corresponding panel being green (or, for the ID photos,
+// from the Registration "HasPassportPhotos" flag) and is always read-only.
+
+/** True when a workflow tab has been completed (green). */
+const isTabGreen = (/** @type {string} */ tab) => {
+  try { return typeof tabState !== 'undefined' && !!tabState[tab]; } catch (_) { return false; }
+};
+
+/** True when the Registration "HasPassportPhotos" checkbox is ticked. */
+const hasPassportPhotos = () => {
+  const el = /** @type {HTMLInputElement | null} */ (document.querySelector('input[name="HasPassportPhotos"]'));
+  return !!(el && el.checked);
+};
+
+// Checklist checkbox name → predicate deciding whether it is auto-ticked.
+const DOSSIER_CHECKS = /** @type {{ name: string, when: () => boolean }[]} */ ([
+  { name: 'doss-doc-1-1', when: () => isTabGreen('registration') }, // Registration form
+  { name: 'doss-doc-1-2', when: () => isTabGreen('registration') }, // Signed registration conditions
+  { name: 'doss-doc-1-3', when: () => isTabGreen('registration') }, // Copy of identity document
+  { name: 'doss-doc-1-4', when: () => hasPassportPhotos() },        // Two ID photos
+  { name: 'doss-doc-2-1', when: () => isTabGreen('mensuration') },  // Measurements sheet
+  { name: 'doss-doc-2-2', when: () => isTabGreen('reglement') },    // Signed internal regulations
+  { name: 'doss-doc-2-3', when: () => isTabGreen('engagement') },   // Confidentiality commitment
+  { name: 'doss-doc-2-4', when: () => isTabGreen('presences') },    // Attendance list
+  { name: 'doss-doc-3-1', when: () => isTabGreen('evaluation') },   // Individual evaluation sheet
+  { name: 'doss-doc-3-2', when: () => isTabGreen('exam') },         // Final exam result
+]);
+
+const dossByName = (/** @type {string} */ name) =>
+  /** @type {HTMLInputElement | null} */ (document.querySelector(`#panel-dossier input[name="${name}"]`));
+
+/** True when every governed checklist document is ticked. */
+const allDossierChecked = () =>
+  DOSSIER_CHECKS.every(({ name }) => { const cb = dossByName(name); return !!(cb && cb.checked); });
+
+/** Roles allowed to certify (tick ack-dossier) the candidate file. */
+const canAckDossier = () => {
+  const role = getCurrentRole();
+  return role === 'Admin' || role === 'Secretary' || role === 'Head of Training';
+};
+
+/** Set an explanatory tooltip on ack-dossier (shown on hover) and its label. */
+const setDossierAckReason = (/** @type {string} */ reason) => {
+  const ack = byId('ack-dossier');
+  if (!ack) return;
+  if (reason) ack.setAttribute('title', reason); else ack.removeAttribute('title');
+  const label = ack.closest('label');
+  if (label) { if (reason) label.setAttribute('title', reason); else label.removeAttribute('title'); }
+};
+
+/** Enable/disable ack-dossier from the current role + checklist completeness. */
+const updateDossierAckState = () => {
+  const ack = byId('ack-dossier');
+  if (!ack) return;
+  if (ack.dataset.committed === 'true') {
+    ack.disabled = true;
+    setDossierAckReason(t('dossierAckDone', 'This candidate file has already been certified.'));
+    return;
+  }
+  const roleOk = canAckDossier();
+  const checklistOk = allDossierChecked();
+  ack.disabled = !(roleOk && checklistOk);
+  // Explain (on hover) exactly why the certification is currently disabled.
+  let reason = '';
+  if (!roleOk) reason = t('dossierAckRole', 'You are not authorised to certify this candidate file.');
+  else if (!checklistOk) reason = t('dossierAckIncomplete', 'One or more required checklist documents are not yet checked.');
+  setDossierAckReason(reason);
+};
+
+/** Recompute the read-only checklist from panel state and refresh the ack lock. */
+const syncDossierChecklist = () => {
+  DOSSIER_CHECKS.forEach(({ name, when }) => {
+    const cb = dossByName(name);
+    if (!cb) return;
+    cb.checked = !!when();
+    cb.disabled = true;
+    cb.classList.add('cursor-not-allowed', 'opacity-80');
+    cb.setAttribute('aria-readonly', 'true');
+    cb.tabIndex = -1;
+  });
+  updateDossierAckState();
+};
+
+/** Reset the checklist + certification to a blank state (New mode / new record). */
+const resetDossierChecklist = () => {
+  const ack = byId('ack-dossier');
+  if (ack) { ack.checked = false; ack.disabled = false; delete ack.dataset.committed; }
+  syncDossierChecklist();
+};
+
+// ── Individual Evaluation Sheet (Panel-Evaluation) ─────────────
+// Two-stage sign-off:
+//   1. The Instructor (trainer) fills the manually-graded cells, checks
+//      ack-evaluation → their signature is auto-applied, the grid locks and the
+//      Final Result opens for the Admin.
+//   2. The Admin sets the Final Result and checks ack-evaluation → the
+//      Manager/Director signature is auto-applied, the panel becomes fully
+//      read-only, the tab turns green and the Measurements panel opens.
+// Auto-graded cells (Presence & Discipline, Punctuality, Theoretical exam) are
+// computed from the attendance history + exam score and are always read-only.
+
+const EVAL_AUTO_IDS = ['Presence_Discipline', 'Punctuality', 'Theoretical_Exam'];
+const EVAL_MANUAL_IDS = ['Instructions_Compliance', 'Professional_Appearance', 'French_Communication', 'Observation_Skills', 'Physical_Aptitude'];
+
+// Grade cell id → applicant column.
+const EVAL_FIELD_COLS = /** @type {Record<string, string>} */ ({
+  Presence_Discipline: 'eval_presence_discipline',
+  Punctuality: 'eval_punctuality',
+  Instructions_Compliance: 'eval_instructions_compliance',
+  Professional_Appearance: 'eval_professional_appearance',
+  French_Communication: 'eval_french_communication',
+  Observation_Skills: 'eval_observation_skills',
+  Physical_Aptitude: 'eval_physical_aptitude',
+  Theoretical_Exam: 'eval_theoretical_exam',
+});
+
+/** @type {boolean} Instructor acknowledgement state of the loaded candidate. */
+let evalInstructorAck = false;
+/** @type {boolean} Admin (final) acknowledgement state of the loaded candidate. */
+let evalAdminAck = false;
+
+const round2 = (/** @type {number} */ n) => Math.round(n * 2) / 2;
+
+/** Compute Presence & Discipline (/20) and Punctuality (/10) from attendance. */
+const computeAttendanceGrades = () => {
+  const rows = Array.isArray(presRowsAll) ? presRowsAll : [];
+  let ah = 0, present = 0, total = 0;
+  rows.forEach((r) => {
+    const s = String(r && r.status || '').toUpperCase();
+    if (s === 'AH') { ah++; present++; total++; }
+    else if (s === 'AR') { present++; total++; }
+    else if (s === 'ABS') { total++; }
+    // 'EX' (excluded) days are ignored.
+  });
+  return {
+    presenceDiscipline: total > 0 ? round2((present / total) * 20) : 0,
+    punctuality: present > 0 ? round2((ah / present) * 10) : 0,
+  };
+};
+
+const setEvalField = (/** @type {string} */ id, /** @type {any} */ value) => {
+  const el = byId(id);
+  if (el) el.value = value == null || value === '' ? '' : String(value);
+};
+
+/** Reliable enable/disable for a single form control (+ read-only styling). */
+const setEvalInputEnabled = (/** @type {HTMLInputElement | HTMLTextAreaElement | null} */ el, /** @type {boolean} */ enabled) => {
+  if (!el) return;
+  el.disabled = !enabled;
+  if (enabled) {
+    el.readOnly = false;
+    el.removeAttribute('aria-readonly');
+    el.tabIndex = 0;
+    el.classList.remove('bg-slate-100', 'opacity-80', 'cursor-not-allowed', 'pointer-events-none');
+    el.classList.add('bg-white');
+  } else {
+    el.setAttribute('aria-readonly', 'true');
+    el.tabIndex = -1;
+    el.classList.add('bg-slate-100', 'opacity-80', 'cursor-not-allowed');
+    el.classList.remove('bg-white');
+  }
+};
+
+/** Populate the auto-graded cells (read-only) from attendance + exam score. */
+const populateEvalAutoFields = () => {
+  const g = computeAttendanceGrades();
+  setEvalField('Presence_Discipline', g.presenceDiscipline);
+  setEvalField('Punctuality', g.punctuality);
+  // Theoretical exam (/20) = exam Score obtained (/100) ÷ 5.
+  const scoreEl = byId('Score');
+  const scoreVal = lastExamScore != null ? lastExamScore
+    : (scoreEl && scoreEl.value !== '' ? Number(scoreEl.value) : null);
+  if (scoreVal != null && !Number.isNaN(scoreVal)) setEvalField('Theoretical_Exam', round2(scoreVal / 5));
+  EVAL_AUTO_IDS.forEach((id) => setEvalInputEnabled(byId(id), false));
+  try { if (typeof updateEvalSummary === 'function') updateEvalSummary(); } catch (_) { /* noop */ }
+};
+
+/** Enable/disable the manually-graded cells (auto cells always stay read-only). */
+const setEvalGradesEditable = (/** @type {boolean} */ editable) => {
+  EVAL_MANUAL_IDS.forEach((id) => setEvalInputEnabled(byId(id), editable));
+  EVAL_AUTO_IDS.forEach((id) => setEvalInputEnabled(byId(id), false));
+};
+
+/** Enable/disable the Final Result controls (radios + observations). */
+const setEvalFinalEditable = (/** @type {boolean} */ editable) => {
+  document.querySelectorAll('#panel-evaluation input[name="Final_Decision"]').forEach((el) => {
+    /** @type {HTMLInputElement} */ (el).disabled = !editable;
+  });
+  setEvalInputEnabled(byId('eval-Observations'), editable);
+};
+
+/** Lock every control on the Evaluation panel (final complete state). */
+const setEvalFullReadonly = () => {
+  setEvalGradesEditable(false);
+  setEvalFinalEditable(false);
+  const ack = byId('ack-evaluation');
+  if (ack) ack.disabled = true;
+  ['eval-sig-formateur', 'eval-sig-resp'].forEach((cid) => {
+    const canvas = document.getElementById(cid);
+    if (canvas) canvas.style.pointerEvents = 'none';
+  });
+};
+
+/** Show or hide the two-stage status banner on the Evaluation panel. */
+const setEvalStatus = (/** @type {string} */ html, /** @type {string} */ cls) => {
+  const banner = document.getElementById('eval-status');
+  if (!banner) return;
+  if (!html) { banner.classList.add('hidden'); return; }
+  banner.className = 'rounded-2xl border px-4 py-3 text-sm font-semibold ' + cls;
+  banner.innerHTML = html;
+  banner.classList.remove('hidden');
+};
+
+const isEvalTrainerRole = () => {
+  const role = getCurrentRole();
+  return role === 'Instructor' || role === 'Head of Training';
+};
+const isEvalAdminRole = () => getCurrentRole() === 'Admin';
+
+/** True once every grade cell (auto + manual) has a value. */
+const evalGradesFilled = () =>
+  [...EVAL_AUTO_IDS, ...EVAL_MANUAL_IDS].every((id) => {
+    const el = byId(id);
+    return !!(el && String(el.value).trim() !== '');
+  });
+
+/** Paint an auto-applied signature (trainer or manager) + store its id. */
+const setEvalSignature = (/** @type {'formateur'|'resp'} */ which, /** @type {any} */ sigId) => {
+  const canvasId = which === 'formateur' ? 'eval-sig-formateur' : 'eval-sig-resp';
+  const input = byId(canvasId + '-data');
+  if (sigId != null && sigId !== '') {
+    showSignatureImage(canvasId, `${API_BASE}/api/signatures/image?id=${encodeURIComponent(String(sigId))}`);
+    if (input) input.value = String(sigId);
+  } else {
+    showSignatureImage(canvasId, '');
+    if (input) input.value = '';
+  }
+};
+
+/** The signature record of the currently signed-in user (by full name). */
+const currentUserSignature = async () => {
+  const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
+  const userName = session ? (session.full_name || session.username || '') : '';
+  return userName ? await findTrainerSignature(userName) : null;
+};
+
+/** Persist the current evaluation state (grades / decision / acks / signatures). */
+const saveEvaluation = async (/** @type {Record<string, any>} */ payload) => {
+  if (!currentId) return;
+  try {
+    await fetch(`${API_BASE}/api/applicants`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ candidate_no: currentId, ...payload }),
+    });
+  } catch (_) { /* noop */ }
+};
+
+/** Current total of the eight grade cells (blank cells count as 0). */
+const evalTotalObtained = () =>
+  [...EVAL_AUTO_IDS, ...EVAL_MANUAL_IDS].reduce((sum, id) => {
+    const el = byId(id);
+    const v = el && el.value !== '' ? parseFloat(el.value) : NaN;
+    return sum + (Number.isNaN(v) ? 0 : v);
+  }, 0);
+
+/**
+ * Apply the correct editability / lock / status for the Evaluation panel based
+ * on the current role and the two acknowledgement flags.
+ */
+const applyEvaluationState = () => {
+  const ack = byId('ack-evaluation');
+  const isTrainer = isEvalTrainerRole();
+  const isAdmin = isEvalAdminRole();
+
+  if (evalAdminAck) {
+    setEvalFullReadonly();
+    if (ack) { ack.checked = true; ack.disabled = true; }
+    setGreenTab('evaluation', true, DOT_ALL['evaluation']);
+    setEvalStatus('✓ ' + t('evalStComplete', 'Evaluation complete — validated by the Instructor and the Admin.'),
+      'border-emerald-200 bg-emerald-50 text-emerald-800');
+    try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
+    return;
+  }
+
+  if (!evalInstructorAck) {
+    // Stage 1 — Instructor fills + signs.
+    setEvalGradesEditable(isTrainer);
+    setEvalFinalEditable(false);
+    if (ack) { ack.checked = false; ack.disabled = !isTrainer; }
+    setEvalStatus(
+      isTrainer
+        ? '① ' + t('evalStInstructor', 'Please complete the grades and check the acknowledgement to sign as Instructor.')
+        : '⏳ ' + t('evalStWaitInstructor', 'Waiting for the Instructor to complete and sign the evaluation.'),
+      'border-amber-200 bg-amber-50 text-amber-800');
+  } else {
+    // Stage 2 — Admin sets the Final Result + signs.
+    setEvalGradesEditable(false);
+    setEvalFinalEditable(isAdmin);
+    if (ack) { ack.checked = false; ack.disabled = !isAdmin; }
+    setEvalStatus(
+      isAdmin
+        ? '② ' + t('evalStAdmin', 'The Instructor has signed. Set the Final Result and check the acknowledgement to finalise.')
+        : '⏳ ' + t('evalStWaitAdmin', 'The Instructor has signed. Waiting for the Admin to set the Final Result and finalise.'),
+      'border-amber-200 bg-amber-50 text-amber-800');
+  }
+};
+
+/** Populate the Evaluation panel from the applicant record. */
+const loadEvaluation = (/** @type {Record<string, any> | null | undefined} */ record) => {
+  evalInstructorAck = isTruthy(record && record.eval_instructor_ack);
+  evalAdminAck = isTruthy(record && record.eval_admin_ack);
+
+  // Manual + (stored) auto grades from the record.
+  Object.entries(EVAL_FIELD_COLS).forEach(([id, col]) => {
+    const v = record ? record[col] : null;
+    if (v != null && v !== '') setEvalField(id, v);
+    else setEvalField(id, '');
+  });
+
+  // Final decision + observations.
+  const fd = record && record.eval_final_decision;
+  document.querySelectorAll('#panel-evaluation input[name="Final_Decision"]').forEach((el) => {
+    const r = /** @type {HTMLInputElement} */ (el);
+    r.checked = fd != null && fd !== '' && r.value === String(fd);
+  });
+  const obs = byId('eval-Observations');
+  if (obs) obs.value = (record && record.eval_observations) || '';
+
+  // Signatures.
+  setEvalSignature('formateur', record && record.eval_trainer_signature_id);
+  setEvalSignature('resp', record && record.eval_manager_signature_id);
+
+  // Auto-graded cells: recompute only while the Instructor has not signed yet
+  // (once signed, the stored values are authoritative).
+  if (!evalInstructorAck) populateEvalAutoFields();
+  else { EVAL_AUTO_IDS.forEach((id) => setEvalInputEnabled(byId(id), false)); try { if (typeof updateEvalSummary === 'function') updateEvalSummary(); } catch (_) { /* noop */ } }
+
+  applyEvaluationState();
+};
+
+/** Reset the Evaluation panel to a blank state (New mode). */
+const resetEvaluation = () => {
+  evalInstructorAck = false;
+  evalAdminAck = false;
+  [...EVAL_AUTO_IDS, ...EVAL_MANUAL_IDS].forEach((id) => setEvalField(id, ''));
+  document.querySelectorAll('#panel-evaluation input[name="Final_Decision"]').forEach((el) => { /** @type {HTMLInputElement} */ (el).checked = false; });
+  const obs = byId('eval-Observations'); if (obs) obs.value = '';
+  setEvalSignature('formateur', '');
+  setEvalSignature('resp', '');
+  const ack = byId('ack-evaluation'); if (ack) { ack.checked = false; ack.disabled = false; }
+  setEvalStatus('', '');
+  try { if (typeof updateEvalSummary === 'function') updateEvalSummary(); } catch (_) { /* noop */ }
+};
+
+
 const findLatestWorkflowTab = () => {
   if (typeof TAB_ORDER === 'undefined' || typeof isTabUnlocked !== 'function') return null;
   let latest = null;
@@ -1017,7 +1552,18 @@ const load = async (/** @type {Record<string, any> | null | undefined} */ record
     if (idpass) idpass.value = record.id_pass_no != null ? String(record.id_pass_no) : '';
 
     // Individual Attendance Report: pull the candidate's attendance from the DB.
-    loadPresences(currentId);
+    await loadPresences(currentId);
+
+    // Individual Exam Result (Panel-Exam): populate the Score + Pass/Fail from
+    // the server once the exam has been corrected, and restore the
+    // instructor-entered Decision / Observations / signature from the record.
+    await loadExamResult(currentId);
+    loadExamPanelFields(record);
+    loadExamInstructorSignature(record);
+
+    // Individual Evaluation Sheet (Panel-Evaluation): auto-graded cells come
+    // from the attendance + exam data loaded just above, so this runs after them.
+    loadEvaluation(record);
 
     // Applicant signature: show on the form pad + the read-only panels.
     const sigId = record.applicant_signature_id;
@@ -1039,6 +1585,23 @@ const load = async (/** @type {Record<string, any> | null | undefined} */ record
     // An existing applicant means Registration is already completed.
     setRegistrationReadonly(true);
     setGreenTab('registration', true, '1');
+    try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
+
+    // Restore the Exam panel completion (green) so the Dossier checklist can
+    // reflect the "Final exam result" rule, then restore the Dossier
+    // certification (ack-dossier) itself and recompute the read-only checklist.
+    if (isTruthy(record.ack_exam)) {
+      setGreenTab('exam', true, DOT_ALL['exam']);
+      setExamPanelReadonly(true);
+    }
+
+    const ackDossier = byId('ack-dossier');
+    if (ackDossier) { ackDossier.checked = false; ackDossier.disabled = false; delete ackDossier.dataset.committed; }
+    if (isTruthy(record.ack_dossier)) {
+      if (ackDossier) { ackDossier.checked = true; ackDossier.disabled = true; ackDossier.dataset.committed = 'true'; }
+      setGreenTab('dossier', true, DOT_ALL['dossier']);
+    }
+    syncDossierChecklist();
     try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
 
     // Reviewer override: while an applicant is still Pending, an Admin or Head
