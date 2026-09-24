@@ -86,12 +86,55 @@ const ensureDbReady = async () => {
  * @returns {Promise<any>} The affected row, or an array of rows for 'select'.
  */
 const crud = async (action, table, data = {}, filters = {}) => {
-  debugger;
   const result = await db.query(
     'SELECT dynamic_crud($1, $2, $3::jsonb, $4::jsonb) AS result',
     [action, table, JSON.stringify(data), JSON.stringify(filters)]
   );
   return result.rows[0].result;
+};
+
+/**
+ * The acting user for a request, read from the actor headers the front-end
+ * attaches (see the global fetch interceptor). Used to stamp created_by /
+ * updated_by audit fields. Returns null when no user is identified.
+ * @param {http.IncomingMessage} req
+ * @returns {{ id: number | null, name: string, role: string }}
+ */
+const actorOf = (req) => {
+  const h = req.headers || {};
+  const rawId = Array.isArray(h['x-gss-user-id']) ? h['x-gss-user-id'][0] : h['x-gss-user-id'];
+  const rawName = Array.isArray(h['x-gss-user-name']) ? h['x-gss-user-name'][0] : h['x-gss-user-name'];
+  const rawRole = Array.isArray(h['x-gss-role']) ? h['x-gss-role'][0] : h['x-gss-role'];
+  const id = Number.parseInt(String(rawId || ''), 10);
+  return {
+    id: Number.isFinite(id) ? id : null,
+    name: rawName ? String(rawName) : '',
+    role: rawRole ? String(rawRole) : '',
+  };
+};
+
+/**
+ * Stamp the acting user onto a request body so the named stored procedures can
+ * record audit fields authoritatively (instead of trusting the client). Adds
+ * `created_by_name` / `updated_by_name` (for the varchar-audit procs) and, when
+ * `withId` is set, `created_by` / `updated_by` ids (for the bigint-audit procs).
+ * Existing values are preserved so callers that already send the actor win.
+ * @param {Record<string, any>} body
+ * @param {{ id: number | null, name: string, role: string }} actor
+ * @param {boolean} [withId=true]
+ * @returns {Record<string, any>}
+ */
+const injectActor = (body, actor, withId = true) => {
+  if (!body || typeof body !== 'object' || Array.isArray(body) || !actor) return body;
+  if (actor.name) {
+    if (body.created_by_name == null) body.created_by_name = actor.name;
+    if (body.updated_by_name == null) body.updated_by_name = actor.name;
+  }
+  if (withId && actor.id != null) {
+    if (body.created_by == null || body.created_by === '') body.created_by = actor.id;
+    if (body.updated_by == null || body.updated_by === '') body.updated_by = actor.id;
+  }
+  return body;
 };
 
 /**
@@ -426,29 +469,47 @@ const tableExists = async (table) => {
 /**
  * List all rows of an arbitrary table (validated against the catalog), plus its
  * column metadata so the client can render headers even when there are no rows.
- * Binary (`bytea`) columns are stripped from the payload.
+ * Binary (`bytea`) columns are stripped from the payload. When `page` options are
+ * supplied the rows are windowed server-side and a `total` count is returned.
  * @param {http.ServerResponse} res
  * @param {string} table
+ * @param {{ limit?: number, offset?: number } | null} [page]
  */
-const listRecords = async (res, table) => {
+const listRecords = async (res, table, page = null) => {
   if (!table) {
     sendJson(res, 400, { error: 'Missing table name' });
     return;
   }
   if (!await tableExists(table)) {
-    sendJson(res, 200, { ok: true, table, exists: false, columns: [], records: [] });
+    sendJson(res, 200, { ok: true, table, exists: false, columns: [], records: [], total: 0 });
     return;
   }
   const { columns, byteaCols } = await getTableColumns(table);
-  const rows = await crud('select', table);
-  const records = (Array.isArray(rows) ? rows : []).map((row) => {
+  const strip = (/** @type {any} */ row) => {
     if (!byteaCols.size || !row) return row;
     const clean = { ...row };
     byteaCols.forEach((c) => { delete clean[c]; });
     return clean;
-  });
+  };
   const publicColumns = columns.filter((c) => !byteaCols.has(c.name));
-  sendJson(res, 200, { ok: true, table, exists: true, columns: publicColumns, records });
+
+  // Paginated path: one server-side window + total count (scales to large tables).
+  if (page && Number.isFinite(page.limit)) {
+    const result = await callProc('records_page', '$1, $2, $3', [table, page.limit, page.offset || 0]);
+    const rows = result && Array.isArray(result.rows) ? result.rows : [];
+    sendJson(res, 200, {
+      ok: true, table, exists: true, columns: publicColumns,
+      records: rows.map(strip),
+      total: Number(result && result.total) || 0,
+      limit: Number(result && result.limit) || page.limit,
+      offset: Number(result && result.offset) || (page.offset || 0),
+    });
+    return;
+  }
+
+  const rows = await crud('select', table);
+  const records = (Array.isArray(rows) ? rows : []).map(strip);
+  sendJson(res, 200, { ok: true, table, exists: true, columns: publicColumns, records, total: records.length });
 };
 
 /**
@@ -458,8 +519,9 @@ const listRecords = async (res, table) => {
  * the parametrized INSERT inside PostgreSQL.
  * @param {http.ServerResponse} res
  * @param {Record<string, any>} body
+ * @param {{ id: number | null, name: string, role: string }} [actor]
  */
-const createApplicant = async (res, body) => {
+const createApplicant = async (res, body, actor) => {
   // Persist the drawn signature first so its id can be linked to the applicant.
   await storeApplicantSignature(body);
 
@@ -478,6 +540,12 @@ const createApplicant = async (res, body) => {
     row[column] = value;
   }
 
+  // applicant_name duplicates full_name (its own form field was removed), so
+  // mirror it here to satisfy the column's NOT NULL constraint.
+  if (row.applicant_name === undefined && row.full_name !== undefined && meta.get('applicant_name')?.insertable) {
+    row.applicant_name = row.full_name;
+  }
+
   if (Object.keys(row).length === 0) {
     sendJson(res, 400, { error: 'No applicant data provided.' });
     return;
@@ -486,10 +554,26 @@ const createApplicant = async (res, body) => {
   // Update when a candidate number is supplied, otherwise insert.
   const idRaw = body && (body.candidate_no || body.CandidateNo);
   const id = Number.parseInt(String(idRaw), 10);
-  const applicant = Number.isFinite(id)
+  const isUpdate = Number.isFinite(id);
+
+  // Stamp audit fields from the acting user (client-supplied values are never
+  // trusted for these). created_by is set only on insert; updated_by always.
+  const actorId = actor && actor.id != null ? actor.id : null;
+  if (actorId != null) {
+    if (isUpdate) {
+      if (meta.get('updated_by')?.insertable) row.updated_by = actorId;
+    } else {
+      if (meta.get('created_by')?.insertable) row.created_by = actorId;
+      if (meta.get('updated_by')?.insertable) row.updated_by = actorId;
+    }
+  }
+  // Never let a client overwrite immutable creation audit on update.
+  if (isUpdate) { delete row.created_by; delete row.created_at; }
+
+  const applicant = isUpdate
     ? await callProc('registration_update', '$1, $2::jsonb', [id, JSON.stringify(row)])
     : await callProc('registration_insert', '$1::jsonb', [JSON.stringify(row)]);
-  sendJson(res, Number.isFinite(id) ? 200 : 201, { ok: true, applicant });
+  sendJson(res, isUpdate ? 200 : 201, { ok: true, applicant });
 };
 
 /**
@@ -534,17 +618,21 @@ const listTraining = async (res, trainer) => {
 };
 
 /**
- * List the students assigned to a training (candidates with attendance rows),
- * via `training_students`.
+ * List the students assigned to a training (candidates with attendance rows).
+ * Resolves the session by training_id when provided (exact), else by title.
  * @param {http.ServerResponse} res
- * @param {string} title
+ * @param {{ trainingId?: string|null, title?: string }} opts
  */
-const listTrainingStudents = async (res, title) => {
-  if (!title) {
-    sendJson(res, 400, { error: 'A training title is required.' });
+const listTrainingStudents = async (res, opts) => {
+  const trainingId = opts.trainingId != null && opts.trainingId !== '' ? Number.parseInt(String(opts.trainingId), 10) : null;
+  const title = (opts.title || '').toString();
+  if (!Number.isFinite(trainingId) && !title) {
+    sendJson(res, 400, { error: 'A training id or title is required.' });
     return;
   }
-  const rows = await callProc('training_students', '$1', [title]);
+  const rows = Number.isFinite(trainingId)
+    ? await callProc('training_students_by_id', '$1', [trainingId])
+    : await callProc('training_students', '$1', [title]);
   sendJson(res, 200, { ok: true, students: Array.isArray(rows) ? rows : [] });
 };
 
@@ -588,21 +676,21 @@ const saveAttendance = async (res, body) => {
 };
 
 /**
- * List attendance cells for a training title within an optional date range.
+ * List attendance cells for a training within an optional date range.
+ * Resolves the session by training_id when provided (exact), else by title.
  * @param {http.ServerResponse} res
- * @param {{ title: string, from?: string|null, to?: string|null }} opts
+ * @param {{ trainingId?: string|null, title?: string, from?: string|null, to?: string|null }} opts
  */
 const listAttendance = async (res, opts) => {
+  const trainingId = opts.trainingId != null && opts.trainingId !== '' ? Number.parseInt(String(opts.trainingId), 10) : null;
   const title = (opts.title || '').toString();
-  if (!title) {
-    sendJson(res, 400, { error: 'A training title is required.' });
+  if (!Number.isFinite(trainingId) && !title) {
+    sendJson(res, 400, { error: 'A training id or title is required.' });
     return;
   }
-  const rows = await callProc('attendance_list', '$1, $2, $3', [
-    title,
-    opts.from || null,
-    opts.to || null,
-  ]);
+  const rows = Number.isFinite(trainingId)
+    ? await callProc('attendance_list_by_id', '$1, $2, $3', [trainingId, opts.from || null, opts.to || null])
+    : await callProc('attendance_list', '$1, $2, $3', [title, opts.from || null, opts.to || null]);
   sendJson(res, 200, { ok: true, attendance: Array.isArray(rows) ? rows : [] });
 };
 
@@ -630,7 +718,7 @@ const server = http.createServer(async (req, res) => {
   // is served by Live Server on port 5500 instead of this Node server).
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-GSS-User-Id, X-GSS-User-Name, X-GSS-Role');
 
   if (method === 'OPTIONS') {
     res.writeHead(204);
@@ -647,7 +735,19 @@ const server = http.createServer(async (req, res) => {
 
     if (method === 'POST' && url === '/api/applicants') {
       const body = await readJsonBody(req);
-      await createApplicant(res, body);
+      await createApplicant(res, body, actorOf(req));
+      return;
+    }
+
+    // ── Delete an applicant (and dependent rows) via stored procedure ──
+    if (method === 'DELETE' && url.startsWith('/api/applicants')) {
+      const id = Number.parseInt(new URL(url, 'http://localhost').searchParams.get('id') || '', 10);
+      if (!Number.isFinite(id)) {
+        sendJson(res, 400, { error: 'A valid applicant id is required.' });
+        return;
+      }
+      const result = await callProc('registration_delete', '$1', [id]);
+      sendJson(res, result && result.ok ? 200 : 400, result || { ok: false, error: 'Delete failed' });
       return;
     }
 
@@ -716,6 +816,24 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // ── Measurements (panel-mensuration) ───────────────────────
+    if (method === 'GET' && url.startsWith('/api/measurements')) {
+      const candidateNo = new URL(url, 'http://localhost').searchParams.get('candidate_no') || '';
+      const id = Number.parseInt(String(candidateNo), 10);
+      if (!Number.isFinite(id)) { sendJson(res, 400, { error: 'A valid candidate number is required.' }); return; }
+      const measurement = await callProc('measurements_get', '$1', [id]);
+      sendJson(res, 200, { ok: true, measurement: measurement || null });
+      return;
+    }
+
+    if (method === 'POST' && url.startsWith('/api/measurements')) {
+      const body = await readJsonBody(req);
+      injectActor(body, actorOf(req));
+      const result = await callProc('measurements_upsert', '$1::jsonb', [JSON.stringify(body || {})]);
+      sendJson(res, result && result.ok ? 200 : 400, result || { ok: false, status: 'invalid' });
+      return;
+    }
+
     // ── Current user's live role/status (self-heals stale sessions) ──
     if (method === 'GET' && url.startsWith('/api/me')) {
       const username = new URL(url, 'http://localhost').searchParams.get('username') || '';
@@ -733,6 +851,7 @@ const server = http.createServer(async (req, res) => {
 
     if (method === 'POST' && url === '/api/users') {
       const body = await readJsonBody(req);
+      injectActor(body, actorOf(req));
       const idRaw = body && (body.login_id != null ? body.login_id : body.id);
       const id = Number.parseInt(String(idRaw), 10);
       if (Number.isFinite(id)) {
@@ -819,15 +938,62 @@ const server = http.createServer(async (req, res) => {
 
     // ── Training (panel-presences) ─────────────────────────────
     if (method === 'GET' && url.startsWith('/api/training/students')) {
-      const title = new URL(url, 'http://localhost').searchParams.get('title') || '';
-      await listTrainingStudents(res, title);
+      const params = new URL(url, 'http://localhost').searchParams;
+      await listTrainingStudents(res, {
+        trainingId: params.get('training_id'),
+        title: params.get('title') || '',
+      });
       return;
     }
 
     // Assign / unassign an applicant to a training (applicant_training).
     if (method === 'POST' && url.startsWith('/api/training/assign')) {
       const body = await readJsonBody(req);
+      injectActor(body, actorOf(req));
       await assignTraining(res, body);
+      return;
+    }
+
+    // Bulk training assignments for every candidate (one query for the whole
+    // grid). Must precede the per-candidate route: both share the prefix.
+    if (method === 'GET' && url.startsWith('/api/applicant-trainings-all')) {
+      const map = await callProc('applicant_trainings_map', '', []);
+      sendJson(res, 200, { ok: true, trainings: map || {} });
+      return;
+    }
+
+    // ── Hybrid grouped pagination for the applicant grid ───────
+    // Lightweight group headers + counts (optionally scoped to an
+    // instructor's trainings). The client renders these collapsed and
+    // pages each group's rows lazily on expand.
+    if (method === 'GET' && url.startsWith('/api/grid/groups')) {
+      const trainer = new URL(url, 'http://localhost').searchParams.get('trainer') || null;
+      const summary = await callProc('grid_group_summaries', '$1', [trainer]);
+      sendJson(res, 200, { ok: true, groups: (summary && summary.groups) || [], unassigned: Number(summary && summary.unassigned) || 0 });
+      return;
+    }
+
+    // One ordered page of a single group's candidates, with the latest
+    // exam attempt merged in. bytea columns are stripped from the payload.
+    if (method === 'GET' && url.startsWith('/api/grid/group-rows')) {
+      const q = new URL(url, 'http://localhost').searchParams;
+      const tid = q.get('training_id');
+      const trainingId = tid == null || tid === '' || tid === 'null' ? null : Number.parseInt(tid, 10);
+      const limit = Number.parseInt(q.get('limit') || '100', 10);
+      const offset = Number.parseInt(q.get('offset') || '0', 10) || 0;
+      const { byteaCols } = await getTableColumns('applicant');
+      const result = await callProc('grid_group_rows', '$1, $2, $3', [trainingId, limit, offset]);
+      const rows = result && Array.isArray(result.rows) ? result.rows : [];
+      const clean = byteaCols.size
+        ? rows.map((/** @type {any} */ r) => { const c = { ...r }; byteaCols.forEach((b) => { delete c[b]; }); return c; })
+        : rows;
+      sendJson(res, 200, {
+        ok: true,
+        rows: clean,
+        total: Number(result && result.total) || 0,
+        limit: Number(result && result.limit) || limit,
+        offset: Number(result && result.offset) || offset,
+      });
       return;
     }
 
@@ -846,6 +1012,7 @@ const server = http.createServer(async (req, res) => {
 
     if (method === 'POST' && url.startsWith('/api/training')) {
       const body = await readJsonBody(req);
+      injectActor(body, actorOf(req));
       await upsertTraining(res, body);
       return;
     }
@@ -860,6 +1027,7 @@ const server = http.createServer(async (req, res) => {
     if (method === 'GET' && url.startsWith('/api/attendance')) {
       const params = new URL(url, 'http://localhost').searchParams;
       await listAttendance(res, {
+        trainingId: params.get('training_id'),
         title: params.get('title') || '',
         from: params.get('from'),
         to: params.get('to'),
@@ -869,6 +1037,7 @@ const server = http.createServer(async (req, res) => {
 
     if (method === 'POST' && url.startsWith('/api/attendance')) {
       const body = await readJsonBody(req);
+      injectActor(body, actorOf(req));
       await saveAttendance(res, body);
       return;
     }
@@ -889,6 +1058,7 @@ const server = http.createServer(async (req, res) => {
     // Create / edit a single library question (+ its answers).
     if (method === 'POST' && url.startsWith('/api/question/save')) {
       const body = await readJsonBody(req);
+      injectActor(body, actorOf(req));
       const result = await callProc('question_save', '$1::jsonb', [JSON.stringify(body || {})]);
       sendJson(res, result && result.ok ? 200 : 400, result || { ok: false, status: 'invalid' });
       return;
@@ -907,6 +1077,7 @@ const server = http.createServer(async (req, res) => {
     // Save which questions belong to the exam (order/points/instructions).
     if (method === 'POST' && url.startsWith('/api/exam/config')) {
       const body = await readJsonBody(req);
+      injectActor(body, actorOf(req));
       const result = await callProc('exam_config_save', '$1::jsonb', [JSON.stringify(body || {})]);
       sendJson(res, result && result.ok ? 200 : 400, result || { ok: false, status: 'invalid' });
       return;
@@ -924,6 +1095,7 @@ const server = http.createServer(async (req, res) => {
     // ── Publish an exam + generate temporary exam accounts ─────
     if (method === 'POST' && url.startsWith('/api/exam/publish')) {
       const body = await readJsonBody(req);
+      injectActor(body, actorOf(req));
       const result = await callProc('exam_publish', '$1::jsonb', [JSON.stringify(body || {})]);
       sendJson(res, result && result.ok ? 200 : 400, result || { ok: false, status: 'invalid' });
       return;
@@ -949,6 +1121,7 @@ const server = http.createServer(async (req, res) => {
 
     if (method === 'POST' && url.startsWith('/api/exam/credential/send')) {
       const body = await readJsonBody(req);
+      injectActor(body, actorOf(req));
       const result = await callProc('exam_access_send', '$1::jsonb', [JSON.stringify(body || {})]);
       sendJson(res, result && result.ok ? 200 : 400, result || { ok: false });
       return;
@@ -956,7 +1129,17 @@ const server = http.createServer(async (req, res) => {
 
     if (method === 'POST' && url.startsWith('/api/exam/credential/disable')) {
       const body = await readJsonBody(req);
+      injectActor(body, actorOf(req));
       const result = await callProc('exam_access_disable', '$1::jsonb', [JSON.stringify(body || {})]);
+      sendJson(res, result && result.ok ? 200 : 400, result || { ok: false });
+      return;
+    }
+
+    // ── Generate a credential for a single "Not Generated" candidate ──
+    if (method === 'POST' && url.startsWith('/api/exam/credential/generate')) {
+      const body = await readJsonBody(req);
+      injectActor(body, actorOf(req));
+      const result = await callProc('exam_access_generate', '$1::jsonb', [JSON.stringify(body || {})]);
       sendJson(res, result && result.ok ? 200 : 400, result || { ok: false });
       return;
     }
@@ -992,6 +1175,15 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // Bulk exam results for the applicant grid (one query for all candidates,
+    // avoiding the per-row N+1). Must precede the singular route below because
+    // both share the same '/api/exam/candidate-result' prefix.
+    if (method === 'GET' && url.startsWith('/api/exam/candidate-results')) {
+      const results = await callProc('exam_candidate_results_map', '', []);
+      sendJson(res, 200, { ok: true, results: results || {} });
+      return;
+    }
+
     // Candidate's exam result summary for the applicant form's Panel-Exam.
     if (method === 'GET' && url.startsWith('/api/exam/candidate-result')) {
       const id = Number.parseInt(new URL(url, 'http://localhost').searchParams.get('candidate_no') || '', 10);
@@ -1012,6 +1204,7 @@ const server = http.createServer(async (req, res) => {
 
     if (method === 'POST' && url.startsWith('/api/exam/grade/start')) {
       const body = await readJsonBody(req);
+      injectActor(body, actorOf(req));
       const result = await callProc('exam_grade_start', '$1::jsonb', [JSON.stringify(body || {})]);
       sendJson(res, result && result.ok ? 200 : 400, result || { ok: false });
       return;
@@ -1019,6 +1212,7 @@ const server = http.createServer(async (req, res) => {
 
     if (method === 'POST' && url.startsWith('/api/exam/grade')) {
       const body = await readJsonBody(req);
+      injectActor(body, actorOf(req));
       const result = await callProc('exam_grade_save', '$1::jsonb', [JSON.stringify(body || {})]);
       sendJson(res, result && result.ok ? 200 : 400, result || { ok: false });
       return;
@@ -1051,6 +1245,7 @@ const server = http.createServer(async (req, res) => {
 
     if (method === 'POST' && url.startsWith('/api/dictionary')) {
       const body = await readJsonBody(req);
+      injectActor(body, actorOf(req));
       const idRaw = body && (body.dict_id != null ? body.dict_id : body.id);
       const id = Number.parseInt(String(idRaw), 10);
       const category = (body && body.category) || null;
@@ -1083,8 +1278,13 @@ const server = http.createServer(async (req, res) => {
 
     // ── Generic per-table records (drives the panel data grid + search) ──
     if (method === 'GET' && url.startsWith('/api/records')) {
-      const table = new URL(url, 'http://localhost').searchParams.get('table') || '';
-      await listRecords(res, table);
+      const params = new URL(url, 'http://localhost').searchParams;
+      const table = params.get('table') || '';
+      const limitRaw = params.get('limit');
+      const page = limitRaw != null
+        ? { limit: Number.parseInt(limitRaw, 10), offset: Number.parseInt(params.get('offset') || '0', 10) || 0 }
+        : null;
+      await listRecords(res, table, page);
       return;
     }
 
@@ -1094,7 +1294,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     // Anything else → static assets (default to tc.html at the root).
-    serveStatic(res, url === '/' ? 'tc.html' : url);
+    serveStatic(res, url === '/' ? '/tc.html' : url);
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('Request failed:', err);
@@ -1106,7 +1306,7 @@ ensureDbReady()
   .then(() => {
     server.listen(PORT, () => {
       // eslint-disable-next-line no-console
-      console.log(`GSS test server running → placeholder:${PORT}/tc/tc.html`);
+      console.log(`GSS test server running → http://localhost:${PORT}/tc.html`);
     });
     // Server-authoritative expiry: auto-close overdue attempts and deactivate
     // expired temporary credentials every minute (also enforced on each login).
