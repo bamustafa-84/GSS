@@ -69,24 +69,14 @@
       <div class="mx-auto flex max-w-7xl items-center gap-3 px-5 py-3 sm:px-6 lg:px-8">
       
 
-        <!-- ── Unified pill: [ panel dropdown | search input ] ── -->
+        <!-- ── Search pill ── -->
         <div class="relative flex flex-1 items-stretch rounded-full border border-slate-200 bg-white shadow-sm transition-colors focus-within:border-[#042F8D] focus-within:ring-4 focus-within:ring-[#042F8D]/10">
-          <!-- Panel selector (left segment) -->
-          <div id="psPanel" class="relative shrink-0">
-            <button type="button" id="psPanelBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="psPanelMenu"
-              class="flex h-full max-w-[9.5rem] items-center gap-2 rounded-l-full border-r border-slate-200 bg-slate-50/70 px-4 py-2.5 text-sm font-semibold text-[#042F8D] transition-colors hover:bg-slate-100 focus:outline-none">
-              <span id="psPanelLabel" class="truncate" data-i18n="psAllPanels">All panels</span>
-              <svg id="psPanelChevron" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 transition-transform duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            <ul id="psPanelMenu" role="listbox" aria-label="Panels" class="absolute left-0 top-full z-[70] mt-2 hidden max-h-72 w-56 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 text-slate-700 shadow-[0_24px_60px_rgba(4,47,141,0.25)]"></ul>
-          </div>
-
-          <!-- Text search (right segment) -->
+          <!-- Text search -->
           <div id="psSearch" class="relative flex-1">
             <div class="relative">
               <svg xmlns="http://www.w3.org/2000/svg" class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-              <input id="psSearchInput" type="text" autocomplete="off" data-i18n-placeholder="psSearchPlaceholder" placeholder="Search any info in the selected panel…"
-                class="w-full rounded-r-full border-0 bg-transparent py-2.5 pl-10 pr-3 text-sm text-slate-800 focus:outline-none focus:ring-0" />
+              <input id="psSearchInput" type="text" autocomplete="off" data-i18n-placeholder="psSearchPlaceholder" placeholder="Search records…"
+                class="w-full rounded-full border-0 bg-transparent py-2.5 pl-10 pr-3 text-sm text-slate-800 focus:outline-none focus:ring-0" />
             </div>
             <div id="psResults" class="absolute left-0 top-full z-[70] mt-2 hidden w-full overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-[0_24px_60px_rgba(4,47,141,0.25)]">
               <ul id="psResultsList" role="listbox" aria-label="Results" class="max-h-80 overflow-y-auto p-1.5"></ul>
@@ -110,7 +100,7 @@
         </button>
 
         <!-- ── Pending interviews notification (all users) ── -->
-        <button type="button" id="pendingBell" data-role-any="Admin,Head of Training" title="Pending interviews" aria-label="Pending interviews"
+        <button type="button" id="pendingBell" data-role-any="Admin,Head of Training,Secretary" title="Pending interviews" aria-label="Pending interviews"
           class="relative inline-flex shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white p-2.5 text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           <span id="pendingBadge" class="absolute -right-1 -top-1 hidden min-w-[1.15rem] rounded-full bg-red-500 px-1 py-0.5 text-center text-[10px] font-bold leading-none text-white">0</span>
@@ -123,21 +113,21 @@
           <span class="hidden sm:inline" data-i18n="usersBtn">Users</span>
         </button>
 
-        <!-- ── Secretary work queue notification (Secretary / Admin / Head of Training) ── -->
-        <button type="button" id="secretaryBell" data-role-any="Secretary,Admin,Head of Training" title="Applicants to process" aria-label="Applicants to process"
+        <!-- ── Secretary work queue notification (Secretary / Admin) ── -->
+        <button type="button" id="secretaryBell" data-role-any="Secretary,Admin" title="Applicants to process" aria-label="Applicants to process"
           class="relative hidden shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white p-2.5 text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6a2 2 0 0 1 2 2v1h1a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h1V4a2 2 0 0 1 2-2z"/><path d="M9 5h6"/><path d="m9 14 2 2 4-4"/></svg>
           <span id="secretaryBadge" class="absolute -right-1 -top-1 hidden min-w-[1.15rem] rounded-full bg-amber-500 px-1 py-0.5 text-center text-[10px] font-bold leading-none text-white">0</span>
         </button>
 
         <!-- ── Monthly attendance tick sheet (Instructor edits · Admin / Head of Training view) ── -->
-        <button type="button" id="attSheetBtn" data-role-any="Admin,Instructor,Head of Training" data-role-display="inline-flex" title="Monthly attendance sheet"
+        <button type="button" id="attSheetBtn" data-role-any="Admin,Instructor,Secretary,Head of Training" data-role-display="inline-flex" title="Monthly attendance sheet"
           class="hidden shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
           <span class="hidden sm:inline" data-i18n="attSheetBtn">Attendance sheet</span>
         </button>
 
-        <!-- ── Exam configuration (Admin only) ── -->
+        <!-- ── Exam configuration (Admin / Secretary) ── -->
         <button type="button" id="examConfigBtn" data-role-any="Admin" data-role-display="inline-flex" title="Configure exams"
           class="hidden shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
@@ -159,32 +149,13 @@
         <div class="flex shrink-0 items-center justify-between gap-3 bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-5 py-4 text-white">
           <div class="flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
-            <h2 id="psGridTitle" class="text-base font-semibold" data-i18n="psGridTitle">Panels &amp; filters</h2>
+            <h2 id="psGridTitle" class="text-base font-semibold" data-i18n="psApplicant">Applicant</h2>
           </div>
           <button type="button" id="psGridClose" class="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/25" data-i18n="closeBtn">Close</button>
         </div>
 
-        <!-- ── Toolbar: searchable panel dropdown ── -->
+        <!-- ── Toolbar ── -->
         <div class="flex shrink-0 flex-wrap items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-5">
-          <label class="text-sm font-semibold text-slate-600" data-i18n="psGridChoose">Select a panel</label>
-          <div id="gridPanel" class="relative w-full sm:w-72">
-            <button type="button" id="gridPanelBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="gridPanelMenu"
-              class="flex w-full items-center justify-between gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
-              <span id="gridPanelLabel" class="truncate" data-i18n="psGridChoosePlaceholder">Choose a panel…</span>
-              <svg id="gridPanelChevron" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 transition-transform duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            <div id="gridPanelMenu" class="absolute left-0 top-full z-[90] mt-2 hidden w-full min-w-[16rem] overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-[0_24px_60px_rgba(4,47,141,0.25)]">
-              <div class="border-b border-slate-100 p-2.5">
-                <div class="relative">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                  <input id="gridPanelSearch" type="text" autocomplete="off" data-i18n-placeholder="psGridSearchPanel" placeholder="Search panel…"
-                    class="w-full rounded-xl border-[1.5px] border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-                </div>
-              </div>
-              <ul id="gridPanelList" role="listbox" aria-label="Panels" class="max-h-72 overflow-y-auto p-1.5"></ul>
-              <p id="gridPanelEmpty" class="hidden px-4 py-6 text-center text-sm text-slate-400" data-i18n="noPanelFound">No results found</p>
-            </div>
-          </div>
 
           <!-- ── Column filter / customization ── -->
           <div id="gridCols" class="relative">
@@ -216,6 +187,28 @@
                 <button type="button" id="gridColsApply" class="rounded-full bg-[#042F8D] px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(4,47,141,0.2)] transition hover:-translate-y-px" data-i18n="psColsApply">Apply</button>
               </div>
             </div>
+          </div>
+
+          <!-- ── Course / Year filters ── -->
+          <div id="psGridFilters" class="flex items-center gap-2" style="display:none">
+            <select id="psGridCourse" title="Filter by course" aria-label="Filter by course"
+              class="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+              <option value="" data-i18n="psGridAllCourses">All courses</option>
+            </select>
+            <select id="psGridYear" title="Filter by year" aria-label="Filter by year"
+              class="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+              <option value="" data-i18n="psGridAllYears">All years</option>
+            </select>
+            <button type="button" id="psGridExpandAll" title="Expand all" aria-label="Expand all"
+              class="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 13 12 18 17 13"/><polyline points="7 6 12 11 17 6"/></svg>
+              <span data-i18n="psGridExpandAll">Expand all</span>
+            </button>
+            <button type="button" id="psGridCollapseAll" title="Collapse all" aria-label="Collapse all"
+              class="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 11 12 6 7 11"/><polyline points="17 18 12 13 7 18"/></svg>
+              <span data-i18n="psGridCollapseAll">Collapse all</span>
+            </button>
           </div>
 
           <span id="psGridCount" class="ml-auto text-xs font-semibold text-slate-400"></span>
@@ -277,6 +270,17 @@
                   <span data-i18n="sigUpload">Upload an image</span>
                 </label>
                 <input id="sigUpload" type="file" accept="image/*" class="hidden" />
+              </div>
+
+              <div class="mb-4 rounded-xl border border-[#dbe2f0] bg-white/60 p-3">
+                <label for="sigIsTrainingOfficer" class="flex cursor-pointer items-start gap-2.5">
+                  <input id="sigIsTrainingOfficer" name="sigIsTrainingOfficer" type="checkbox" class="mt-0.5 h-4 w-4 accent-[#042F8D]" />
+                  <span class="flex flex-col">
+                    <span class="text-sm font-semibold text-slate-700" data-i18n="sigOfficer">Training Officer</span>
+                    <span class="text-xs text-slate-500" data-i18n="sigOfficerHint">Designate this signature as the Training Officer.</span>
+                  </span>
+                </label>
+                <p id="sigOfficerLocked" class="mt-2 hidden text-xs font-semibold text-amber-600" data-i18n="sigOfficerLocked">A Training Officer has already been designated and can no longer be changed.</p>
               </div>
 
               <div class="flex items-center justify-between gap-3">
@@ -369,6 +373,10 @@
               <!-- Real date picker; only its year is surfaced to the user. -->
               <input id="attSheetDate" type="date" class="absolute inset-0 h-full w-full cursor-pointer opacity-0" aria-label="Pick a year" />
             </div>
+            <button type="button" id="attSheetExport" class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/25" data-i18n-title="attSheetExport" title="Export to Excel">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span data-i18n="attSheetExport">Export to Excel</span>
+            </button>
             <button type="button" id="attSheetClose" class="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/25" data-i18n="closeBtn">Close</button>
           </div>
         </header>
@@ -430,6 +438,7 @@
         <header class="flex shrink-0 items-center justify-between gap-3 bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-5 py-4 text-white">
           <h2 id="attCellTitle" class="text-base font-semibold" data-i18n="attCellTitle">Edit attendance</h2>
           <div class="flex items-center gap-2">
+            <button type="button" id="attCellReset" class="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/25" data-i18n="attCellReset">Reset</button>
             <button type="button" id="attCellSave" class="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/25" data-i18n="attCellSave">Save</button>
             <button type="button" id="attCellClose" class="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/25" data-i18n="closeBtn">Close</button>
           </div>
@@ -825,7 +834,7 @@
           <span data-i18n="pendingApproval">Pending Approval</span>
         </div>
 
-        <!-- ── Tab Content ── -->
+        <!-- ── Tab Content  ── -->
         <div class="flex-1 overflow-y-auto bg-slate-50" id="formContent">
           <!-- ══════════════════════════════════════════════════ -->
           <!-- PANEL 1 · Registration Form                        -->
@@ -864,6 +873,7 @@
                   <div class="flex flex-col gap-1.5 md:col-span-2">
                     <label for="FullName" class="text-sm font-semibold text-slate-700 after:content-['_*'] after:text-red-500 after:font-bold" data-i18n="lbNom">Full Name</label>
                     <input id="FullName" name="FullName" dbname="full_name" type="text" autocomplete="name" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" required />
+                    <p id="fullNameStatus" class="hidden min-h-5 text-xs font-semibold text-red-600" aria-live="polite"></p>
                   </div>
                   <div class="flex flex-col gap-1.5">
                     <label for="Phone1" class="text-sm font-semibold text-slate-700 after:content-['_*'] after:text-red-500 after:font-bold" data-i18n="lbTel1">Phone (1)</label>
@@ -1063,10 +1073,6 @@
                 </legend>
                 <div class="mt-4 space-y-4">
                   <p class="text-sm leading-7 text-slate-600" data-i18n="declText">I certify that the information provided is accurate and undertake to comply with the training regulations.</p>
-                  <div class="flex flex-col gap-1.5">
-                    <label for="ApplicantName" class="text-sm font-semibold text-slate-700 after:content-['_*'] after:text-red-500 after:font-bold" data-i18n="lbCandidatName">Applicant's Name</label>
-                    <input id="ApplicantName" name="ApplicantName" dbname="applicant_name" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-                  </div>
                   <div class="grid gap-4 md:grid-cols-2">
                     <div class="flex flex-col gap-1.5 md:col-span-2">
                       <label for="ApplicantSignature" class="text-sm font-semibold text-slate-700 after:content-['_*'] after:text-red-500 after:font-bold" data-i18n="lbSignature">Signature</label>
@@ -1085,7 +1091,7 @@
                 </div>
               </fieldset>
 
-              <fieldset id="adminFieldset" data-role-any="Admin,Head of Training" class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
+              <fieldset id="adminFieldset" data-role-any="Admin,Head of Training,Secretary" class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
                 <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                   <span data-i18n="secAdmin">FOR ADMINISTRATION USE ONLY</span>
@@ -1163,7 +1169,6 @@
                       <li class="flex items-start gap-2.5 text-sm text-slate-700"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#042F8D]/10 text-xs font-bold text-[#042F8D]">✓</span>Complete the registration form.</li>
                       <li class="flex items-start gap-2.5 text-sm text-slate-700"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#042F8D]/10 text-xs font-bold text-[#042F8D]">✓</span>Be able to read and write in French.</li>
                       <li class="flex items-start gap-2.5 text-sm text-slate-700"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#042F8D]/10 text-xs font-bold text-[#042F8D]">✓</span>Comply with the training regulations.</li>
-                      <li class="flex items-start gap-2.5 text-sm text-slate-700"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#042F8D]/10 text-xs font-bold text-[#042F8D]">✓</span>Pay <strong>25,000 CDF</strong> to cover the cost of the training syllabus.</li>
                     </ul>
                     <p class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-6 text-slate-600">Registration becomes final upon submission of the required documents and payment. Candidates who successfully pass the final examination will be considered eligible for employment as Security Guards with GSS, subject to the company's recruitment needs.</p>
                   </section>
@@ -1467,6 +1472,13 @@
                       <input id="att-To" name="att-To" type="hidden" />
                     </div>
                   </div>
+
+                  <div class="mt-5 rounded-[16px] border border-green-200 bg-green-50 p-4">
+                    <label class="flex cursor-pointer items-start gap-3">
+                      <input type="checkbox" id="ack-presences" dbname="ack_presences" class="gss-ack-check mt-0.5 h-4 w-4 rounded accent-green-600" data-tab="presences" />
+                      <span class="text-sm leading-6 text-slate-700" data-i18n-html="ackPresences">I certify the accuracy of the information in this <strong>Attendance Report</strong>.</span>
+                    </label>
+                  </div>
                 </fieldset>
 
                 <!-- Attendance table -->
@@ -1573,6 +1585,14 @@
                      exam attempt). Hidden until an applicant with an attempt is loaded. -->
                 <div id="exam-result-status" class="hidden rounded-2xl border px-4 py-3 text-sm font-semibold"></div>
 
+                <!-- Exam Result form body. Hidden (leaving only the status banner)
+                     while the candidate has not taken an exam yet, for every role. -->
+                <div id="exam-form-body" class="space-y-6">
+
+                <!-- Quick way to set the exam status while the panel is locked
+                     (revealed on hover for authorised staff). Populated by JS. -->
+                <div id="exam-status-quickset" class="empty:hidden"></div>
+
                 <!-- Exam result table -->
                 <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
                   <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
@@ -1669,6 +1689,8 @@
                     <span class="text-sm leading-6 text-slate-700" data-i18n-html="ackExam">I certify the accuracy of the information in this <strong>Exam Result</strong>.</span>
                   </label>
                 </div>
+
+                </div><!-- /exam-form-body -->
 
               </div>
             </div>
@@ -1811,23 +1833,14 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                     <span data-i18n="evalSecSig">SIGNATURES</span>
                   </legend>
-                  <div class="mt-4 grid gap-4 md:grid-cols-2">
+                  <div class="mt-4 grid gap-4">
                     <div class="flex flex-col gap-1.5">
-                      <label class="text-sm font-semibold text-slate-700" data-i18n="evalLbSigFormateur">Trainer</label>
+                      <label class="text-sm font-semibold text-slate-700" data-i18n="evalLbSigFormateur"></label>
                       <div class="gss-sign group relative w-full overflow-hidden rounded-xl border-[1.5px] border-[#dbe2f0] bg-white/40 transition focus-within:border-[#042F8D] focus-within:ring-4 focus-within:ring-[#042F8D]/10">
                         <canvas id="eval-sig-formateur" class="gss-sign-canvas block h-44 w-full touch-none cursor-crosshair bg-transparent"></canvas>
                         <span class="gss-sign-hint pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-slate-400" data-i18n="sigHint">Sign within the box</span>
                         <button type="button" class="gss-sign-clear absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-[#042F8D] hover:text-[#042F8D]" data-i18n="sigClear">Clear</button>
                         <input id="eval-sig-formateur-data" name="eval-sig-formateur" class="gss-sign-input" type="hidden" />
-                      </div>
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                      <label class="text-sm font-semibold text-slate-700" data-i18n="evalLbSigResponsable">Manager / Director</label>
-                      <div class="gss-sign group relative w-full overflow-hidden rounded-xl border-[1.5px] border-[#dbe2f0] bg-white/40 transition focus-within:border-[#042F8D] focus-within:ring-4 focus-within:ring-[#042F8D]/10">
-                        <canvas id="eval-sig-resp" class="gss-sign-canvas block h-44 w-full touch-none cursor-crosshair bg-transparent"></canvas>
-                        <span class="gss-sign-hint pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-slate-400" data-i18n="sigHint">Sign within the box</span>
-                        <button type="button" class="gss-sign-clear absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-[#042F8D] hover:text-[#042F8D]" data-i18n="sigClear">Clear</button>
-                        <input id="eval-sig-resp-data" name="eval-sig-resp" class="gss-sign-input" type="hidden" />
                       </div>
                     </div>
                   </div>
@@ -1873,28 +1886,28 @@
                       </thead>
                       <tbody class="divide-y divide-slate-100 bg-white">
                         <tr class="hover:bg-slate-50/50">
-                          <td class="px-4 py-3 text-sm font-semibold text-slate-700" data-i18n="measLbTaille">Height (cm)</td>
-                          <td class="px-4 py-3"><input id="meas-Height" name="meas-Height" type="number" min="100" max="250" step="0.5" placeholder="170" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" /></td>
+                          <td class="px-4 py-3 text-sm font-semibold text-slate-700"><span data-i18n="measLbTaille">Height (cm)</span> <span class="text-red-500" title="Required">*</span></td>
+                          <td class="px-4 py-3"><input id="meas-Height" name="meas-Height" type="number" min="100" max="250" step="0.5" placeholder="170" required class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" /></td>
                         </tr>
                         <tr class="hover:bg-slate-50/50">
-                          <td class="px-4 py-3 text-sm font-semibold text-slate-700" data-i18n="measLbPoids">Weight (kg)</td>
-                          <td class="px-4 py-3"><input id="meas-Weight" name="meas-Weight" type="number" min="30" max="200" step="0.5" placeholder="70" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" /></td>
+                          <td class="px-4 py-3 text-sm font-semibold text-slate-700"><span data-i18n="measLbPoids">Weight (kg)</span> <span class="text-red-500" title="Required">*</span></td>
+                          <td class="px-4 py-3"><input id="meas-Weight" name="meas-Weight" type="number" min="30" max="200" step="0.5" placeholder="70" required class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" /></td>
                         </tr>
                         <tr class="hover:bg-slate-50/50">
-                          <td class="px-4 py-3 text-sm font-semibold text-slate-700" data-i18n="measLbPointure">Shoe Size</td>
-                          <td class="px-4 py-3"><input id="meas-ShoeSize" name="meas-ShoeSize" type="number" min="30" max="50" step="0.5" placeholder="42" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" /></td>
+                          <td class="px-4 py-3 text-sm font-semibold text-slate-700"><span data-i18n="measLbPointure">Shoe Size</span> <span class="text-red-500" title="Required">*</span></td>
+                          <td class="px-4 py-3"><input id="meas-ShoeSize" name="meas-ShoeSize" type="number" min="30" max="50" step="1" placeholder="42" required class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" /></td>
                         </tr>
                         <tr class="hover:bg-slate-50/50">
-                          <td class="px-4 py-3 text-sm font-semibold text-slate-700" data-i18n="measLbChemise">Shirt Size</td>
-                          <td class="px-4 py-3"><input id="meas-ShirtSize" name="meas-ShirtSize" type="text" placeholder="XL" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" /></td>
+                          <td class="px-4 py-3 text-sm font-semibold text-slate-700"><span data-i18n="measLbChemise">Shirt Size</span> <span class="text-red-500" title="Required">*</span></td>
+                          <td class="px-4 py-3"><select id="meas-ShirtSize" name="meas-ShirtSize" required class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10"><option value=""></option><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option></select></td>
                         </tr>
                         <tr class="hover:bg-slate-50/50">
-                          <td class="px-4 py-3 text-sm font-semibold text-slate-700" data-i18n="measLbPantalon">Trouser Size</td>
-                          <td class="px-4 py-3"><input id="meas-TrouserSize" name="meas-TrouserSize" type="text" placeholder="44" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" /></td>
+                          <td class="px-4 py-3 text-sm font-semibold text-slate-700"><span data-i18n="measLbPantalon">Trouser Size</span> <span class="text-red-500" title="Required">*</span></td>
+                          <td class="px-4 py-3"><select id="meas-TrouserSize" name="meas-TrouserSize" required class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10"><option value=""></option><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option></select></td>
                         </tr>
                         <tr class="hover:bg-slate-50/50">
-                          <td class="px-4 py-3 text-sm font-semibold text-slate-700" data-i18n="measLbVeste">Jacket Size <span class="font-normal text-slate-400">(if applicable)</span></td>
-                          <td class="px-4 py-3"><input id="meas-JacketSize" name="meas-JacketSize" type="text" placeholder="XL" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" /></td>
+                          <td class="px-4 py-3 text-sm font-semibold text-slate-700"><span data-i18n="measLbVeste">Jacket Size</span> <span class="text-red-500" title="Required">*</span></td>
+                          <td class="px-4 py-3"><select id="meas-JacketSize" name="meas-JacketSize" required class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10"><option value=""></option><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option></select></td>
                         </tr>
                       </tbody>
                     </table>
@@ -1917,9 +1930,9 @@
                       </thead>
                       <tbody class="divide-y divide-slate-100 bg-white">
                         <tr class="hover:bg-slate-50/50">
-                          <td class="px-4 py-3 text-sm font-semibold text-slate-700 whitespace-nowrap" data-i18n="measLbGroupeSanguin">Blood Group</td>
+                          <td class="px-4 py-3 text-sm font-semibold text-slate-700 whitespace-nowrap"><span data-i18n="measLbGroupeSanguin">Blood Group</span> <span class="text-red-500" title="Required">*</span></td>
                           <td class="px-4 py-3">
-                            <select id="meas-BloodGroup" name="meas-BloodGroup" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+                            <select id="meas-BloodGroup" name="meas-BloodGroup" required class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
                               <option value=""></option>
                               <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
                               <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
@@ -1947,20 +1960,20 @@
                   </legend>
                   <div class="mt-4 grid gap-4 md:grid-cols-2">
                     <div class="flex flex-col gap-1.5 md:col-span-2">
-                      <label for="meas-FullName" class="text-sm font-semibold text-slate-700" data-i18n="measLbUrgenceNom">Full Name</label>
-                      <input id="meas-FullName" name="meas-FullName" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                      <label for="meas-FullName" class="text-sm font-semibold text-slate-700"><span data-i18n="measLbUrgenceNom">Full Name</span> <span class="text-red-500" title="Required">*</span></label>
+                      <input id="meas-FullName" name="meas-FullName" type="text" required class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                     <div class="flex flex-col gap-1.5">
-                      <label for="meas-Relationship" class="text-sm font-semibold text-slate-700" data-i18n="measLbUrgenceLien">Relationship</label>
-                      <input id="meas-Relationship" name="meas-Relationship" type="text" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                      <label for="meas-Relationship" class="text-sm font-semibold text-slate-700"><span data-i18n="measLbUrgenceLien">Relationship</span> <span class="text-red-500" title="Required">*</span></label>
+                      <input id="meas-Relationship" name="meas-Relationship" type="text" required class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                     <div class="flex flex-col gap-1.5">
-                      <label for="meas-PhoneNumber" class="text-sm font-semibold text-slate-700" data-i18n="measLbUrgenceTel">Phone Number</label>
-                      <input id="meas-PhoneNumber" name="meas-PhoneNumber" type="tel" inputmode="tel" autocomplete="tel" pattern="^\+?[0-9\s().-]{7,20}$" placeholder="+243 999 000 000" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                      <label for="meas-PhoneNumber" class="text-sm font-semibold text-slate-700"><span data-i18n="measLbUrgenceTel">Phone Number</span> <span class="text-red-500" title="Required">*</span></label>
+                      <input id="meas-PhoneNumber" name="meas-PhoneNumber" type="tel" inputmode="tel" autocomplete="tel" required pattern="^\+?[0-9\s().-]{7,20}$" placeholder="+243 999 000 000" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     </div>
                     <div class="flex flex-col gap-1.5 md:col-span-2">
-                      <label for="meas-Address" class="text-sm font-semibold text-slate-700" data-i18n="measLbUrgenceAdresse">Address</label>
-                      <textarea id="meas-Address" name="meas-Address" rows="3" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10 resize-none"></textarea>
+                      <label for="meas-Address" class="text-sm font-semibold text-slate-700"><span data-i18n="measLbUrgenceAdresse">Address</span> <span class="text-red-500" title="Required">*</span></label>
+                      <textarea id="meas-Address" name="meas-Address" rows="3" required class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10 resize-none"></textarea>
                     </div>
                   </div>
                 </fieldset>
@@ -1973,23 +1986,6 @@
                   </legend>
                   <div class="mt-4">
                     <textarea id="meas-observations" name="meas-observations" rows="5" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10 resize-none"></textarea>
-                  </div>
-                </fieldset>
-
-                <!-- E. Validation -->
-                <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
-                  <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
-                    <span data-i18n="measSecValidation">E. VALIDATION</span>
-                  </legend>
-                  <div class="mt-4 flex flex-col gap-1.5">
-                    <label class="text-sm font-semibold text-slate-700" data-i18n="measLbCachet">Training Centre Stamp</label>
-                    <div class="gss-sign group relative w-full overflow-hidden rounded-xl border-[1.5px] border-[#dbe2f0] bg-white/40 transition focus-within:border-[#042F8D] focus-within:ring-4 focus-within:ring-[#042F8D]/10">
-                      <canvas id="meas-sig-cachet" class="gss-sign-canvas block h-44 w-full touch-none cursor-crosshair bg-transparent"></canvas>
-                      <span class="gss-sign-hint pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-slate-400" data-i18n="sigHint">Sign within the box</span>
-                      <button type="button" class="gss-sign-clear absolute right-2 top-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-[#042F8D] hover:text-[#042F8D]" data-i18n="sigClear">Clear</button>
-                      <input id="meas-sig-cachet-data" name="meas-sig-cachet" class="gss-sign-input" type="hidden" />
-                    </div>
                   </div>
                 </fieldset>
 
@@ -2103,6 +2099,7 @@
     <script src="./js/modules/signatures.js"></script>
     <script src="./js/modules/dictionary.js"></script>
     <script src="./js/modules/admin.js"></script>
+    <script src="./js/modules/permissions.js"></script>
     <script src="./js/modules/att-sheet.js"></script>
     <script src="./js/modules/exam.js"></script>
     <script src="./js/modules/exam-take.js"></script>
