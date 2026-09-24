@@ -86,25 +86,90 @@ const forcedLockedTabs = new Set();
 /** @type {Set<string>} */
 const forcedUnlockedTabs = new Set();
 
-/** @returns {boolean} */
-const isAuthorizedExamRole = () => {
-  const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
-  const role = session && session.role ? String(session.role) : '';
-  return role === 'Admin' || role === 'Head of Training' || role === 'Instructor';
-};
+// Tabs an Instructor may never open (intake workflow handled by other roles).
+/** @type {Set<string>} */
+const INSTRUCTOR_LOCKED_TABS = new Set(['registration', 'conditions', 'reglement']);
 
 // A tab unlocks only once the previous tab in the flow is completed (green).
 /** @param {string} name @returns {boolean} */
 const isTabUnlocked = (name) => {
+  // Instructors never handle intake: the Registration / Conditions / Rules
+  // tabs stay locked for them regardless of any forced-unlock overrides.
+  if (INSTRUCTOR_LOCKED_TABS.has(name)) {
+    const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
+    if (session && String(session.role) === 'Instructor') return false;
+  }
   if (forcedLockedTabs.has(name)) return false; // explicit lock wins.
   if (forcedUnlockedTabs.has(name)) return true; // explicit unlock overrides sequence.
-  // Instructors / heads of training / admins may always open the Exam panel,
-  // and the Dossier (checklist) panel is reachable for every user.
+  // The Dossier (checklist) panel is reachable for every user. Attendance and
+  // Exam stay strictly sequential for all roles (Exam is force-unlocked via
+  // applicant-link.js only once the candidate has a live/corrected attempt).
   if (name === 'dossier') return true;
-  if (name === 'exam' && isAuthorizedExamRole()) return true;
   const idx = TAB_ORDER.indexOf(name);
   if (idx <= 0) return true; // Registration is always reachable.
   return !!tabState[TAB_ORDER[idx - 1]];
+};
+
+/** Whether the workflow has sequentially reached a tab's step for the loaded
+ *  record (ignores forced unlocks — it reflects real candidate progress). */
+/** @param {string} name @returns {boolean} */
+const isStepReached = (name) => {
+  const idx = TAB_ORDER.indexOf(name);
+  if (idx <= 0) return true; // Registration is the first step.
+  return !!tabState[TAB_ORDER[idx - 1]];
+};
+
+/** Replace a panel's content with an "In Progress" placeholder. */
+const showPanelInProgress = (/** @type {HTMLElement} */ panel) => {
+  if (panel.dataset.progressGate === '1') return;
+  panel.dataset.progressGate = '1';
+  Array.from(panel.children).forEach((node) => {
+    const el = /** @type {HTMLElement} */ (node);
+    el.dataset.progressPrevDisplay = el.style.display;
+    el.style.display = 'none';
+  });
+  let label = 'In progress';
+  try {
+    const lang = document.documentElement.lang || 'en';
+    const dict = /** @type {any} */ (typeof translations !== 'undefined' ? translations : null);
+    if (dict && dict[lang] && dict[lang].stepInProgress) label = dict[lang].stepInProgress;
+  } catch (_) { /* noop */ }
+  const ph = document.createElement('div');
+  ph.className = 'gss-progress-ph flex flex-col items-center justify-center gap-3 py-20 text-center';
+  ph.innerHTML = `
+    <span class="inline-flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    </span>
+    <p class="max-w-md text-base font-bold text-slate-500" data-i18n="stepInProgress">${label}</p>`;
+  panel.appendChild(ph);
+};
+
+/** Restore a panel previously replaced by showPanelInProgress. */
+const clearPanelInProgress = (/** @type {HTMLElement} */ panel) => {
+  if (panel.dataset.progressGate !== '1') return;
+  delete panel.dataset.progressGate;
+  Array.from(panel.children).forEach((node) => {
+    const el = /** @type {HTMLElement} */ (node);
+    if (el.classList.contains('gss-progress-ph')) { el.remove(); return; }
+    el.style.display = el.dataset.progressPrevDisplay || '';
+    delete el.dataset.progressPrevDisplay;
+  });
+};
+
+/** Instructors only see a panel's content once its workflow step is reached;
+ *  earlier panels show an "In Progress" placeholder (no fields, no buttons). */
+const applyInstructorStepGates = () => {
+  const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
+  const gate = !!session && String(session.role) === 'Instructor';
+  TAB_ORDER.forEach((name) => {
+    const panel = document.getElementById(`panel-${name}`);
+    if (!panel) return;
+    // Intake panels are never the Instructor's to view; his own panels stay
+    // "In Progress" until the workflow sequentially reaches their step.
+    const notReached = INSTRUCTOR_LOCKED_TABS.has(name) || !isStepReached(name);
+    if (gate && notReached) showPanelInProgress(/** @type {HTMLElement} */ (panel));
+    else clearPanelInProgress(/** @type {HTMLElement} */ (panel));
+  });
 };
 
 /** Dim + disable every tab that is not yet unlocked. */
@@ -118,6 +183,7 @@ const updateTabLocks = () => {
     btn.classList.toggle('pointer-events-none', locked);
     btn.setAttribute('aria-disabled', String(locked));
   });
+  applyInstructorStepGates();
 };
 
 /** @param {string} tabName */
@@ -168,6 +234,12 @@ const switchTab = (tabName) => {
       dot.classList.remove(TAB_PENDING_BG);
       dot.classList.add(TAB_ACTIVE_BG);
     }
+
+    // Bring the active tab into view in the horizontal tab strip so panels near
+    // the end (e.g. Checklist) are visible without manual scrolling.
+    try {
+      activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    } catch (_) { /* noop */ }
   }
 
   // Scroll to top
@@ -193,6 +265,12 @@ const switchTab = (tabName) => {
       const pres = /** @type {any} */ (window).GSSPresences;
       if (pres && typeof pres.markComplete === 'function') pres.markComplete();
     } catch (_) { /* noop */ }
+    // Re-check the real exam status so a candidate who has not taken the exam
+    // sees only the "not taken yet" message instead of a stale result form.
+    try {
+      const linker = /** @type {any} */ (window).GSSApplicant;
+      if (linker && typeof linker.refreshExamPanel === 'function') linker.refreshExamPanel();
+    } catch (_) { /* noop */ }
   }
 
   defaultTab = tabName;
@@ -217,11 +295,14 @@ document.querySelectorAll('.gss-tab-btn').forEach(btn => {
   tabBtn.addEventListener('click', () => switchTab(tabBtn.dataset.tab ?? defaultTab));
 });
 
-// Role-based tab overrides: the Dossier (checklist) panel is always reachable,
-// and instructors / heads of training / admins may always open the Exam panel.
+// Role-based tab overrides: the Dossier (checklist) panel is always reachable.
+// Attendance and Exam stay sequential for every role (Exam is force-unlocked
+// via applicant-link.js only when the candidate has a live/corrected attempt).
 const currentRole = (typeof GSSSession !== 'undefined' ? GSSSession.get()?.role : '') || '';
-if (['Instructor', 'Head of Training', 'Admin'].includes(currentRole)) {
-  forcedUnlockedTabs.add('exam');
+// Instructors never handle intake: the Registration, Conditions and Rules
+// tabs stay dimmed and unclickable for them (enforced in isTabUnlocked).
+if (currentRole === 'Instructor') {
+  defaultTab = 'exam';
 }
 forcedUnlockedTabs.add('dossier');
 

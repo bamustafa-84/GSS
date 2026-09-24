@@ -184,3 +184,42 @@ const GSSSession = Object.freeze({
     } catch (_) { /* storage unavailable */ }
   },
 });
+
+/* ------------------------------------------------------------------
+ * Actor propagation
+ * ------------------------------------------------------------------
+ * Attach the signed-in user to every API request via headers so the
+ * server can stamp created_by / updated_by audit fields uniformly. Done
+ * once here (global.js loads first) so individual fetch call sites need
+ * no changes. Only requests to our own API get the headers — third-party
+ * URLs are never touched.
+ * ---------------------------------------------------------------- */
+(() => {
+  if (typeof window === 'undefined' || !window.fetch || /** @type {any} */ (window).__gssActorPatched) return;
+  /** @type {any} */ (window).__gssActorPatched = true;
+  const nativeFetch = window.fetch.bind(window);
+  const isApi = (/** @type {any} */ url) => {
+    const s = String(url || '');
+    return s.startsWith(API_BASE) || s.indexOf('/api/') !== -1;
+  };
+  window.fetch = (/** @type {any} */ input, /** @type {any} */ init) => {
+    try {
+      const url = (input && typeof input === 'object' && 'url' in input) ? input.url : input;
+      if (isApi(url)) {
+        const sess = (typeof GSSSession !== 'undefined' && GSSSession.get()) || {};
+        const actorId = sess.user_id || sess.login_id || '';
+        const actorName = sess.full_name || sess.username || '';
+        const role = sess.role || '';
+        if (actorId || actorName || role) {
+          const headers = new Headers((init && init.headers) || (input && input.headers) || {});
+          if (actorId && !headers.has('X-GSS-User-Id')) headers.set('X-GSS-User-Id', String(actorId));
+          if (actorName && !headers.has('X-GSS-User-Name')) headers.set('X-GSS-User-Name', String(actorName));
+          if (role && !headers.has('X-GSS-Role')) headers.set('X-GSS-Role', String(role));
+          init = Object.assign({}, init, { headers });
+        }
+      }
+    } catch (_) { /* fall through to the native fetch untouched */ }
+    return nativeFetch(input, init);
+  };
+})();
+
