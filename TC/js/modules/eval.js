@@ -1,6 +1,21 @@
 // @ts-check
 // ── Panel 7 · Fiche d'Évaluation Individuelle — functions ──
 
+/** Clamp a score cell to its [min, max] range so a value above the field's
+ * cap (e.g. 10) can never be entered. */
+function clampEvalNote(/** @type {HTMLInputElement} */ input) {
+  if (!input || input.value === '') return;
+  const v = parseFloat(input.value);
+  if (Number.isNaN(v)) return;
+  const max = input.max !== '' ? parseFloat(input.max) : Infinity;
+  const min = input.min !== '' ? parseFloat(input.min) : 0;
+  let clamped = v;
+  if (clamped > max) clamped = max;
+  if (clamped < min) clamped = min;
+  const s = String(clamped);
+  if (input.value !== s) input.value = s;
+}
+
 function updateEvalSummary() {
   const rows = document.querySelectorAll('#eval-tbody tr');
   let totalObt = 0;
@@ -32,7 +47,8 @@ function updateEvalSummary() {
 
 (function initEvaluationPanel() { 
   document.querySelectorAll('#eval-tbody .eval-note-obt').forEach(inp => {
-    inp.addEventListener('input', updateEvalSummary);
+    const input = /** @type {HTMLInputElement} */ (inp);
+    input.addEventListener('input', () => { clampEvalNote(input); updateEvalSummary(); });
   });
   updateEvalSummary();
 }());

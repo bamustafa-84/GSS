@@ -161,9 +161,10 @@
     const bodyRows = rows.map((/** @type {any} */ r) => {
       const hasCred = r.credential_status && r.credential_status !== 'Not Generated' && r.access_id;
       const canDisable = hasCred && r.is_active;
+      const notGenerated = !hasCred;
       const hasAttempt = !!r.attempt_id;
       const canCorrect = hasAttempt && r.exam_status !== 'Not Started' && r.exam_status !== 'IN_PROGRESS';
-      return `<tr class="border-t border-slate-100 text-sm hover:bg-slate-50/60" data-access="${r.access_id || ''}" data-attempt="${r.attempt_id || ''}" data-username="${esc(r.username || '')}" data-name="${esc(r.candidate_name || '')}">
+      return `<tr class="border-t border-slate-100 text-sm hover:bg-slate-50/60" data-access="${r.access_id || ''}" data-attempt="${r.attempt_id || ''}" data-candno="${esc(r.candidate_no || '')}" data-username="${esc(r.username || '')}" data-name="${esc(r.candidate_name || '')}">
         <td class="px-3 py-2 font-medium text-slate-700">${esc(r.candidate_no)}</td>
         <td class="px-3 py-2 text-slate-700">${esc(r.candidate_name || '')}</td>
         <td class="px-3 py-2 text-slate-600">${esc(r.training_title || '')}</td>
@@ -178,6 +179,7 @@
         <td class="px-3 py-2">${resultCell(r)}</td>
         <td class="px-3 py-2">
           <div class="flex flex-wrap items-center gap-1">
+            ${notGenerated ? `<button type="button" data-act="generate" class="rounded-md border border-[#042F8D]/30 px-2 py-1 text-[11px] font-semibold text-[#042F8D] hover:bg-[#042F8D]/10" title="${t('credGenerate', 'Generate credential')}">${t('credGenerate', 'Generate')}</button>` : ''}
             ${canDisable ? `<button type="button" data-act="disable" class="rounded-md border border-red-200 px-2 py-1 text-[11px] font-semibold text-red-600 hover:bg-red-50" title="${t('credDisable', 'Disable credential')}">${t('credDisable', 'Disable')}</button>` : ''}
             ${canCorrect ? `<button type="button" data-act="correct" class="rounded-md border border-emerald-200 px-2 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50" title="${t('credCorrect', 'Correct exam')}">${r.correction_status === 'CORRECTED' ? t('credViewAnswers', 'View answers') : t('credCorrect', 'Correct')}</button>` : ''}
           </div>
@@ -215,6 +217,23 @@
     if (act === 'copyuser') {
       await copyText(username);
       setStatus(t('credCopiedUser', 'Username copied ✓'), true);
+      return;
+    }
+    if (act === 'generate') {
+      const candNo = Number(el.dataset.candno) || null;
+      if (!candNo || !currentExamId) { setStatus(t('credGenerateErr', 'Could not generate the credential.'), false); return; }
+      const genBtn = /** @type {HTMLButtonElement} */ (btn);
+      genBtn.disabled = true;
+      setStatus(t('credGenerating', 'Generating credential…'));
+      const r = await api('POST', '/api/exam/credential/generate', { exam_id: currentExamId, candidate_no: candNo, generated_by: currentUserId() });
+      if (r && r.ok) {
+        setStatus(t('credGenerated', 'Credential generated ✓'), true);
+        showCredentialModal(r.candidate_name || name, r.username || String(candNo), r.password || null);
+        await refresh();
+      } else {
+        genBtn.disabled = false;
+        setStatus((r && r.error) || t('credGenerateErr', 'Could not generate the credential.'), false);
+      }
       return;
     }
     if (act === 'view') {
@@ -310,6 +329,7 @@
           const rev = await api('POST', '/api/exam/credential/reveal', { access_id: r.access_id });
           pw = rev && rev.ok ? (rev.password || '') : '';
         } catch (_) { pw = ''; }
+        lines.push(`name: ${r.candidate_name || ''}`);
         lines.push(`username: ${r.username || ''}`);
         lines.push(`pass: ${pw}`);
         lines.push('');

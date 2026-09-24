@@ -1,5 +1,6 @@
 // @ts-check
 ///<reference path="../utils/translation.js" />
+///<reference path="./eval.js" />
 ///<reference path="../tc.js" />
 /**
  * GSS · Applicant → form linker
@@ -316,6 +317,12 @@ const DATE_COLS = new Set(['registration_date', 'date_of_birth', 'applicant_date
     form.querySelectorAll('button').forEach((b) => {
       /** @type {HTMLButtonElement} */ (b).disabled = b.hasAttribute('data-dict-category') ? false : ro;
     });
+    // A completed / read-only Registration hides its Submit + Clear actions;
+    // they return when the form becomes editable again (new applicant / reset).
+    ['regSubmitBtn', 'regClearBtn'].forEach((id) => {
+      const b = document.getElementById(id);
+      if (b) b.classList.toggle('hidden', ro);
+    });
     const p = padParts(REG_SIG_ID);
     if (p) p.canvas.style.pointerEvents = ro ? 'none' : '';
   };
@@ -413,6 +420,9 @@ const DATE_COLS = new Set(['registration_date', 'date_of_birth', 'applicant_date
     // Clear the Evaluation panel for a brand-new applicant.
     try { resetEvaluation(); } catch (_) { /* noop */ }
 
+    // Clear the Measurements panel for a brand-new applicant.
+    try { clearMeasurements(); } catch (_) { /* noop */ }
+
     try { if (typeof switchTab === 'function') switchTab('registration'); } catch (_) { /* noop */ }
   };
   ///** @type {any} */ (window).GSSApplicant = { initApplicantForm, load, mirrorFromForm, reset: resetToNewMode, completeRegistration, loadOfficerSignature };
@@ -431,6 +441,18 @@ const initApplicantForm = () => {
       src.addEventListener('input', mirrorFromForm);
       src.addEventListener('change', mirrorFromForm);
     });
+
+    // Auto-fill the Registration signature when the Full Name matches an
+    // existing signature on file (new registrations only).
+    const fullNameSrc = byId('FullName');
+    if (fullNameSrc) {
+      let sigTimer = 0;
+      fullNameSrc.addEventListener('input', () => {
+        window.clearTimeout(sigTimer);
+        sigTimer = window.setTimeout(autofillRegistrationSignature, 400);
+      });
+      fullNameSrc.addEventListener('change', autofillRegistrationSignature);
+    }
 
     // Live-mirror the applicant's drawn signature (Registration pad) to the
     // read-only Conditions / Rules / Commitment panels as it is drawn/cleared.
@@ -463,7 +485,7 @@ const initApplicantForm = () => {
     // the panel + advances), so it is intentionally excluded here.
     // 'exam' has its own dedicated handler below.
     GENERIC_TABS.forEach((tab) => {
-      if (tab === 'presences' || tab === 'exam' || tab === 'dossier' || tab === 'evaluation') return;
+      if (tab === 'presences' || tab === 'exam' || tab === 'dossier' || tab === 'evaluation' || tab === 'mensuration') return;
       const ack = byId('ack-' + tab);
       if (!ack) return;
       ack.addEventListener('change', () => {
@@ -507,19 +529,32 @@ const initApplicantForm = () => {
           examAck.checked = false;
           return;
         }
-
+        // Auto-fill the Signature with the currently logged-in user's own
+        // signature (matched by their full name, then username as a fallback).
         const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
-        const userName = session ? (session.full_name || session.username || '') : '';
-        const sig = userName ? await findTrainerSignature(userName) : null;
+        const fullName = session ? String(session.full_name || '') : '';
+        const userName = session ? String(session.username || '') : '';
+        let sig = fullName ? await findTrainerSignature(fullName) : null;
+        if ((!sig || !sig.signature_id) && userName && userName !== fullName) {
+          sig = await findTrainerSignature(userName);
+        }
         if (sig && sig.signature_id) {
           showSignatureImage('exam-sig-cachet', `${API_BASE}/api/signatures/image?id=${encodeURIComponent(String(sig.signature_id))}`);
           const input = byId('exam-sig-cachet-data');
           if (input) input.value = String(sig.signature_id);
+        } else {
+          // No signature on file → stay on this panel until it is fixed.
+          examAck.checked = false;
+          window.alert(t('examSigMissing', 'No signature is on file for your account. Add your signature in the Signatures panel so it can be applied automatically.'));
+          return;
         }
         setGreenTab('exam', true, DOT_ALL['exam']);
         examAck.disabled = true;
         setExamPanelReadonly(true);
         await saveExamAck();
+        // Reflect the acknowledged exam score into the Evaluation sheet's
+        // read-only Theoretical Exam cell right away (before the eval tab opens).
+        try { if (!evalInstructorAck && typeof populateEvalAutoFields === 'function') populateEvalAutoFields(); } catch (_) { /* noop */ }
         try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
         try { goToNextTab('exam'); } catch (_) { /* noop */ }
       });
@@ -528,9 +563,36 @@ const initApplicantForm = () => {
     // Show the current Training Officer signature (read-only) on Panel 4.
     loadOfficerSignature();
 
+    // Measurements panel ack: validate the required fields, persist the sheet
+    // + acknowledgment, then lock the whole panel read-only. The read-only
+    // state is restored from the DB on reload (see loadMeasurements).
+    const mensAck = byId('ack-mensuration');
+    if (mensAck) {
+      mensAck.addEventListener('change', async () => {
+        if (!mensAck.checked) return;
+        if (!validateMensuration()) { mensAck.checked = false; return; }
+        if (!window.confirm(t('measConfirm', 'Are you sure you want to confirm the Measurements Sheet? The fields will be locked and saved.'))) {
+          mensAck.checked = false;
+          return;
+        }
+        const ok = await saveMeasurements();
+        if (!ok) {
+          mensAck.checked = false;
+          window.alert(t('measSaveError', 'The Measurements Sheet could not be saved. Please try again.'));
+          return;
+        }
+        setGreenTab('mensuration', true, DOT_ALL['mensuration']);
+        mensAck.disabled = true;
+        setMensurationReadonly(true);
+        try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
+        try { syncDossierChecklist(); } catch (_) { /* noop */ }
+        try { goToNextTab('mensuration'); } catch (_) { /* noop */ }
+      });
+    }
+
     // ── Individual Evaluation Sheet (Panel-Evaluation) ───────────
-    // The two eval signatures are always auto-applied, never hand-drawn.
-    ['eval-sig-formateur', 'eval-sig-resp'].forEach((cid) => {
+    // The eval signature is always auto-applied, never hand-drawn.
+    ['eval-sig-formateur'].forEach((cid) => {
       const canvas = document.getElementById(cid);
       if (canvas) canvas.style.pointerEvents = 'none';
       const wrap = canvas ? canvas.closest('.gss-sign') : null;
@@ -558,6 +620,12 @@ const initApplicantForm = () => {
       evalAck.addEventListener('change', async () => {
         if (!evalAck.checked) return;
 
+        // Stamp the ticking user's own signature on every acknowledgement.
+        try {
+          const sig = await currentUserSignature();
+          if (sig && sig.signature_id) setEvalSignature('formateur', sig.signature_id);
+        } catch (_) { /* noop */ }
+
         // Stage 2 — Admin finalises.
         if (evalInstructorAck && !evalAdminAck) {
           if (!isEvalAdminRole()) {
@@ -571,18 +639,16 @@ const initApplicantForm = () => {
             window.alert(t('evalErrFinalRequired', 'Please select the Final Result before finalising the evaluation.'));
             return;
           }
-          if (!window.confirm(t('evalConfirmAdmin', 'Finalise this evaluation and record the Manager/Director signature? This will be saved.'))) {
+          if (!window.confirm(t('evalConfirmAdmin', 'Finalise this evaluation? This will be saved.'))) {
             evalAck.checked = false;
             return;
           }
-          const sig = await currentUserSignature();
-          if (sig && sig.signature_id) setEvalSignature('resp', sig.signature_id);
           evalAdminAck = true;
-          const respInput = byId('eval-sig-resp-data');
+          const finalSig = byId('eval-sig-formateur-data');
           await saveEvaluation({
             eval_final_decision: /** @type {HTMLInputElement} */ (fd).value,
             eval_observations: (byId('eval-Observations') || {}).value || '',
-            eval_manager_signature_id: respInput && respInput.value ? Number(respInput.value) : null,
+            eval_trainer_signature_id: finalSig && finalSig.value ? Number(finalSig.value) : null,
             eval_admin_ack: true,
           });
           setGreenTab('evaluation', true, DOT_ALL['evaluation']);
@@ -612,8 +678,6 @@ const initApplicantForm = () => {
             evalAck.checked = false;
             return;
           }
-          const sig = await currentUserSignature();
-          if (sig && sig.signature_id) setEvalSignature('formateur', sig.signature_id);
           evalInstructorAck = true;
           setEvalGradesEditable(false);
           const trainerInput = byId('eval-sig-formateur-data');
@@ -671,8 +735,15 @@ const initApplicantForm = () => {
         setGreenTab('dossier', true, DOT_ALL['dossier']);
         dossierAck.disabled = true;
         dossierAck.dataset.committed = 'true';
+        setDossierOptionalLocked(true);
         try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
-        await saveAcceptance({ ack_dossier: true });
+        /** @type {Record<string, any>} */
+        const dossierPayload = { ack_dossier: true };
+        DOSSIER_OPTIONAL.forEach(({ name, col }) => {
+          const cb = dossByName(name);
+          dossierPayload[col] = !!(cb && cb.checked);
+        });
+        await saveAcceptance(dossierPayload);
       });
     }
 
@@ -824,6 +895,9 @@ const padParts = (/** @type {string} */ canvasId) => {
 /** @type {any[]} All attendance rows for the currently loaded candidate. */
 let presRowsAll = [];
 
+/** @type {Record<string, any>} Header meta (title/trainer/dates) keyed by training_id. */
+let presMetaById = {};
+
 /** @type {number | null} The corrected exam score (out of 100) of the loaded candidate. */
 let lastExamScore = null;
 
@@ -861,13 +935,28 @@ const presDmyOf = (/** @type {any} */ isoTs) => {
   return /** @type {any} */ (window).GSSDate ? /** @type {any} */ (window).GSSDate.toDMY(iso) : iso;
 };
 
+/** When an Instructor is editing an unlocked Attendance panel, default the
+    Trainer select to their own name (they are the trainer for the session). */
+const presApplyInstructorTrainer = () => {
+  if (getCurrentRole() !== 'Instructor') return;
+  const sel = /** @type {HTMLSelectElement | null} */ (document.getElementById('att-Trainer'));
+  if (!sel || sel.disabled) return;
+  const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
+  const name = session && session.full_name ? String(session.full_name)
+    : (session && session.username ? String(session.username) : '');
+  if (!name) return;
+  presEnsureOption('att-Trainer', name, name);
+};
+
 /** Render the header fields + history + summary for one training of the candidate. */
 const renderPresencesFor = (/** @type {any} */ trainingId) => {
-  const meta = presRowsAll.find((r) => String(r.training_id) === String(trainingId));
+  const meta = presMetaById[String(trainingId)];
   const pres = /** @type {any} */ (window).GSSPresences;
   if (!meta) { if (pres) pres.setRows([]); return; }
 
+  presEnsureOption('att-TrainingTitle', meta.training_title, meta.training_title);
   presEnsureOption('att-Trainer', meta.trainer, meta.trainer);
+  presApplyInstructorTrainer();
   presSetVal('att-From-date', presDmyOf(meta.date_from));
   presSetVal('att-From-time', presTimeOf(meta.date_from));
   presSetVal('att-To-date', presDmyOf(meta.date_to));
@@ -885,13 +974,31 @@ const renderPresencesFor = (/** @type {any} */ trainingId) => {
       observations: r.observation || '',
     }));
   if (pres) pres.setRows(rows);
+
+  // Admin view: a course whose To date is already in the past is considered
+  // finalized, so tick the Attendance tab green (and lock the panel).
+  try {
+    if (getCurrentRole() === 'Admin' && meta.date_to) {
+      const to = new Date(meta.date_to);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (!Number.isNaN(to.getTime()) && to < today && pres && typeof pres.markComplete === 'function') {
+        pres.markComplete();
+      }
+    }
+  } catch (_) { /* noop */ }
 };
 
 const clearPresences = () => {
   presRowsAll = [];
+  presMetaById = {};
   try { if (/** @type {any} */ (window).GSSPresences) /** @type {any} */ (window).GSSPresences.clear(); } catch (_) { /* noop */ }
   ['att-TrainingTitle', 'att-Trainer', 'att-From-date', 'att-From-time', 'att-To-date', 'att-To-time', 'att-From', 'att-To']
     .forEach((id) => presSetVal(id, ''));
+  // Reset the acknowledgement checkbox + green tab for a fresh applicant.
+  const presAck = byId('ack-presences');
+  if (presAck) { presAck.checked = false; presAck.disabled = false; }
+  setGreenTab('presences', false, DOT_ALL['presences']);
   // Unlock the panel so a freshly loaded applicant can be edited/acknowledged.
   try { if (typeof /** @type {any} */ (window).setPresencesReadonly === 'function') /** @type {any} */ (window).setPresencesReadonly(false); } catch (_) { /* noop */ }
 };
@@ -910,27 +1017,67 @@ const loadPresences = async (candidateNo) => {
       { headers: { Accept: 'application/json' } }
     ).then((r) => r.json());
     presRowsAll = Array.isArray(data.attendance) ? data.attendance : [];
+
+    // Header meta from attendance rows (these carry the training From / To dates).
+    presRowsAll.forEach((r) => {
+      if (!presMetaById[r.training_id]) {
+        presMetaById[r.training_id] = {
+          training_id: r.training_id,
+          training_title: r.training_title,
+          trainer: r.trainer,
+          date_from: r.date_from,
+          date_to: r.date_to,
+        };
+      }
+    });
+
+    // Also include trainings the candidate is assigned to but has no attendance
+    // rows for yet (e.g. saved via the Candidate Information acknowledgement).
+    // applicant_trainings omits the dates, so pull them from the training list.
+    let assigned = [];
+    try {
+      const at = await fetch(
+        `${API_BASE}/api/applicant-trainings?candidate_no=${encodeURIComponent(String(candidateNo))}`,
+        { headers: { Accept: 'application/json' } }
+      ).then((r) => r.json());
+      assigned = Array.isArray(at.trainings) ? at.trainings : [];
+    } catch (_) { /* noop */ }
+    if (assigned.some((/** @type {any} */ t) => !presMetaById[t.training_id])) {
+      /** @type {Record<string, any>} */
+      const fullById = {};
+      try {
+        const tl = await fetch(`${API_BASE}/api/training`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
+        (Array.isArray(tl.trainings) ? tl.trainings : []).forEach((/** @type {any} */ f) => { fullById[f.training_id] = f; });
+      } catch (_) { /* noop */ }
+      assigned.forEach((/** @type {any} */ t) => {
+        if (presMetaById[t.training_id]) return;
+        const f = fullById[t.training_id] || {};
+        presMetaById[t.training_id] = {
+          training_id: t.training_id,
+          training_title: t.training_title || f.training_title,
+          trainer: t.trainer || f.trainer,
+          date_from: f.date_from || '',
+          date_to: f.date_to || '',
+        };
+      });
+    }
+
+    const ids = Object.keys(presMetaById);
     const pres = /** @type {any} */ (window).GSSPresences;
-    if (!presRowsAll.length) { if (pres) pres.setRows([]); return; }
+    if (!ids.length) { if (pres) pres.setRows([]); return; }
 
-    // Distinct trainings, and the "primary" one = the most recent (max date_from).
-    /** @type {Record<string, any>} */
-    const metaById = {};
-    presRowsAll.forEach((r) => { if (!metaById[r.training_id]) metaById[r.training_id] = r; });
-    let primary = presRowsAll[0].training_id;
+    // Populate the Training Title select with all of this candidate's trainings.
+    ids.forEach((tid) => presEnsureOption('att-TrainingTitle', presMetaById[tid].training_title, presMetaById[tid].training_title));
+
+    // Primary training = the most recent by From date (fallback to the first).
+    let primary = ids[0];
     let bestFrom = '';
-    Object.keys(metaById).forEach((tid) => {
-      const f = String(metaById[tid].date_from || '');
-      if (f > bestFrom) { bestFrom = f; primary = metaById[tid].training_id; }
+    ids.forEach((tid) => {
+      const f = String(presMetaById[tid].date_from || '');
+      if (f > bestFrom) { bestFrom = f; primary = tid; }
     });
 
-    // Populate the Training Title select with this candidate's trainings.
-    Object.keys(metaById).forEach((tid) => {
-      presEnsureOption('att-TrainingTitle', metaById[tid].training_title, metaById[tid].training_title);
-    });
-    presEnsureOption('att-TrainingTitle', metaById[primary].training_title, metaById[primary].training_title);
-
-    renderPresencesFor(primary);
+    renderPresencesFor(presMetaById[primary].training_id);
   } catch (_) {
     const pres = /** @type {any} */ (window).GSSPresences;
     if (pres) pres.setRows([]);
@@ -943,7 +1090,7 @@ const loadPresences = async (candidateNo) => {
   if (!sel) return;
   sel.addEventListener('change', () => {
     const title = /** @type {HTMLSelectElement} */ (sel).value;
-    const match = presRowsAll.find((r) => r.training_title === title);
+    const match = Object.values(presMetaById).find((/** @type {any} */ m) => m.training_title === title);
     if (match) renderPresencesFor(match.training_id);
   });
 })();
@@ -957,7 +1104,14 @@ const loadPresences = async (candidateNo) => {
  * and correction status all come from the server.
  * @param {number|null} candidateNo
  */
-const loadExamResult = async (candidateNo) => {
+/** Show or hide the Exam Result form body (everything except the status
+    banner), so a candidate with no exam attempt sees only the status message. */
+const setExamFormBodyVisible = (/** @type {boolean} */ visible) => {
+  const body = document.getElementById('exam-form-body');
+  if (body) body.classList.toggle('hidden', !visible);
+};
+
+const loadExamResult = async (/** @type {number|null} */ candidateNo) => {
   const banner = document.getElementById('exam-result-status');
   const setBanner = (/** @type {string} */ html, /** @type {string} */ cls) => {
     if (!banner) return;
@@ -969,6 +1123,9 @@ const loadExamResult = async (candidateNo) => {
   lastExamScore = null;
   try { if (/** @type {any} */ (window).GSSTabs) /** @type {any} */ (window).GSSTabs.setForcedUnlock('exam', false); } catch (_) { /* noop */ }
   if (banner) banner.classList.add('hidden');
+  // The form body is shown by default and only hidden when the candidate has
+  // not taken an exam yet (leaving just the status message, for every role).
+  setExamFormBodyVisible(true);
   if (candidateNo == null) return;
 
   const tt = (/** @type {string} */ k, /** @type {string} */ f) => {
@@ -1003,6 +1160,7 @@ const loadExamResult = async (candidateNo) => {
     if (!data || !data.ok || !data.has_attempt) {
       setBanner(tt('examPanelNone', 'This candidate has not taken an exam yet.'),
         'border-slate-200 bg-slate-50 text-slate-500');
+      setExamFormBodyVisible(false);
       return;
     }
 
@@ -1018,7 +1176,26 @@ const loadExamResult = async (candidateNo) => {
       const msg = data.state === 'in_progress'
         ? tt('examPanelInProgress', 'The candidate is currently taking the exam. The result will appear here once it is submitted and corrected.')
         : tt('examPanelWaiting', 'The candidate has finished the exam. It is awaiting correction — the result will appear here once corrected.');
-      setBanner('⏳ ' + msg, 'border-amber-200 bg-amber-50 text-amber-800');
+      // For staff who may correct, a finished-but-uncorrected exam gets a direct
+      // "Correct this exam" link so the instructor can grade it in place.
+      const canCorrect = data.state === 'waiting' && data.attempt_id != null && canAckExam();
+      const linkHtml = canCorrect
+        ? ` <button type="button" id="exam-correct-now" class="ml-1 inline-flex items-center gap-1 rounded-full bg-amber-600 px-3 py-1 text-xs font-bold text-white shadow-sm transition hover:bg-amber-700 focus:outline-none focus:ring-4 focus:ring-amber-600/20">${tt('examPanelCorrectNow', 'Correct this exam now →')}</button>`
+        : '';
+      setBanner('⏳ ' + msg + linkHtml, 'border-amber-200 bg-amber-50 text-amber-800');
+      if (canCorrect) {
+        const btn = document.getElementById('exam-correct-now');
+        if (btn) {
+          btn.addEventListener('click', () => {
+            const capi = /** @type {any} */ (window).GSSExamCorrect;
+            if (capi && typeof capi.open === 'function') {
+              capi.open(Number(data.attempt_id), () => loadExamResult(candidateNo));
+            }
+          });
+        }
+        // Make the Exam panel reachable so the instructor can act on it.
+        try { if (/** @type {any} */ (window).GSSTabs) /** @type {any} */ (window).GSSTabs.setForcedUnlock('exam', true); } catch (_) { /* noop */ }
+      }
       return;
     }
 
@@ -1064,7 +1241,7 @@ const getCurrentRole = () => {
 /** True for the three roles allowed to acknowledge / sign the Exam panel. */
 const canAckExam = () => {
   const role = getCurrentRole();
-  return role === 'Admin' || role === 'Head of Training' || role === 'Instructor';
+  return role === 'Admin' || role === 'Instructor';
 };
 
 /** Populate the Exam panel decision / observations fields from the record.
@@ -1109,19 +1286,133 @@ const setExamPanelReadonly = (/** @type {boolean} */ ro) => {
   });
   const canvas = document.getElementById('exam-sig-cachet');
   if (canvas) canvas.style.pointerEvents = 'none';
+  renderExamQuickStatus();
+};
+
+/**
+ * When the Exam panel is locked, authorised staff still need a fast, obvious way
+ * to set the student's exam status. This renders a small pill next to the exam
+ * status banner that, on hover, reveals PASS / FAIL quick actions. Choosing one
+ * unlocks the Result field and pre-selects it so the decision can be completed.
+ */
+const renderExamQuickStatus = () => {
+  const host = document.getElementById('exam-status-quickset');
+  if (!host) return;
+  host.innerHTML = '';
+  const panel = document.getElementById('panel-exam');
+  if (!panel || !canAckExam()) return;
+  // Only surface the shortcut while the Result input is actually locked.
+  const firstResult = /** @type {HTMLInputElement|null} */ (panel.querySelector('input[name="Result"]'));
+  if (!firstResult || !firstResult.disabled) return;
+
+  const tt = (/** @type {string} */ k, /** @type {string} */ f) => {
+    try {
+      const lang = document.documentElement.lang || 'en';
+      const d = /** @type {any} */ (typeof translations !== 'undefined' ? translations : null);
+      if (d && d[lang] && d[lang][k]) return d[lang][k];
+    } catch (_) { /* noop */ }
+    return f;
+  };
+
+  host.innerHTML =
+    `<div class="group relative mt-2 inline-flex items-center">
+       <span class="inline-flex cursor-default items-center gap-1.5 rounded-full border border-dashed border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500">
+         <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+         ${tt('examQuickHint', 'Locked — hover to set the exam status')}
+       </span>
+       <div class="invisible absolute left-0 top-full z-10 mt-1 flex gap-2 rounded-xl border border-slate-200 bg-white p-2 opacity-0 shadow-lg transition group-hover:visible group-hover:opacity-100">
+         <button type="button" data-set="Reussi" class="rounded-full bg-emerald-600 px-3 py-1 text-xs font-bold text-white transition hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-600/20">${tt('examPanelPass', 'PASS')}</button>
+         <button type="button" data-set="Echec" class="rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white transition hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-600/20">${tt('examPanelFail', 'FAIL')}</button>
+       </div>
+     </div>`;
+
+  host.querySelectorAll('button[data-set]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const val = /** @type {HTMLElement} */ (b).dataset.set;
+      // Unlock the panel for manual entry and preselect the chosen result.
+      setExamPanelReadonly(false);
+      panel.querySelectorAll('input[name="Result"]').forEach((el) => {
+        const r = /** @type {HTMLInputElement} */ (el);
+        r.disabled = false;
+        r.checked = r.value === val;
+      });
+      // Panel is now unlocked, so the hover shortcut removes itself.
+      renderExamQuickStatus();
+    });
+  });
 };
 
 /** Fetch the signature whose contact_name matches the supplied name. */
 const findTrainerSignature = async (/** @type {string} */ name) => {
-  if (!name) return null;
+  const clean = String(name || '').trim();
+  if (!clean) return null;
+  // 1) Exact (case-insensitive) contact_name match.
+  try {
+    const resp = await fetch(`${API_BASE}/api/signatures/by-contact?name=${encodeURIComponent(clean)}`, {
+      headers: { Accept: 'application/json' },
+    });
+    const data = await resp.json().catch(() => null);
+    if (data && data.ok && data.signature) return data.signature;
+  } catch (_) { /* fall through to fuzzy search */ }
+  // 2) Fallback: fuzzy search, then match on contact_name / created_by so a
+  //    slightly different stored name (extra spaces, partial name) still resolves.
+  try {
+    const resp = await fetch(`${API_BASE}/api/signatures?q=${encodeURIComponent(clean)}&limit=25`, {
+      headers: { Accept: 'application/json' },
+    });
+    const data = await resp.json().catch(() => null);
+    const rows = data && Array.isArray(data.signatures) ? data.signatures : [];
+    const lc = clean.toLowerCase();
+    const hit = rows.find((/** @type {any} */ r) => {
+      const cn = String(r.contact_name || '').trim().toLowerCase();
+      const cb = String(r.created_by || '').trim().toLowerCase();
+      return (cn && (cn.includes(lc) || lc.includes(cn))) || (cb && (cb.includes(lc) || lc.includes(cb)));
+    });
+    return hit || null;
+  } catch (_) {
+    return null;
+  }
+};
+
+/**
+ * Auto-fill the Registration signature pad from a signature already on file.
+ * Runs only for a brand-new registration (no applicant loaded) and never
+ * overwrites a signature the applicant just drew.
+ */
+const autofillRegistrationSignature = async () => {
+  const form = document.getElementById('inscriptionForm');
+  if (form && form.dataset.reviewOnly === 'true') return;
+  // Only when starting a fresh registration (no existing candidate loaded).
+  const candNo = byId('CandidateNo');
+  if (candNo && String(candNo.value || '').trim() !== '') return;
+  const p = padParts(REG_SIG_ID);
+  if (!p || !p.input) return;
+  // Preserve a freshly hand-drawn signature.
+  if (/^data:/.test(String(p.input.value || ''))) return;
+  const nameEl = byId('FullName');
+  const name = nameEl ? String(nameEl.value || '').trim() : '';
+  // Clearing the Full Name removes an auto-filled signature.
+  if (!name) {
+    if (p.input.value) {
+      p.input.value = '';
+      enableSignaturePad(REG_SIG_ID);
+      applyPanelSignature('');
+    }
+    return;
+  }
+  let sig = null;
   try {
     const resp = await fetch(`${API_BASE}/api/signatures/by-contact?name=${encodeURIComponent(name)}`, {
       headers: { Accept: 'application/json' },
     });
     const data = await resp.json().catch(() => null);
-    return data && data.ok && data.signature ? data.signature : null;
-  } catch (_) {
-    return null;
+    if (data && data.ok && data.signature) sig = data.signature;
+  } catch (_) { /* noop */ }
+  if (sig && sig.signature_id != null && sig.signature_id !== '') {
+    const url = `${API_BASE}/api/signatures/image?id=${encodeURIComponent(String(sig.signature_id))}`;
+    showSignatureImage(REG_SIG_ID, url);
+    p.input.value = String(sig.signature_id);
+    applyPanelSignature(url);
   }
 };
 
@@ -1180,6 +1471,33 @@ const DOSSIER_CHECKS = /** @type {{ name: string, when: () => boolean }[]} */ ([
 const dossByName = (/** @type {string} */ name) =>
   /** @type {HTMLInputElement | null} */ (document.querySelector(`#panel-dossier input[name="${name}"]`));
 
+// Optional ("if required") Dossier documents: user-ticked and persisted to the
+// applicant row on certification, then restored on reload.
+const DOSSIER_OPTIONAL = /** @type {{ name: string, col: string }[]} */ ([
+  { name: 'doss-doc-1-5', col: 'doss_cv' },                    // Curriculum Vitae
+  { name: 'doss-doc-1-6', col: 'doss_criminal_record' },      // Criminal record
+  { name: 'doss-doc-1-7', col: 'doss_medical_certificate' },  // Medical certificate
+]);
+
+/** Lock (read-only) or unlock the optional Dossier document checkboxes. */
+const setDossierOptionalLocked = (/** @type {boolean} */ locked) => {
+  DOSSIER_OPTIONAL.forEach(({ name }) => {
+    const cb = dossByName(name);
+    if (!cb) return;
+    cb.disabled = locked;
+    cb.classList.toggle('cursor-not-allowed', locked);
+    cb.classList.toggle('opacity-80', locked);
+  });
+};
+
+/** Restore the optional Dossier document checkboxes from a saved record. */
+const loadDossierOptional = (/** @type {Record<string, any> | null | undefined} */ record) => {
+  DOSSIER_OPTIONAL.forEach(({ name, col }) => {
+    const cb = dossByName(name);
+    if (cb) cb.checked = isTruthy(record && record[col]);
+  });
+};
+
 /** True when every governed checklist document is ticked. */
 const allDossierChecked = () =>
   DOSSIER_CHECKS.every(({ name }) => { const cb = dossByName(name); return !!(cb && cb.checked); });
@@ -1236,6 +1554,8 @@ const syncDossierChecklist = () => {
 const resetDossierChecklist = () => {
   const ack = byId('ack-dossier');
   if (ack) { ack.checked = false; ack.disabled = false; delete ack.dataset.committed; }
+  DOSSIER_OPTIONAL.forEach(({ name }) => { const cb = dossByName(name); if (cb) cb.checked = false; });
+  setDossierOptionalLocked(false);
   syncDossierChecklist();
 };
 
@@ -1346,7 +1666,7 @@ const setEvalFullReadonly = () => {
   setEvalFinalEditable(false);
   const ack = byId('ack-evaluation');
   if (ack) ack.disabled = true;
-  ['eval-sig-formateur', 'eval-sig-resp'].forEach((cid) => {
+  ['eval-sig-formateur'].forEach((cid) => {
     const canvas = document.getElementById(cid);
     if (canvas) canvas.style.pointerEvents = 'none';
   });
@@ -1362,11 +1682,10 @@ const setEvalStatus = (/** @type {string} */ html, /** @type {string} */ cls) =>
   banner.classList.remove('hidden');
 };
 
-const isEvalTrainerRole = () => {
-  const role = getCurrentRole();
-  return role === 'Instructor' || role === 'Head of Training';
-};
-const isEvalAdminRole = () => getCurrentRole() === 'Admin';
+// Grid + Stage-1 signature: the roles with Read/Write on the evaluation form.
+const isEvalTrainerRole = () => ['Admin', 'Instructor', 'Secretary'].includes(getCurrentRole());
+// Final Result + Stage-2 finalise: the roles with Read/Write on the Final Result.
+const isEvalAdminRole = () => ['Admin', 'Secretary', 'Head of Training'].includes(getCurrentRole());
 
 /** True once every grade cell (auto + manual) has a value. */
 const evalGradesFilled = () =>
@@ -1375,9 +1694,9 @@ const evalGradesFilled = () =>
     return !!(el && String(el.value).trim() !== '');
   });
 
-/** Paint an auto-applied signature (trainer or manager) + store its id. */
-const setEvalSignature = (/** @type {'formateur'|'resp'} */ which, /** @type {any} */ sigId) => {
-  const canvasId = which === 'formateur' ? 'eval-sig-formateur' : 'eval-sig-resp';
+/** Paint the auto-applied trainer signature + store its id. */
+const setEvalSignature = (/** @type {'formateur'} */ which, /** @type {any} */ sigId) => {
+  const canvasId = 'eval-sig-formateur';
   const input = byId(canvasId + '-data');
   if (sigId != null && sigId !== '') {
     showSignatureImage(canvasId, `${API_BASE}/api/signatures/image?id=${encodeURIComponent(String(sigId))}`);
@@ -1388,11 +1707,16 @@ const setEvalSignature = (/** @type {'formateur'|'resp'} */ which, /** @type {an
   }
 };
 
-/** The signature record of the currently signed-in user (by full name). */
+/** The signature record of the currently signed-in user (by name, then username). */
 const currentUserSignature = async () => {
   const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
-  const userName = session ? (session.full_name || session.username || '') : '';
-  return userName ? await findTrainerSignature(userName) : null;
+  const fullName = session ? String(session.full_name || '') : '';
+  const userName = session ? String(session.username || '') : '';
+  let sig = fullName ? await findTrainerSignature(fullName) : null;
+  if ((!sig || !sig.signature_id) && userName && userName !== fullName) {
+    sig = await findTrainerSignature(userName);
+  }
+  return sig;
 };
 
 /** Persist the current evaluation state (grades / decision / acks / signatures). */
@@ -1480,7 +1804,6 @@ const loadEvaluation = (/** @type {Record<string, any> | null | undefined} */ re
 
   // Signatures.
   setEvalSignature('formateur', record && record.eval_trainer_signature_id);
-  setEvalSignature('resp', record && record.eval_manager_signature_id);
 
   // Auto-graded cells: recompute only while the Instructor has not signed yet
   // (once signed, the stored values are authoritative).
@@ -1498,7 +1821,6 @@ const resetEvaluation = () => {
   document.querySelectorAll('#panel-evaluation input[name="Final_Decision"]').forEach((el) => { /** @type {HTMLInputElement} */ (el).checked = false; });
   const obs = byId('eval-Observations'); if (obs) obs.value = '';
   setEvalSignature('formateur', '');
-  setEvalSignature('resp', '');
   const ack = byId('ack-evaluation'); if (ack) { ack.checked = false; ack.disabled = false; }
   setEvalStatus('', '');
   try { if (typeof updateEvalSummary === 'function') updateEvalSummary(); } catch (_) { /* noop */ }
@@ -1509,10 +1831,132 @@ const findLatestWorkflowTab = () => {
   if (typeof TAB_ORDER === 'undefined' || typeof isTabUnlocked !== 'function') return null;
   let latest = null;
   for (const tab of TAB_ORDER) {
-    if (tab === 'dossier') continue; // checklist is always unlocked, ignore for auto-jump
+    if (tab === 'dossier') {
+      // Checklist is always unlocked; treat it as the latest panel only once the
+      // workflow has actually reached it (Mensuration complete).
+      if (typeof isStepReached === 'function' && isStepReached('dossier')) latest = tab;
+      continue;
+    }
     if (tabState[tab] || isTabUnlocked(tab)) latest = tab;
   }
   return latest;
+};
+
+// ── Measurements (Panel-Mensuration) ───────────────────────────
+// Field id → measurements table column. All values are plain scalars.
+const MEAS_FIELD_COLS = /** @type {Record<string, string>} */ ({
+  'meas-Height': 'height_cm',
+  'meas-Weight': 'weight_kg',
+  'meas-ShoeSize': 'shoe_size',
+  'meas-ShirtSize': 'shirt_size',
+  'meas-TrouserSize': 'trouser_size',
+  'meas-JacketSize': 'jacket_size',
+  'meas-BloodGroup': 'blood_group',
+  'meas-KnownAllergies': 'known_allergies',
+  'meas-SpecialMedicalObservations': 'special_medical_observations',
+  'meas-FullName': 'full_name',
+  'meas-Relationship': 'relationship',
+  'meas-PhoneNumber': 'phone_number',
+  'meas-Address': 'address',
+  'meas-observations': 'observation',
+});
+
+// Fields backed by NOT NULL columns → must be filled before the sheet can be
+// acknowledged. Nullable columns (allergies / medical / observations) stay
+// optional.
+const MEAS_REQUIRED_IDS = [
+  'meas-Height', 'meas-Weight', 'meas-ShoeSize', 'meas-ShirtSize',
+  'meas-TrouserSize', 'meas-JacketSize', 'meas-BloodGroup',
+  'meas-FullName', 'meas-Relationship', 'meas-PhoneNumber', 'meas-Address',
+];
+
+/** Enable/disable every control in the Measurements panel (except the ack). */
+const setMensurationReadonly = (/** @type {boolean} */ ro) => {
+  const panel = document.getElementById('panel-mensuration');
+  if (!panel) return;
+  panel.querySelectorAll('input, textarea, select').forEach((el) => {
+    const input = /** @type {HTMLInputElement} */ (el);
+    if (input.id === 'ack-mensuration') return;
+    if (ro) makeReadonly(input); else unmakeReadonly(input);
+  });
+};
+
+/** Clear the Measurements panel for a brand-new applicant. */
+const clearMeasurements = () => {
+  Object.keys(MEAS_FIELD_COLS).forEach((id) => { const el = byId(id); if (el) el.value = ''; });
+  const ack = byId('ack-mensuration');
+  if (ack) { ack.checked = false; ack.disabled = false; }
+  setMensurationReadonly(false);
+  setGreenTab('mensuration', false, DOT_ALL['mensuration']);
+};
+
+/** Validate the required Measurements fields. Returns true when complete. */
+const validateMensuration = () => {
+  for (const id of MEAS_REQUIRED_IDS) {
+    const el = byId(id);
+    if (!el || String(el.value).trim() === '') {
+      window.alert(t('measErrRequired', 'Please fill in every required field before confirming the Measurements Sheet.'));
+      if (el) { try { el.focus(); } catch (_) { /* noop */ } }
+      return false;
+    }
+  }
+  return true;
+};
+
+/** Build the measurements payload from the panel fields. */
+const collectMeasurements = () => {
+  /** @type {Record<string, any>} */
+  const payload = { candidate_no: currentId };
+  Object.entries(MEAS_FIELD_COLS).forEach(([id, col]) => {
+    const el = byId(id);
+    payload[col] = el ? String(el.value).trim() : '';
+  });
+  return payload;
+};
+
+/** Persist the Measurements panel + acknowledgment to the DB. */
+const saveMeasurements = async () => {
+  if (!currentId) return false;
+  const payload = collectMeasurements();
+  payload.ack_mensuration = true;
+  try {
+    const resp = await fetch(`${API_BASE}/api/measurements`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json().catch(() => null);
+    return !!(data && data.ok);
+  } catch (_) { return false; }
+};
+
+/** Load the stored Measurements row for a candidate and restore panel state. */
+const loadMeasurements = async (/** @type {number | null} */ candidateNo) => {
+  clearMeasurements();
+  if (!candidateNo) return;
+  let row = null;
+  try {
+    const resp = await fetch(`${API_BASE}/api/measurements?candidate_no=${encodeURIComponent(String(candidateNo))}`, {
+      headers: { Accept: 'application/json' },
+    });
+    const data = await resp.json().catch(() => null);
+    row = data && data.ok ? data.measurement : null;
+  } catch (_) { row = null; }
+  if (!row) return;
+
+  Object.entries(MEAS_FIELD_COLS).forEach(([id, col]) => {
+    const el = byId(id);
+    if (el && row[col] !== null && row[col] !== undefined) el.value = String(row[col]);
+  });
+
+  // Read-only state persists from the DB: once acknowledged, lock the panel.
+  if (isTruthy(row.ack_mensuration)) {
+    const ack = byId('ack-mensuration');
+    if (ack) { ack.checked = true; ack.disabled = true; }
+    setMensurationReadonly(true);
+    setGreenTab('mensuration', true, DOT_ALL['mensuration']);
+    try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
+  }
 };
 
 const load = async (/** @type {Record<string, any> | null | undefined} */ record) => {
@@ -1553,6 +1997,13 @@ const load = async (/** @type {Record<string, any> | null | undefined} */ record
 
     // Individual Attendance Report: pull the candidate's attendance from the DB.
     await loadPresences(currentId);
+    // Restore the acknowledged (green + read-only) state from the record.
+    if (isTruthy(record.ack_presences)) {
+      try {
+        const pres = /** @type {any} */ (window).GSSPresences;
+        if (pres && typeof pres.markComplete === 'function') pres.markComplete();
+      } catch (_) { /* noop */ }
+    }
 
     // Individual Exam Result (Panel-Exam): populate the Score + Pass/Fail from
     // the server once the exam has been corrected, and restore the
@@ -1564,6 +2015,10 @@ const load = async (/** @type {Record<string, any> | null | undefined} */ record
     // Individual Evaluation Sheet (Panel-Evaluation): auto-graded cells come
     // from the attendance + exam data loaded just above, so this runs after them.
     loadEvaluation(record);
+
+    // Measurements Sheet (Panel-Mensuration): restore stored values + the
+    // read-only lock when the sheet was already acknowledged.
+    await loadMeasurements(currentId);
 
     // Applicant signature: show on the form pad + the read-only panels.
     const sigId = record.applicant_signature_id;
@@ -1595,11 +2050,19 @@ const load = async (/** @type {Record<string, any> | null | undefined} */ record
       setExamPanelReadonly(true);
     }
 
+    // Re-evaluate the hover "set exam status" shortcut for this applicant so it
+    // appears whenever the Exam panel ends up locked for authorised staff.
+    renderExamQuickStatus();
+
     const ackDossier = byId('ack-dossier');
     if (ackDossier) { ackDossier.checked = false; ackDossier.disabled = false; delete ackDossier.dataset.committed; }
+    loadDossierOptional(record);
     if (isTruthy(record.ack_dossier)) {
       if (ackDossier) { ackDossier.checked = true; ackDossier.disabled = true; ackDossier.dataset.committed = 'true'; }
       setGreenTab('dossier', true, DOT_ALL['dossier']);
+      setDossierOptionalLocked(true);
+    } else {
+      setDossierOptionalLocked(false);
     }
     syncDossierChecklist();
     try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
@@ -1611,7 +2074,7 @@ const load = async (/** @type {Record<string, any> | null | undefined} */ record
     try {
       const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
       const role = session && session.role ? String(session.role) : '';
-      const canReview = role === 'Admin' || role === 'Head of Training';
+      const canReview = role === 'Admin' || role === 'Head of Training' || role === 'Secretary';
       const isPending = String(record.interview_result || 'Pending').toLowerCase() === 'pending';
       const regForm = /** @type {HTMLFormElement | null} */ (document.getElementById('inscriptionForm'));
       if (regForm) delete regForm.dataset.reviewOnly;
@@ -1622,7 +2085,7 @@ const load = async (/** @type {Record<string, any> | null | undefined} */ record
         const remarks = byId('Remarks');
         if (remarks) remarks.disabled = false;
         const submitBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('regSubmitBtn'));
-        if (submitBtn) submitBtn.disabled = false;
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove('hidden'); }
         // Flag the form so the submit handler validates ONLY the reviewer's
         // fields (Interview Result / Remarks) and skips the full-panel check,
         // which would otherwise fail on read-only combos that could not be
@@ -1634,15 +2097,14 @@ const load = async (/** @type {Record<string, any> | null | undefined} */ record
     // Interview outcome drives navigation: Accepted → jump to the Conditions
     // tab; otherwise stay on Registration and show a "Pending Approval" banner.
     const accepted = String(record.interview_result || '').toLowerCase() === 'accepted';
-    const examCorrected = isTruthy(record.ack_exam);
     setPendingBanner(!accepted);
     // The Conditions tab is only reachable once the interview is Accepted.
     try { if (/** @type {any} */ (window).GSSTabs) /** @type {any} */ (window).GSSTabs.setForcedLock('conditions', !accepted); } catch (_) { /* noop */ }
     try {
       let targetTab = accepted ? 'conditions' : 'registration';
-      // Once the exam has been corrected, jump straight to the most advanced
-      // reachable tab (e.g. Exam, Evaluation, or beyond).
-      if (examCorrected) {
+      // For an accepted candidate, open the most advanced panel their workflow
+      // has reached so every role lands on the latest active step.
+      if (accepted) {
         const latest = findLatestWorkflowTab();
         if (latest) targetTab = latest;
       }
@@ -1680,4 +2142,5 @@ const setPendingBanner = (/** @type {boolean} */ show) => {
   reset: resetToNewMode,
   completeRegistration,
   loadOfficerSignature,
+  refreshExamPanel: () => loadExamResult(currentId),
 };

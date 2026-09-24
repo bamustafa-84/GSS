@@ -263,6 +263,11 @@ function wirePresencesAck() {
       return;
     }
 
+    if (!window.confirm(presT('confirmPresences', 'Are you sure you want to confirm the attendance information?'))) {
+      ack.checked = false;
+      return;
+    }
+
     const payload = {
       training_title: title,
       trainer,
@@ -279,7 +284,42 @@ function wirePresencesAck() {
       });
       const data = await resp.json().catch(() => null);
       if (!resp.ok || !data || !data.ok) {
+        // Surface a schedule conflict (same title, different dates/times) so the
+        // user knows the existing course was protected from being overwritten.
+        if (data && data.status === 'conflict') {
+          window.alert(data.error || presT('presTrainingConflict',
+            'A course with this title already exists with a different schedule. Use a distinct title for a session with different dates/times.'));
+          ack.checked = false;
+          return;
+        }
         throw new Error('save failed');
+      }
+      // The exact session this save resolved to (title + trainer + From/To);
+      // used to link the applicant to the right row, not the first same-title one.
+      const trainingId = data.training_id != null
+        ? data.training_id
+        : (data.training && data.training.training_id);
+      // Persist the per-applicant acknowledgement flag so the green / read-only
+      // state is restored when the applicant is reopened.
+      const candEl = document.getElementById('CandidateNo');
+      const candNo = candEl ? String(/** @type {HTMLInputElement} */ (candEl).value || '').trim() : '';
+      if (candNo) {
+        // Link the applicant to this training so its details can be fetched back
+        // into the panel on reload (title / trainer / From / To).
+        try {
+          await fetch(`${API_BASE}/api/training/assign`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ candidate_no: candNo, training_title: title, training_id: trainingId }),
+          });
+        } catch (_) { /* noop */ }
+        try {
+          await fetch(`${API_BASE}/api/applicants`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ candidate_no: candNo, ack_presences: true }),
+          });
+        } catch (_) { /* noop */ }
       }
       // Success → mark the tab complete, lock the panel, advance to the next.
       markPresencesDone(ack);
@@ -307,6 +347,30 @@ function setPresencesReadonly(ro) {
   panel.querySelectorAll('.gss-sign-clear').forEach((b) => {
     /** @type {HTMLElement} */ (b).classList.toggle('hidden', ro);
   });
+  // When the panel is enabled for an Instructor, default the Trainer to them.
+  if (!ro) presSelectInstructorTrainer();
+}
+
+/**
+ * When an Instructor works on the (editable) Attendance panel, default the
+ * Trainer select to their own name — they are the trainer for the session.
+ */
+function presSelectInstructorTrainer() {
+  const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
+  if (!session || session.role !== 'Instructor') return;
+  const name = session.full_name ? String(session.full_name)
+    : (session.username ? String(session.username) : '');
+  if (!name) return;
+  const sel = /** @type {HTMLSelectElement | null} */ (document.getElementById('att-Trainer'));
+  if (!sel || sel.disabled) return;
+  let opt = Array.prototype.find.call(sel.options, (/** @type {HTMLOptionElement} */ o) => o.value === name);
+  if (!opt) {
+    opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    sel.appendChild(opt);
+  }
+  sel.value = name;
 }
 
 /**

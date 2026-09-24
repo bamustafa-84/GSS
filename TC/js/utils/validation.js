@@ -48,7 +48,6 @@
         // Fees
         { key: 'IsPaid', type: 'radio' },
         // Applicant's declaration
-        { key: 'ApplicantName', type: 'input' },
         { key: 'ApplicantSignature', type: 'signature' },
         { key: 'ApplicantDate', type: 'input' },
         // Administration use
@@ -87,6 +86,12 @@
       case 'signature':
         return control ? control.closest('.gss-sign') || control : null;
       default:
+        // Searchable selects hide the real <select> (sr-only) behind a custom
+        // button; ring the visible button so the error is actually seen.
+        if (control && control.tagName === 'SELECT' && control.classList.contains('sr-only')) {
+          const wrap = control.closest('.relative');
+          return (wrap && wrap.querySelector('button[aria-haspopup="listbox"]')) || control;
+        }
         return control || null;
     }
   };

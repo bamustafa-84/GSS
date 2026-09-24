@@ -159,10 +159,69 @@ const initInscriptionForm = () => {
     dobInput.min = toISO(minDob);
   }
 
+  // ── Duplicate Full Name guard ───────────────────────────────
+  // Warns and blocks submission when the entered Full Name already exists.
+  const fullNameInput = field('FullName');
+  const submitBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('regSubmitBtn'));
+  const nameStatus = document.getElementById('fullNameStatus');
+  let nameIsDuplicate = false;
+  let nameCheckToken = 0;
+
+  const setNameStatus = (/** @type {string} */ msg) => {
+    nameIsDuplicate = !!msg;
+    if (nameStatus) {
+      nameStatus.textContent = msg;
+      nameStatus.classList.toggle('hidden', !msg);
+    }
+    setError(fullNameInput, nameIsDuplicate);
+    if (submitBtn) submitBtn.disabled = nameIsDuplicate;
+  };
+
+  const checkDuplicateName = async () => {
+    if (!fullNameInput) return;
+    // Skip while an Admin reviews an existing applicant's interview outcome.
+    if (form.dataset.reviewOnly === 'true') { setNameStatus(''); return; }
+    const name = fullNameInput.value.trim();
+    if (!name) { setNameStatus(''); return; }
+    const candNo = field('CandidateNo');
+    const currentNo = candNo ? String(candNo.value || '').trim() : '';
+    const token = ++nameCheckToken;
+    try {
+      const res = await fetch(`${API_BASE}/api/registration/search?q=${encodeURIComponent(name)}&limit=25`, { headers: { Accept: 'application/json' } });
+      const data = await res.json().catch(() => ({}));
+      if (token !== nameCheckToken) return; // superseded by a newer keystroke
+      const lc = name.toLowerCase();
+      const dup = (Array.isArray(data.applicants) ? data.applicants : []).some((/** @type {any} */ a) =>
+        String(a.full_name || '').trim().toLowerCase() === lc &&
+        String(a.candidate_no != null ? a.candidate_no : '') !== currentNo);
+      setNameStatus(dup ? t().nameExists : '');
+    } catch (_) {
+      if (token === nameCheckToken) setNameStatus('');
+    }
+  };
+
+  if (fullNameInput) {
+    let nameTimer = 0;
+    fullNameInput.addEventListener('input', () => {
+      window.clearTimeout(nameTimer);
+      nameTimer = window.setTimeout(checkDuplicateName, 350);
+    });
+    fullNameInput.addEventListener('blur', checkDuplicateName);
+  }
+  form.addEventListener('reset', () => window.setTimeout(() => setNameStatus(''), 0));
+
   // ── Submit ──────────────────────────────────────────────────
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     const m = t();
+
+    // Block submission (incl. Enter key) while the Full Name is a duplicate.
+    if (nameIsDuplicate) {
+      if (fullNameInput) fullNameInput.focus();
+      status.textContent = m.nameExists;
+      status.className = 'min-h-6 text-sm font-semibold text-red-600';
+      return;
+    }
 
     [
       field('FullName'),
@@ -293,12 +352,16 @@ const initInscriptionForm = () => {
       }
       // Refresh the toolbar notification counts (a new Pending applicant).
       try { /** @type {any} */ (window).GSSAdmin?.refreshCounts?.(); } catch (_) { /* noop */ }
-      // Show the success message briefly, then close the modal.
-      window.setTimeout(() => {
-        const modalEl = document.getElementById('formModal');
-        if (modalEl) { modalEl.classList.add('hidden'); modalEl.classList.remove('flex'); }
-        try { if (linker && typeof linker.reset === 'function') linker.reset(); } catch (_) { /* noop */ }
-      }, 1400);
+      // A new registration stays open and advances to the Conditions panel
+      // (completeRegistration already switched tabs). Reviewer edits just show
+      // the success message briefly, then close the modal.
+      if (reviewOnly) {
+        window.setTimeout(() => {
+          const modalEl = document.getElementById('formModal');
+          if (modalEl) { modalEl.classList.add('hidden'); modalEl.classList.remove('flex'); }
+          try { if (linker && typeof linker.reset === 'function') linker.reset(); } catch (_) { /* noop */ }
+        }, 1400);
+      }
     } catch (err) {
       status.textContent = err instanceof Error ? err.message : 'Save failed';
       status.className = 'min-h-6 text-sm font-semibold text-red-600';
