@@ -235,6 +235,79 @@ END;
 $$;
 
 -- ================================================================
+-- (Re)generate the temporary account for ONE "Not Generated" candidate
+-- ================================================================
+-- Payload: { exam_id, candidate_no, generated_by }
+-- Used from the credential-management table to fill in a candidate who has no
+-- account yet (e.g. assigned after the exam was published). Fresh password is
+-- returned ONCE, matching exam_publish's behaviour.
+CREATE OR REPLACE FUNCTION exam_access_generate(p_data jsonb)
+RETURNS jsonb
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_exam   bigint := nullif(p_data->>'exam_id', '')::bigint;
+  v_cand   bigint := nullif(p_data->>'candidate_no', '')::bigint;
+  v_who    bigint := nullif(p_data->>'generated_by', '')::bigint;
+  v_train  bigint;
+  v_date   date;
+  v_name   text;
+  v_user   text;
+  v_pwd    text;
+  v_expire timestamp;
+BEGIN
+  IF v_exam IS NULL OR v_cand IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'status', 'invalid', 'error', 'exam_id and candidate_no are required');
+  END IF;
+
+  SELECT training_id, exam_date INTO v_train, v_date FROM exams WHERE exam_id = v_exam;
+  IF v_train IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'status', 'no_exam', 'error', 'exam not found');
+  END IF;
+  IF v_date IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'status', 'no_date', 'error', 'publish the exam (set an exam date) first');
+  END IF;
+
+  -- The candidate must be assigned to this exam's training.
+  SELECT a.full_name INTO v_name
+  FROM applicant_training at
+  JOIN applicant a ON a.candidate_no = at.candidate_no
+  WHERE at.training_id = v_train AND at.candidate_no = v_cand;
+  IF v_name IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'status', 'not_assigned', 'error', 'candidate is not assigned to this training');
+  END IF;
+
+  -- Already has an account → nothing to regenerate.
+  IF EXISTS (SELECT 1 FROM exam_access WHERE exam_id = v_exam AND candidate_no = v_cand) THEN
+    RETURN jsonb_build_object('ok', false, 'status', 'exists', 'error', 'this candidate already has a credential');
+  END IF;
+
+  v_user   := v_cand::text;
+  v_pwd    := exam_gen_password(8);
+  v_expire := (v_date + INTERVAL '1 day')::timestamp;
+
+  INSERT INTO exam_access (
+    exam_id, candidate_no, training_id, username,
+    password_hash, password_enc,
+    credential_status, is_active, available_from, expires_at,
+    created_by, updated_by
+  ) VALUES (
+    v_exam, v_cand, v_train, v_user,
+    crypt(v_pwd, gen_salt('bf')),
+    pgp_sym_encrypt(v_pwd, exam_cred_key()),
+    'Generated', TRUE, CURRENT_TIMESTAMP, v_expire,
+    v_who, v_who
+  );
+
+  RETURN jsonb_build_object(
+    'ok', true, 'status', 'ok',
+    'candidate_no', v_cand, 'candidate_name', v_name,
+    'username', v_user, 'password', v_pwd
+  );
+END;
+$$;
+
+-- ================================================================
 -- Sweeper · expire overdue attempts + credentials (server-authoritative)
 -- ================================================================
 -- 1) Any IN_PROGRESS attempt past its expires_at is auto-closed: partial

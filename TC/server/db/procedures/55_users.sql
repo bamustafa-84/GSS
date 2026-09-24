@@ -57,7 +57,7 @@ BEGIN
                      ELSE username END,
     role      = CASE WHEN p_data ? 'role' THEN auth_valid_role(p_data->>'role') ELSE role END,
     is_active = CASE WHEN p_data ? 'is_active' THEN (p_data->>'is_active')::boolean ELSE is_active END,
-    updated_by = 'ADMIN',
+    updated_by = coalesce(nullif(p_data->>'updated_by_name', ''), 'ADMIN'),
     updated_at = now()
   WHERE login_id = p_login_id
   RETURNING * INTO v_user;

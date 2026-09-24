@@ -224,11 +224,18 @@ BEGIN
   IF NOT FOUND THEN
     RETURN jsonb_build_object('ok', false, 'status', 'invalid');
   END IF;
-  IF v_ac.is_active IS NOT TRUE OR v_ac.credential_status = 'Disabled' THEN
+  IF v_ac.credential_status = 'Disabled' THEN
     RETURN jsonb_build_object('ok', false, 'status', 'disabled');
   END IF;
-  IF v_ac.expires_at IS NOT NULL AND v_ac.expires_at <= v_now THEN
+  -- Check expiry before the generic inactive check so expired credentials are
+  -- reported as "expired" (the sweeper deactivates them, which would otherwise
+  -- fall through to the "disabled" branch below).
+  IF v_ac.credential_status = 'Expired'
+     OR (v_ac.expires_at IS NOT NULL AND v_ac.expires_at <= v_now) THEN
     RETURN jsonb_build_object('ok', false, 'status', 'expired');
+  END IF;
+  IF v_ac.is_active IS NOT TRUE THEN
+    RETURN jsonb_build_object('ok', false, 'status', 'disabled');
   END IF;
 
   -- Re-verify the assignment chain (never trust anything but the credential).

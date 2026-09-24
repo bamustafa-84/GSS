@@ -29,10 +29,21 @@ ALTER TABLE applicant ADD COLUMN IF NOT EXISTS exam_observations text;
 ALTER TABLE applicant ADD COLUMN IF NOT EXISTS exam_instructor_signature_id integer;
 ALTER TABLE applicant ADD COLUMN IF NOT EXISTS ack_exam boolean DEFAULT false;
 
+-- Applicant: Individual Attendance Report (panel-presences) acknowledgement.
+-- TRUE once the candidate's attendance information is confirmed (green tab +
+-- read-only). Written by the Attendance panel's Candidate Information checkbox.
+ALTER TABLE applicant ADD COLUMN IF NOT EXISTS ack_presences boolean DEFAULT false;
+
 -- Applicant: Individual Candidate File (Dossier) checklist certification flag.
 -- TRUE once an authorised user (Admin / Secretary / Head of Training) certifies
 -- that every checklist document is present (green Dossier tab + read-only).
 ALTER TABLE applicant ADD COLUMN IF NOT EXISTS ack_dossier boolean DEFAULT false;
+
+-- Applicant: Dossier optional ("if required") documents. Persisted alongside the
+-- certification (ack_dossier) so their ticked state is restored on reload.
+ALTER TABLE applicant ADD COLUMN IF NOT EXISTS doss_cv boolean DEFAULT false;
+ALTER TABLE applicant ADD COLUMN IF NOT EXISTS doss_criminal_record boolean DEFAULT false;
+ALTER TABLE applicant ADD COLUMN IF NOT EXISTS doss_medical_certificate boolean DEFAULT false;
 
 -- Applicant: Individual Evaluation Sheet (Panel-Evaluation).
 -- Grade cells (auto + instructor-entered), final decision, observations, the two
@@ -69,3 +80,36 @@ ALTER TABLE questions ADD COLUMN IF NOT EXISTS in_exam boolean NOT NULL DEFAULT 
 
 -- Free-text instructions shown to the candidate at the top of the exam.
 ALTER TABLE exams ADD COLUMN IF NOT EXISTS instructions text;
+
+-- applicant_training: audit fields. Added here (before the sample-data seed in
+-- 46_sample_data.sql) so the seed can populate created_by/updated_by. The same
+-- statements are repeated idempotently in 80_exam_access.sql.
+ALTER TABLE applicant_training ADD COLUMN IF NOT EXISTS created_by BIGINT;
+ALTER TABLE applicant_training ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE applicant_training ADD COLUMN IF NOT EXISTS updated_by BIGINT;
+ALTER TABLE applicant_training ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- applicant: audit fields. created_by / updated_by hold the login id of the
+-- acting user (stamped by the server from the actor headers); the timestamps
+-- default on insert and are forced on update by dynamic_crud.
+ALTER TABLE applicant ADD COLUMN IF NOT EXISTS created_by BIGINT;
+ALTER TABLE applicant ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE applicant ADD COLUMN IF NOT EXISTS updated_by BIGINT;
+ALTER TABLE applicant ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- measurements / attendance / training: audit fields (same BIGINT-id convention
+-- as applicant_training). Stamped by their upsert procedures from the actor id.
+ALTER TABLE measurements ADD COLUMN IF NOT EXISTS created_by BIGINT;
+ALTER TABLE measurements ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE measurements ADD COLUMN IF NOT EXISTS updated_by BIGINT;
+ALTER TABLE measurements ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS created_by BIGINT;
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS updated_by BIGINT;
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE training ADD COLUMN IF NOT EXISTS created_by BIGINT;
+ALTER TABLE training ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE training ADD COLUMN IF NOT EXISTS updated_by BIGINT;
+ALTER TABLE training ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;

@@ -98,6 +98,9 @@ BEGIN
     FROM information_schema.columns c
     WHERE c.table_schema = v_schema AND c.table_name = p_table
       AND c.is_identity = 'NO' AND c.is_generated = 'NEVER'
+      -- Let the column DEFAULT (CURRENT_TIMESTAMP) stamp the audit timestamps
+      -- so they are always server-authoritative, never client-supplied.
+      AND c.column_name NOT IN ('created_at', 'updated_at')
       AND p_data ? c.column_name;
 
     IF v_cols IS NULL THEN
@@ -123,9 +126,22 @@ BEGIN
     FROM information_schema.columns c
     WHERE c.table_schema = v_schema AND c.table_name = p_table
       AND c.is_identity = 'NO' AND c.is_generated = 'NEVER'
+      -- Creation audit is immutable; updated_at is forced below, never taken
+      -- from the payload.
+      AND c.column_name NOT IN ('created_by', 'created_at', 'updated_at')
       AND p_data ? c.column_name;
 
-    IF v_set IS NULL THEN
+    -- Always refresh updated_at when the table carries that audit column, so
+    -- every update is stamped regardless of what the payload contained.
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns c
+      WHERE c.table_schema = v_schema AND c.table_name = p_table
+        AND c.column_name = 'updated_at'
+    ) THEN
+      v_set := concat_ws(', ', v_set, 'updated_at = CURRENT_TIMESTAMP');
+    END IF;
+
+    IF v_set IS NULL OR v_set = '' THEN
       RAISE EXCEPTION 'No valid columns supplied for update' USING ERRCODE = '22023';
     END IF;
 

@@ -85,7 +85,12 @@ BEGIN
       RAISE EXCEPTION 'category, fr_title and en_title are required' USING ERRCODE = '22023';
     END IF;
     INSERT INTO dictionary (category, fr_title, en_title, created_by, updated_by, updated_at)
-    VALUES (v_cat, v_fr, v_en, 'System', 'System', CURRENT_TIMESTAMP)
+    VALUES (
+      v_cat, v_fr, v_en,
+      coalesce(nullif(p_data->>'created_by_name', ''), 'System'),
+      coalesce(nullif(p_data->>'updated_by_name', ''), 'System'),
+      CURRENT_TIMESTAMP
+    )
     RETURNING jsonb_build_object(
       'dict_id', dictionary_id, 'category', category,
       'fr_title', fr_title, 'en_title', en_title, 'label', en_title, 'code', en_title
@@ -100,7 +105,7 @@ BEGIN
       category   = coalesce(nullif(trim(p_data->>'category'), ''), category),
       fr_title   = coalesce(nullif(trim(p_data->>'fr_title'), ''), fr_title),
       en_title   = coalesce(nullif(trim(p_data->>'en_title'), ''), en_title),
-      updated_by = 'System',
+      updated_by = coalesce(nullif(p_data->>'updated_by_name', ''), 'System'),
       updated_at = CURRENT_TIMESTAMP
     WHERE dictionary_id = p_id
     RETURNING jsonb_build_object(
