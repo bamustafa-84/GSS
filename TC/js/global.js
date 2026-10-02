@@ -186,6 +186,62 @@ const GSSSession = Object.freeze({
 });
 
 /* ------------------------------------------------------------------
+ * Centralized role / access control
+ * ------------------------------------------------------------------
+ * Single source of truth for role-based access so individual pages and
+ * reports never redefine their own role lists. Roles are compared in a
+ * case-insensitive way against the signed-in user's `role`.
+ * ---------------------------------------------------------------- */
+
+/**
+ * Roles allowed to open the standalone reporting dashboards
+ * (training-register, attendance-sheet, …). Lower-cased for comparison.
+ * @type {readonly string[]}
+ */
+const GSS_REPORT_ROLES = Object.freeze(['admin', 'head of training']);
+
+/**
+ * Shared access helpers. All members are static so any page/module can call
+ * `GSSAccess.role()` / `.hasAny()` / `.canViewReports()` without instantiation.
+ */
+const GSSAccess = Object.freeze({
+  /**
+   * The signed-in user's role, lower-cased. Empty string when there is no
+   * active session or the role is unknown.
+   * @returns {string}
+   */
+  role() {
+    try {
+      const s = GSSSession.get();
+      return s && s.role ? String(s.role).toLowerCase() : '';
+    } catch (_) {
+      return '';
+    }
+  },
+  /**
+   * True when the current role matches any of the supplied roles
+   * (case-insensitive). An unknown/empty role never matches.
+   * @param {string[]} roles
+   * @returns {boolean}
+   */
+  hasAny(roles) {
+    const r = this.role();
+    if (!r) return false;
+    return (roles || []).some((x) => String(x).toLowerCase() === r);
+  },
+  /**
+   * True when the current user may view the reporting dashboards. An
+   * unknown/empty role is permitted so the reports remain usable when opened
+   * without a session (e.g. local development / Live Server).
+   * @returns {boolean}
+   */
+  canViewReports() {
+    const r = this.role();
+    return !r || GSS_REPORT_ROLES.includes(r);
+  },
+});
+
+/* ------------------------------------------------------------------
  * Actor propagation
  * ------------------------------------------------------------------
  * Attach the signed-in user to every API request via headers so the
