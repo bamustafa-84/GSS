@@ -936,6 +936,31 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // ── Reports ────────────────────────────────────────────────
+    // Training Register dashboard data. All filters optional.
+    if (method === 'GET' && url.startsWith('/api/reports/training-register')) {
+      const q = new URL(url, 'http://localhost').searchParams;
+      const rows = await callProc('training_register_report', '$1, $2, $3, $4, $5', [
+        q.get('from') || null,
+        q.get('to') || null,
+        q.get('trainer') || null,
+        q.get('status') || null,
+        q.get('search') || null,
+      ]);
+      sendJson(res, 200, { ok: true, trainings: Array.isArray(rows) ? rows : [] });
+      return;
+    }
+
+    // Candidate Details report: enrolled candidates (+ measurements). With a
+    // training_id → that session only; without → every candidate (all sessions).
+    if (method === 'GET' && url.startsWith('/api/reports/candidate-details')) {
+      const q = new URL(url, 'http://localhost').searchParams;
+      const id = Number.parseInt(q.get('training_id') || '', 10);
+      const rows = await callProc('candidate_details_report', '$1', [Number.isFinite(id) ? id : null]);
+      sendJson(res, 200, { ok: true, candidates: Array.isArray(rows) ? rows : [] });
+      return;
+    }
+
     // ── Training (panel-presences) ─────────────────────────────
     if (method === 'GET' && url.startsWith('/api/training/students')) {
       const params = new URL(url, 'http://localhost').searchParams;
