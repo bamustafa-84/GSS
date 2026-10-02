@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GSS · Training Register</title>
+    <script src="../../libs/tailwind.min.js"></script>
+    <script>
+      // Mirror the app's fluid typography config so the report matches tc.html.
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontSize: {
+              xs: ["clamp(0.7rem, 0.66rem + 0.2vw, 0.75rem)", { lineHeight: "1rem" }],
+              sm: ["clamp(0.8rem, 0.75rem + 0.25vw, 0.875rem)", { lineHeight: "1.25rem" }],
+              base: ["clamp(0.9rem, 0.85rem + 0.3vw, 1rem)", { lineHeight: "1.5rem" }],
+              lg: ["clamp(1rem, 0.93rem + 0.35vw, 1.125rem)", { lineHeight: "1.75rem" }],
+              xl: ["clamp(1.1rem, 1rem + 0.4vw, 1.25rem)", { lineHeight: "1.75rem" }],
+              "2xl": ["clamp(1.3rem, 1.15rem + 0.6vw, 1.5rem)", { lineHeight: "2rem" }],
+              "3xl": ["clamp(1.5rem, 1.3rem + 0.9vw, 1.875rem)", { lineHeight: "2.25rem" }],
+              "4xl": ["clamp(1.8rem, 1.5rem + 1.4vw, 2.25rem)", { lineHeight: "2.5rem" }],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      /* ── Smooth, structured scrolling ─────────────────────────────────
+         The Filters panel is frozen at the top of the viewport (see
+         #filterBar) while the report sections scroll smoothly beneath it. */
+      html { scroll-behavior: smooth; }
+      /* Opaque background so scrolling content never bleeds through the frozen
+         filter, and a clear separator shadow once it is pinned. */
+      #filterBar {
+        background-color: #ffffff;
+        box-shadow: 0 10px 24px rgba(4, 47, 141, 0.10);
+      }
+      /* Offset section tops so nothing hides behind the frozen filter when
+         scrolled/anchored into view. */
+      .mx-auto fieldset { scroll-margin-top: 6rem; }
+
+      /* ── Skeleton shimmer preloader ─────────────────────────────────
+         Shown while the report data loads, then faded out. The shimmer
+         sweep communicates progress without a spinner. */
+      @keyframes gssShimmer { 100% { transform: translateX(100%); } }
+      .gss-skel { position: relative; overflow: hidden; background-color: #e2e8f0; border-radius: 0.5rem; }
+      .gss-skel::after {
+        content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+        animation: gssShimmer 1.5s infinite;
+      }
+      #reportSkeleton { transition: opacity 0.35s ease; }
+      #reportSkeleton.is-hidden { opacity: 0; pointer-events: none; }
+
+      /* Suppress the browser's own print header/footer (URL · title · date)
+         by removing the page margin, then restore breathing room via padding
+         on the print container below. The report supplies its own header. */
+      @media print {
+        @page { size: A4 landscape; margin: 0; }
+        /* Keep brand colours, chart bars, status pills and the table header
+           visible in the PDF (browsers drop backgrounds by default). */
+        *, *::before, *::after {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        /* Strip interactive-only grid UI from the PDF. */
+        .sort-ind { display: none !important; }
+        /* Let the grid grow to its full height in the PDF (no inner scroll). */
+        #gridScroll {
+          max-height: none !important;
+          overflow: visible !important;
+        }
+        /* Landscape pagination: KPIs + Top 5 share page 1, then Most Attended
+           and the Training Grid each start on their own page. */
+        #secChart { break-before: page; page-break-before: always; }
+        #secGrid { break-before: page; page-break-before: always; }
+        fieldset, section { break-inside: avoid; }
+        #secGrid, #tableWrap, #gridScroll { break-inside: auto; }
+        /* Compact the Top 5 cards and keep all five on one landscape row. */
+        #topCourses {
+          grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+          gap: 0.35rem !important;
+        }
+        #topCourses .rounded-2xl {
+          padding: 0.45rem !important;
+          gap: 0.25rem !important;
+          border-radius: 0.6rem !important;
+        }
+        #topCourses .text-2xl { font-size: 1rem !important; }
+        #topCourses .text-sm { font-size: 0.68rem !important; }
+        #topCourses .h-7 { height: 1.1rem !important; width: 1.1rem !important; }
+        /* Shrink the grid header text so long labels (e.g. Recommended) fit
+           their narrow columns instead of overlapping the neighbour. */
+        #tableWrap thead th {
+          font-size: 0.62rem !important;
+          padding-left: 0.4rem !important;
+          padding-right: 0.4rem !important;
+          line-height: 1.1 !important;
+          overflow: hidden !important;
+        }
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
+
+    <!-- ═══════════════ SKELETON SHIMMER PRELOADER ═══════════════ -->
+    <div id="reportSkeleton" class="fixed inset-0 z-50 overflow-hidden bg-slate-50 print:hidden" aria-hidden="true">
+      <div class="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-5 flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+          <div class="gss-skel h-14 w-14 rounded-2xl"></div>
+          <div class="flex-1 space-y-2">
+            <div class="gss-skel h-3 w-32"></div>
+            <div class="gss-skel h-5 w-56"></div>
+            <div class="gss-skel h-3 w-48"></div>
+          </div>
+          <div class="hidden gap-2 sm:flex">
+            <div class="gss-skel h-9 w-32 rounded-full"></div>
+            <div class="gss-skel h-9 w-24 rounded-full"></div>
+          </div>
+        </div>
+        <!-- Filters -->
+        <div class="mb-5 rounded-[20px] border-2 border-[#042F8D]/10 bg-white p-4 sm:p-5">
+          <div class="gss-skel h-6 w-28 rounded-lg"></div>
+          <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+            <div class="gss-skel h-10 w-full"></div>
+            <div class="gss-skel h-10 w-full"></div>
+            <div class="gss-skel h-10 w-full"></div>
+            <div class="gss-skel h-10 w-full"></div>
+            <div class="gss-skel h-10 w-full"></div>
+            <div class="gss-skel h-10 w-full"></div>
+          </div>
+        </div>
+        <!-- KPI cards -->
+        <div class="mb-5 rounded-[20px] border-2 border-[#042F8D]/10 bg-white p-4 sm:p-5">
+          <div class="gss-skel h-6 w-40 rounded-lg"></div>
+          <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            <div class="gss-skel h-16 w-full rounded-xl"></div>
+            <div class="gss-skel h-16 w-full rounded-xl"></div>
+            <div class="gss-skel h-16 w-full rounded-xl"></div>
+            <div class="gss-skel h-16 w-full rounded-xl"></div>
+            <div class="gss-skel h-16 w-full rounded-xl"></div>
+            <div class="gss-skel h-16 w-full rounded-xl"></div>
+            <div class="gss-skel h-16 w-full rounded-xl"></div>
+            <div class="gss-skel h-16 w-full rounded-xl"></div>
+          </div>
+        </div>
+        <!-- Top courses + grid -->
+        <div class="mb-5 rounded-[20px] border-2 border-[#042F8D]/10 bg-white p-4 sm:p-5">
+          <div class="gss-skel h-6 w-48 rounded-lg"></div>
+          <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <div class="gss-skel h-28 w-full rounded-2xl"></div>
+            <div class="gss-skel h-28 w-full rounded-2xl"></div>
+            <div class="gss-skel h-28 w-full rounded-2xl"></div>
+            <div class="gss-skel h-28 w-full rounded-2xl"></div>
+            <div class="gss-skel h-28 w-full rounded-2xl"></div>
+          </div>
+        </div>
+        <div class="gss-skel h-64 w-full rounded-[20px]"></div>
+      </div>
+    </div>
+
+    <div class="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8 print:max-w-none print:px-[12mm] print:py-[10mm]">
+
+      <!-- ═══════════════ PDF-ONLY HEADER ═══════════════ -->
+      <header id="pdfHeader" class="mb-6 hidden items-center justify-between gap-4 border-b-2 border-[#042F8D] pb-4 print:flex">
+        <div class="flex items-center gap-4">
+          <img src="../../img/logo.png" alt="GSS Training Center" class="h-16 w-auto object-contain" />
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wider text-[#042F8D]" data-i18n="trBrand">GSS Training Center</p>
+            <h1 class="text-2xl font-bold text-slate-900" data-i18n="trReportTitle">Training Register</h1>
+            <p class="text-sm text-slate-500" data-i18n="trReportSubtitle">GSS Training Center — Training Register Report</p>
+          </div>
+        </div>
+        <div class="text-right text-xs text-slate-500">
+          <p><span data-i18n="trGeneratedOn">Generated on</span> <span id="trGenDatePdf" class="font-semibold text-slate-700">—</span></p>
+        </div>
+      </header>
+
+      <!-- ═══════════════ REPORT HEADER ═══════════════ -->
+      <header class="mb-5 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 lg:flex-row lg:items-center lg:justify-between print:hidden">
+        <div class="flex items-center gap-4">
+          <div class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-slate-200">
+            <img src="../../img/logo.png" alt="GSS Training Center" class="h-full w-full object-contain p-1.5" />
+          </div>
+          <div class="min-w-0">
+            <p class="text-xs font-semibold uppercase tracking-wider text-[#042F8D]" data-i18n="trBrand">GSS Training Center</p>
+            <h1 class="truncate text-2xl font-bold text-slate-900" data-i18n="trReportTitle">Training Register</h1>
+            <p class="mt-0.5 text-sm text-slate-500" data-i18n="trReportSubtitle">GSS Training Center — Training Register Report</p>
+            <p class="mt-1 text-xs text-slate-400">
+              <span data-i18n="trGeneratedOn">Generated on</span>
+              <span id="trGenDate" class="font-medium text-slate-500">—</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 print:hidden">
+          <button type="button" id="btnExcel" title="Export to Excel"
+            class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:bg-emerald-100 focus:outline-none focus:ring-4 focus:ring-emerald-200">
+            <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span class="hidden sm:inline" data-i18n="trExportExcel">Export to Excel</span>
+          </button>
+          <button type="button" id="btnPrint" title="Print"
+            class="inline-flex items-center gap-2 rounded-full bg-[#042F8D] px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0b4dc2] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/20">
+            <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            <span class="hidden sm:inline" data-i18n="trPrint">Print</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- ═══════════════ FILTERS ═══════════════ -->
+      <fieldset id="filterBar" class="mb-5 rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 shadow-sm transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5 md:sticky md:top-0 md:z-30 print:hidden">
+        <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
+          <svg class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+          <span data-i18n="trFilters">Filters</span>
+        </legend>
+        <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+          <div class="flex flex-col gap-1.5">
+            <label for="fltFrom" class="text-xs font-semibold uppercase tracking-wide text-slate-500" data-i18n="trDateFrom">Date From</label>
+            <input type="date" id="fltFrom"
+              class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm transition-colors focus:border-[#042F8D] focus:outline-none focus:ring-2 focus:ring-[#042F8D]/20" />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label for="fltTo" class="text-xs font-semibold uppercase tracking-wide text-slate-500" data-i18n="trDateTo">Date To</label>
+            <input type="date" id="fltTo"
+              class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm transition-colors focus:border-[#042F8D] focus:outline-none focus:ring-2 focus:ring-[#042F8D]/20" />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label for="fltCourse" class="text-xs font-semibold uppercase tracking-wide text-slate-500" data-i18n="trCourse">Training</label>
+            <select id="fltCourse"
+              class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm transition-colors focus:border-[#042F8D] focus:outline-none focus:ring-2 focus:ring-[#042F8D]/20">
+              <option value="" data-i18n="trAll">All</option>
+            </select>
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label for="fltTrainer" class="text-xs font-semibold uppercase tracking-wide text-slate-500" data-i18n="trTrainer">Trainer</label>
+            <select id="fltTrainer"
+              class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm transition-colors focus:border-[#042F8D] focus:outline-none focus:ring-2 focus:ring-[#042F8D]/20">
+              <option value="" data-i18n="trAll">All</option>
+            </select>
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label for="fltStatus" class="text-xs font-semibold uppercase tracking-wide text-slate-500" data-i18n="trStatus">Training Status</label>
+            <select id="fltStatus"
+              class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm transition-colors focus:border-[#042F8D] focus:outline-none focus:ring-2 focus:ring-[#042F8D]/20">
+              <option value="" data-i18n="trAll">All</option>
+              <option value="Planned" data-i18n="trStatusPlanned">Planned</option>
+              <option value="In Progress" data-i18n="trStatusInProgress">In Progress</option>
+              <option value="Completed" data-i18n="trStatusCompleted">Completed</option>
+            </select>
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label for="fltSearch" class="text-xs font-semibold uppercase tracking-wide text-slate-500" data-i18n="trSearch">Search</label>
+            <div class="relative">
+              <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <input type="text" id="fltSearch" autocomplete="off" data-i18n-placeholder="trSearchPlaceholder" placeholder="Search title or trainer…"
+                class="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-800 shadow-sm transition-colors focus:border-[#042F8D] focus:outline-none focus:ring-2 focus:ring-[#042F8D]/20" />
+            </div>
+          </div>
+        </div>
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div id="activeFilters" class="flex min-w-0 flex-wrap items-center gap-2"></div>
+          <button type="button" id="btnReset"
+            class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300">
+            <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg>
+            <span data-i18n="trReset">Reset Filters</span>
+          </button>
+        </div>
+      </fieldset>
+
+      <!-- ═══════════════ KPI STATISTICS ═══════════════ -->
+      <fieldset class="mb-5 rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 shadow-sm sm:p-5">
+        <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
+          <svg class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="8"/><rect x="12" y="6" width="3" height="12"/><rect x="17" y="13" width="3" height="5"/></svg>
+          <span data-i18n="trStatsTitle">Training Statistics</span>
+        </legend>
+        <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div class="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#042F8D]/10 text-[#042F8D]"><svg class="h-4.5 w-4.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
+          <div class="min-w-0">
+            <p id="kpiTrainings" class="text-xl font-bold leading-tight text-slate-900">0</p>
+            <p class="truncate text-xs font-medium text-slate-500" data-i18n="trKpiTotalTrainings">Total Trainings</p>
+          </div>
+        </div>
+        <div class="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+          <div class="min-w-0">
+            <p id="kpiCandidates" class="text-xl font-bold leading-tight text-slate-900">0</p>
+            <p class="truncate text-xs font-medium text-slate-500" data-i18n="trKpiTotalCandidates">Total Candidates</p>
+          </div>
+        </div>
+        <div class="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
+          <div class="min-w-0">
+            <p id="kpiCompleted" class="text-xl font-bold leading-tight text-slate-900">0</p>
+            <p class="truncate text-xs font-medium text-slate-500" data-i18n="trKpiCompleted">Completed Trainings</p>
+          </div>
+        </div>
+        <div class="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-600"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></span>
+          <div class="min-w-0">
+            <p id="kpiInProgress" class="text-xl font-bold leading-tight text-slate-900">0</p>
+            <p class="truncate text-xs font-medium text-slate-500" data-i18n="trKpiInProgress">In Progress</p>
+          </div>
+        </div>
+        <div class="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+          <div class="min-w-0">
+            <p id="kpiUpcoming" class="text-xl font-bold leading-tight text-slate-900">0</p>
+            <p class="truncate text-xs font-medium text-slate-500" data-i18n="trKpiUpcoming">Upcoming Trainings</p>
+          </div>
+        </div>
+        <div class="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-100 text-teal-600"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+          <div class="min-w-0">
+            <p id="kpiRecommended" class="text-xl font-bold leading-tight text-slate-900">0</p>
+            <p class="truncate text-xs font-medium text-slate-500" data-i18n="trKpiRecommended">Recommended</p>
+          </div>
+        </div>
+        <div class="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-600"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></span>
+          <div class="min-w-0">
+            <p id="kpiNotRecommended" class="text-xl font-bold leading-tight text-slate-900">0</p>
+            <p class="truncate text-xs font-medium text-slate-500" data-i18n="trKpiNotRecommended">Not Recommended</p>
+          </div>
+        </div>
+        <div class="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="m8 12 2.5 2.5L16 9"/></svg></span>
+          <div class="min-w-0">
+            <p id="kpiPassed" class="text-xl font-bold leading-tight text-slate-900">0</p>
+            <p class="truncate text-xs font-medium text-slate-500" data-i18n="trKpiPassGrade">Pass Grade</p>
+          </div>
+        </div>
+        <div class="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-100 text-orange-700"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg></span>
+          <div class="min-w-0">
+            <p id="kpiFailed" class="text-xl font-bold leading-tight text-slate-900">0</p>
+            <p class="truncate text-xs font-medium text-slate-500" data-i18n="trKpiFailGrade">Fail Grade</p>
+          </div>
+        </div>
+        <div class="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-100 text-teal-700"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M20 7 10 17l-5-5"/><path d="M20 12v7H4V5h11"/></svg></span>
+          <div class="min-w-0">
+            <p id="kpiPassRate" class="text-xl font-bold leading-tight text-slate-900">0%</p>
+            <p class="truncate text-xs font-medium text-slate-500" data-i18n="trKpiPassRate">Pass Percentage</p>
+          </div>
+        </div>
+        <div class="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-700"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="m18 6-12 12M6 6l12 12"/><circle cx="12" cy="12" r="10"/></svg></span>
+          <div class="min-w-0">
+            <p id="kpiFailRate" class="text-xl font-bold leading-tight text-slate-900">0%</p>
+            <p class="truncate text-xs font-medium text-slate-500" data-i18n="trKpiFailRate">Fail Percentage</p>
+          </div>
+        </div>
+        <div class="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg></span>
+          <div class="min-w-0">
+            <p id="kpiRecRate" class="text-xl font-bold leading-tight text-slate-900">0%</p>
+            <p class="truncate text-xs font-medium text-slate-500" data-i18n="trKpiRecRate">Recommendation Rate</p>
+          </div>
+        </div>
+        </div>
+      </fieldset>
+
+      <!-- ═══════════════ TOP 5 MOST-TAKEN COURSES ═══════════════ -->
+      <fieldset class="mb-5 rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 shadow-sm sm:p-5">
+        <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
+          <svg class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+          <span data-i18n="trTopCoursesTitle">Top 5 Most-Taken Courses</span>
+        </legend>
+        <div id="topCourses" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"></div>
+        <div id="topCoursesEmpty" class="hidden flex-col items-center justify-center gap-2 py-8 text-center text-slate-400">
+          <svg class="h-9 w-9" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+          <p class="text-sm" data-i18n="trTopCoursesEmpty">No course data to display</p>
+        </div>
+      </fieldset>
+
+      <!-- ═══════════════ ATTENDANCE CHART ═══════════════ -->
+      <fieldset id="secChart" class="mb-5 rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 shadow-sm sm:p-5">
+        <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
+          <svg class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span data-i18n="trChartTitle">Most Attended Courses</span>
+        </legend>
+        <div id="chart" class="mt-4 space-y-4"></div>
+        <div id="chartEmpty" class="hidden flex-col items-center justify-center gap-2 py-10 text-center text-slate-400">
+          <svg class="h-9 w-9" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <p class="text-sm" data-i18n="trChartEmpty">No attendance data to display</p>
+        </div>
+      </fieldset>
+
+      <!-- ═══════════════ TRAINING REGISTER GRID ═══════════════ -->
+      <fieldset id="secGrid" class="mb-5 rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 shadow-sm sm:p-5 print:mt-6">
+        <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
+          <svg class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+          <span data-i18n="trGridLegend">Training Grid</span>
+          <span id="gridTotal" class="ml-1 rounded-md bg-white/20 px-1.5 py-0.5 text-[0.65rem] font-bold tabular-nums">(0)</span>
+        </legend>
+
+        <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+        <!-- Loading skeleton -->
+        <div id="tableLoading" class="hidden p-5">
+          <div class="space-y-3">
+            <div class="h-10 w-full animate-pulse rounded-lg bg-slate-100"></div>
+            <div class="h-10 w-full animate-pulse rounded-lg bg-slate-100"></div>
+            <div class="h-10 w-full animate-pulse rounded-lg bg-slate-100"></div>
+            <div class="h-10 w-full animate-pulse rounded-lg bg-slate-100"></div>
+            <div class="h-10 w-full animate-pulse rounded-lg bg-slate-100"></div>
+          </div>
+        </div>
+
+        <!-- Error state -->
+        <div id="tableError" class="hidden flex-col items-center justify-center gap-3 p-12 text-center">
+          <span class="flex h-14 w-14 items-center justify-center rounded-full bg-rose-100 text-rose-600"><svg class="h-7 w-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
+          <div>
+            <p class="text-base font-semibold text-slate-900" data-i18n="trErrorTitle">Something went wrong</p>
+            <p class="mt-1 text-sm text-slate-500" data-i18n="trErrorBody">We couldn't load the training register.</p>
+          </div>
+          <button type="button" id="btnRetry"
+            class="inline-flex items-center gap-2 rounded-lg bg-[#042F8D] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#0b4dc2] focus:outline-none focus:ring-2 focus:ring-[#042F8D]/40">
+            <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg>
+            <span data-i18n="trRetry">Retry</span>
+          </button>
+        </div>
+
+        <!-- Empty state -->
+        <div id="tableEmpty" class="hidden flex-col items-center justify-center gap-3 p-12 text-center">
+          <span class="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400"><svg class="h-7 w-7" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></span>
+          <div>
+            <p class="text-base font-semibold text-slate-900" data-i18n="trEmptyTitle">No training records found</p>
+            <p class="mt-1 text-sm text-slate-500" data-i18n="trEmptyBody">No training records found for the selected filters.</p>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div id="tableWrap" class="hidden">
+          <div id="gridScroll" class="max-h-[32rem] overflow-y-auto overflow-x-auto">
+            <table class="w-full min-w-[880px] table-fixed border-collapse text-sm">
+              <thead class="sticky top-0 z-10 bg-[#042F8D] text-white">
+                <tr>
+                  <th data-sort="code" class="w-[11%] cursor-pointer select-none px-3 py-3 text-left font-semibold"><span class="inline-flex items-center gap-1"><span data-i18n="trColCode">Course Code</span><span class="sort-ind opacity-40">↕</span></span></th>
+                  <th data-sort="trainer" class="w-[15%] cursor-pointer select-none px-3 py-3 text-left font-semibold"><span class="inline-flex items-center gap-1"><span data-i18n="trColTrainer">Trainer</span><span class="sort-ind opacity-40">↕</span></span></th>
+                  <th data-sort="start" class="w-[10%] cursor-pointer select-none px-3 py-3 text-left font-semibold"><span class="inline-flex items-center gap-1"><span data-i18n="trColStartDate">Start Date</span><span class="sort-ind opacity-40">↕</span></span></th>
+                  <th data-sort="end" class="w-[10%] cursor-pointer select-none px-3 py-3 text-left font-semibold"><span class="inline-flex items-center gap-1"><span data-i18n="trColEndDate">End Date</span><span class="sort-ind opacity-40">↕</span></span></th>
+                  <th class="w-[8%] px-3 py-3 text-left font-semibold" data-i18n="trColStartTime">Start Time</th>
+                  <th class="w-[8%] px-3 py-3 text-left font-semibold" data-i18n="trColEndTime">End Time</th>
+                  <th data-sort="registered" class="w-[10%] cursor-pointer select-none px-3 py-3 text-center font-semibold"><span class="inline-flex items-center gap-1"><span data-i18n="trColRegistered">Registered Candidates</span><span class="sort-ind opacity-40">↕</span></span></th>
+                  <th data-sort="recommended" class="w-[9%] cursor-pointer select-none px-3 py-3 text-center font-semibold"><span class="inline-flex items-center gap-1"><span data-i18n="trColRecommended" class="print:hidden">Recommended</span><span data-i18n="trColRecommendedShort" class="hidden print:inline">Recomm.</span><span class="sort-ind opacity-40">↕</span></span></th>
+                  <th data-sort="nonrec" class="w-[9%] cursor-pointer select-none px-3 py-3 text-center font-semibold"><span class="inline-flex items-center gap-1"><span data-i18n="trColNonRecommended" class="print:hidden">Non-Recommended</span><span data-i18n="trColNonRecommendedShort" class="hidden print:inline">Non-Recomm.</span><span class="sort-ind opacity-40">↕</span></span></th>
+                  <th data-sort="status" class="w-[10%] cursor-pointer select-none px-3 py-3 text-left font-semibold"><span class="inline-flex items-center gap-1"><span data-i18n="trColStatus">Status</span><span class="sort-ind opacity-40">↕</span></span></th>
+                </tr>
+              </thead>
+              <tbody id="regBody" class="divide-y divide-slate-100"></tbody>
+            </table>
+
+            <!-- Lazy-load indicator / sentinel -->
+            <div id="loadSentinel" class="h-px w-full"></div>
+            <div class="flex items-center justify-center p-4 print:hidden">
+              <div id="loadMore" class="hidden items-center gap-2 text-sm font-medium text-slate-500">
+                <svg class="h-4 w-4 animate-spin text-[#042F8D]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>
+                <span data-i18n="trLoadingMore">Loading more records…</span>
+              </div>
+              <div id="allLoaded" class="hidden items-center gap-2 text-xs font-medium text-slate-400">
+                <svg class="h-4 w-4 text-emerald-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <span data-i18n="trAllLoaded">All records loaded</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        </div>
+      </fieldset>
+
+      <!-- ═══════════════ STATUS LEGEND ═══════════════ -->
+      <fieldset class="mb-5 rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 shadow-sm sm:p-5 print:mt-6 print:break-inside-avoid">
+        <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
+          <svg class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          <span data-i18n="trLegendTitle">Status legend</span>
+        </legend>
+        <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div class="flex items-center gap-3 rounded-xl border border-slate-100 bg-white/70 p-3">
+            <span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-700" data-i18n="trStatusPlanned">Planned</span>
+            <span class="text-sm text-slate-600" data-i18n="trLegendPlanned">Training has been created but hasn't started yet.</span>
+          </div>
+          <div class="flex items-center gap-3 rounded-xl border border-slate-100 bg-white/70 p-3">
+            <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700" data-i18n="trStatusInProgress">In Progress</span>
+            <span class="text-sm text-slate-600" data-i18n="trLegendInProgress">Training is currently taking place.</span>
+          </div>
+          <div class="flex items-center gap-3 rounded-xl border border-slate-100 bg-white/70 p-3">
+            <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700" data-i18n="trStatusCompleted">Completed</span>
+            <span class="text-sm text-slate-600" data-i18n="trLegendCompleted">Training has finished.</span>
+          </div>
+          <div class="flex items-center gap-3 rounded-xl border border-slate-100 bg-white/70 p-3">
+            <span class="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-1 text-xs font-semibold text-rose-700" data-i18n="trStatusCancelled">Cancelled</span>
+            <span class="text-sm text-slate-600" data-i18n="trLegendCancelled">Training was cancelled.</span>
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- ═══════════════ PDF SIGNATURES (print only) ═══════════════ -->
+      <section class="mt-10 hidden overflow-hidden print:block" style="break-inside: avoid;">
+        <div class="grid grid-cols-2 gap-10">
+          <div class="overflow-hidden">
+            <div class="flex h-36 flex-col overflow-hidden rounded-xl border-2 border-slate-300 p-3">
+              <p class="text-sm font-semibold text-slate-700" data-i18n="trStampTitle">Training Center Stamp</p>
+            </div>
+          </div>
+          <div class="overflow-hidden">
+            <div class="flex h-36 flex-col overflow-hidden rounded-xl border-2 border-slate-300 p-3">
+              <p class="text-sm font-semibold text-slate-700" data-i18n="trApprovalTitle">Management Approval</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script src="../../js/global.js"></script>
+    <script src="../../js/utils/translation.js"></script>
+    <script src="./training-register.js"></script>
+  </body>
+</html>

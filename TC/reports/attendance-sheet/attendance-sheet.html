@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GSS · Attendance Report</title>
+    <script src="../../libs/tailwind.min.js"></script>
+    <script>
+      // Mirror the app's fluid typography config so the report matches tc.html.
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontSize: {
+              xs: ["clamp(0.7rem, 0.66rem + 0.2vw, 0.75rem)", { lineHeight: "1rem" }],
+              sm: ["clamp(0.8rem, 0.75rem + 0.25vw, 0.875rem)", { lineHeight: "1.25rem" }],
+              base: ["clamp(0.9rem, 0.85rem + 0.3vw, 1rem)", { lineHeight: "1.5rem" }],
+              lg: ["clamp(1rem, 0.93rem + 0.35vw, 1.125rem)", { lineHeight: "1.75rem" }],
+              xl: ["clamp(1.1rem, 1rem + 0.4vw, 1.25rem)", { lineHeight: "1.75rem" }],
+              "2xl": ["clamp(1.3rem, 1.15rem + 0.6vw, 1.5rem)", { lineHeight: "2rem" }],
+              "3xl": ["clamp(1.5rem, 1.3rem + 0.9vw, 1.875rem)", { lineHeight: "2.25rem" }],
+              "4xl": ["clamp(1.8rem, 1.5rem + 1.4vw, 2.25rem)", { lineHeight: "2.5rem" }],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      /* ── Smooth, structured scrolling ─────────────────────────────────
+         The Course-Selection panel is frozen at the top of the viewport
+         (see #selectorBar) while the report sections scroll beneath it. */
+      html { scroll-behavior: smooth; }
+      #selectorBar {
+        background-color: #ffffff;
+        box-shadow: 0 10px 24px rgba(4, 47, 141, 0.10);
+      }
+      .mx-auto fieldset { scroll-margin-top: 6rem; }
+
+      /* Suppress the browser's own print header/footer (URL · title · date)
+         by removing the page margin; the report supplies its own header. */
+      @media print {
+        @page { margin: 0; }
+        /* Keep brand colours and status cells visible in the PDF. */
+        *, *::before, *::after {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        /* Let the attendance matrix grow to full width/height in the PDF. */
+        #arGridScroll {
+          max-height: none !important;
+          overflow: visible !important;
+        }
+        /* Shrink the matrix so wide date ranges fit the page. */
+        #arGrid th, #arGrid td { font-size: 0.55rem !important; padding: 0.15rem !important; }
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
+    <div class="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8 print:max-w-none print:px-[10mm] print:py-[8mm]">
+
+      <!-- ═══════════════ PDF-ONLY HEADER ═══════════════ -->
+      <header id="pdfHeader" class="mb-6 hidden items-center justify-between gap-4 border-b-2 border-[#042F8D] pb-4 print:flex">
+        <div class="flex items-center gap-4">
+          <img src="../../img/logo.png" alt="GSS Training Center" class="h-16 w-auto object-contain" />
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wider text-[#042F8D]" data-i18n="arBrand">GSS Training Center</p>
+            <h1 class="text-2xl font-bold text-slate-900" data-i18n="arReportTitle">Attendance Report</h1>
+            <p class="text-sm text-slate-500" data-i18n="arReportSubtitle">GSS Training Center — Attendance Report</p>
+          </div>
+        </div>
+        <div class="text-right text-xs text-slate-500">
+          <p><span data-i18n="arGeneratedOn">Generated on</span> <span id="arGenDatePdf" class="font-semibold text-slate-700">—</span></p>
+        </div>
+      </header>
+
+      <!-- ═══════════════ REPORT HEADER ═══════════════ -->
+      <header class="mb-5 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 lg:flex-row lg:items-center lg:justify-between print:hidden">
+        <div class="flex items-center gap-4">
+          <div class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-slate-200">
+            <img src="../../img/logo.png" alt="GSS Training Center" class="h-full w-full object-contain p-1.5" />
+          </div>
+          <div class="min-w-0">
+            <p class="text-xs font-semibold uppercase tracking-wider text-[#042F8D]" data-i18n="arBrand">GSS Training Center</p>
+            <h1 class="truncate text-2xl font-bold text-slate-900" data-i18n="arReportTitle">Attendance Report</h1>
+            <p class="mt-0.5 text-sm text-slate-500" data-i18n="arReportSubtitle">GSS Training Center — Attendance Report</p>
+            <p class="mt-1 text-xs text-slate-400">
+              <span data-i18n="arGeneratedOn">Generated on</span>
+              <span id="arGenDate" class="font-medium text-slate-500">—</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 print:hidden">
+          <button type="button" id="btnExcel" title="Export to Excel"
+            class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:bg-emerald-100 focus:outline-none focus:ring-4 focus:ring-emerald-200">
+            <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span class="hidden sm:inline" data-i18n="arExportExcel">Export to Excel</span>
+          </button>
+          <button type="button" id="btnPrint" title="Print"
+            class="inline-flex items-center gap-2 rounded-full bg-[#042F8D] px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0b4dc2] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/30">
+            <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            <span class="hidden sm:inline" data-i18n="arPrint">Print</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- ═══════════════ COURSE SELECTION ═══════════════ -->
+      <fieldset id="selectorBar" class="mb-5 rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 shadow-sm sm:p-5 md:sticky md:top-0 md:z-30 print:hidden">
+        <legend class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white">
+          <svg class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span data-i18n="arSelectMonth">Select a month</span>
+        </legend>
+
+        <div class="mt-4 flex flex-col gap-4">
+          <!-- Year + legend row -->
+          <div class="flex flex-wrap items-end justify-between gap-3">
+            <div class="flex flex-col gap-1.5">
+              <label for="arYear" class="text-xs font-semibold uppercase tracking-wide text-slate-500" data-i18n="arYear">Year</label>
+              <select id="arYear" class="w-40 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm focus:border-[#042F8D] focus:ring-2 focus:ring-[#042F8D]/20"></select>
+            </div>
+            <div class="flex flex-wrap items-center gap-3 text-xs font-medium text-slate-500">
+              <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-amber-400"></span><span data-i18n="arLegendActive">Active</span></span>
+              <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span><span data-i18n="arLegendCompleted">Completed</span></span>
+              <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-slate-300"></span><span data-i18n="arLegendNoCourse">No course</span></span>
+            </div>
+          </div>
+
+          <!-- Month pills -->
+          <div id="arMonths" class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-12"></div>
+
+          <!-- Course pills for the selected month -->
+          <div class="border-t border-slate-200 pt-3">
+            <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500" data-i18n="arCoursesLabel">Courses this month</p>
+            <div id="arCourses" class="flex flex-wrap gap-2"></div>
+            <p id="arCoursesEmpty" class="hidden text-sm text-slate-400" data-i18n="arNoCourse">No course scheduled for this month.</p>
+          </div>
+
+          <!-- Instructor -->
+          <div id="arInstructorBar" class="hidden items-center gap-2 rounded-lg bg-[#042F8D]/5 px-3 py-2 text-sm">
+            <svg class="h-4 w-4 shrink-0 text-[#042F8D]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span class="font-semibold text-slate-600" data-i18n="arInstructor">Instructor</span>
+            <span class="text-slate-400">:</span>
+            <span id="arInstructorName" class="font-semibold text-[#042F8D]">—</span>
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- ═══════════════ ATTENDANCE SUMMARY ═══════════════ -->
+      <fieldset class="mb-5 rounded-[20px] border-2 border-[#042F8D]/20 p-4 sm:p-5">
+        <legend class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white">
+          <span data-i18n="arSummaryTitle">Summary</span>
+        </legend>
+        <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div class="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#042F8D]/10 text-[#042F8D]"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+            <div class="min-w-0"><p id="arSumDays" class="text-xl font-bold text-slate-900">0</p><p class="truncate text-xs font-medium text-slate-500" data-i18n="arSumDays">Number of days</p></div>
+          </div>
+          <div class="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <div class="min-w-0"><p id="arSumOnTime" class="text-xl font-bold text-emerald-700">0</p><p class="truncate text-xs font-medium text-emerald-600" data-i18n="arSumOnTime">Arrived on time</p></div>
+          </div>
+          <div class="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+            <div class="min-w-0"><p id="arSumLate" class="text-xl font-bold text-amber-700">0</p><p class="truncate text-xs font-medium text-amber-600" data-i18n="arSumLate">Arrived late</p></div>
+          </div>
+          <div class="flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50 p-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-600"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></span>
+            <div class="min-w-0"><p id="arSumAbsent" class="text-xl font-bold text-rose-700">0</p><p class="truncate text-xs font-medium text-rose-600" data-i18n="arSumAbsent">Absent</p></div>
+          </div>
+          <div class="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64A9 9 0 1 1 5.64 6.64"/><line x1="12" y1="2" x2="12" y2="12"/></svg></span>
+            <div class="min-w-0"><p id="arSumExcluded" class="text-xl font-bold text-slate-700">0</p><p class="truncate text-xs font-medium text-slate-500" data-i18n="arSumExcluded">Excluded</p></div>
+          </div>
+          <div class="flex items-center gap-3 rounded-xl border border-violet-200 bg-violet-50 p-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg></span>
+            <div class="min-w-0"><p id="arSumRate" class="text-xl font-bold text-violet-700">0%</p><p class="truncate text-xs font-medium text-violet-600" data-i18n="arSumRate">Attendance rate</p></div>
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- ═══════════════ ATTENDANCE DETAILS ═══════════════ -->
+      <fieldset class="mb-5 rounded-[20px] border-2 border-[#042F8D]/20 p-4 sm:p-5">
+        <legend class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white">
+          <span data-i18n="arDetailsTitle">Attendance Details</span>
+        </legend>
+
+        <!-- Empty state (no course selected) -->
+        <div id="arDetailsEmpty" class="mt-4 flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
+          <svg class="h-10 w-10 text-slate-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <p class="text-sm font-medium text-slate-400" data-i18n="arSelectCourse">Select a month and a course to view attendance details.</p>
+        </div>
+
+        <!-- Details content -->
+        <div id="arDetails" class="mt-4 hidden">
+          <!-- Meta block -->
+          <div class="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            <div><p class="text-xs font-semibold uppercase tracking-wide text-slate-400" data-i18n="arTrainingNo">Training No.</p><p id="arMetaNo" class="font-mono font-bold text-[#042F8D]">—</p></div>
+            <div class="lg:col-span-3"><p class="text-xs font-semibold uppercase tracking-wide text-slate-400" data-i18n="arTrainingTitle">Training Title</p><p id="arMetaTitle" class="font-semibold text-slate-800">—</p></div>
+            <div><p class="text-xs font-semibold uppercase tracking-wide text-slate-400" data-i18n="arStartDate">Start Date</p><p id="arMetaStart" class="font-medium text-slate-700">—</p></div>
+            <div><p class="text-xs font-semibold uppercase tracking-wide text-slate-400" data-i18n="arEndDate">End Date</p><p id="arMetaEnd" class="font-medium text-slate-700">—</p></div>
+            <div><p class="text-xs font-semibold uppercase tracking-wide text-slate-400" data-i18n="arStartTime">Start Time</p><p id="arMetaStartTime" class="font-medium text-slate-700">—</p></div>
+            <div><p class="text-xs font-semibold uppercase tracking-wide text-slate-400" data-i18n="arEndTime">End Time</p><p id="arMetaEndTime" class="font-medium text-slate-700">—</p></div>
+            <div><p class="text-xs font-semibold uppercase tracking-wide text-slate-400" data-i18n="arTrainer">Trainer</p><p id="arMetaTrainer" class="font-medium text-slate-700">—</p></div>
+            <div><p class="text-xs font-semibold uppercase tracking-wide text-slate-400" data-i18n="arRoom">Room</p><p id="arMetaRoom" class="font-medium text-slate-700">—</p></div>
+          </div>
+
+          <!-- Legend -->
+          <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium text-slate-600">
+            <span class="inline-flex items-center gap-1.5"><span class="inline-flex h-5 w-6 items-center justify-center rounded bg-emerald-100 font-bold text-emerald-700">AH</span><span data-i18n="arLegendAH">Arrived On Time</span></span>
+            <span class="inline-flex items-center gap-1.5"><span class="inline-flex h-5 w-6 items-center justify-center rounded bg-amber-100 font-bold text-amber-700">AR</span><span data-i18n="arLegendAR">Arrived Late</span></span>
+            <span class="inline-flex items-center gap-1.5"><span class="inline-flex h-5 w-7 items-center justify-center rounded bg-rose-100 font-bold text-rose-700">ABS</span><span data-i18n="arLegendABS">Absent</span></span>
+            <span class="inline-flex items-center gap-1.5"><span class="inline-flex h-5 w-6 items-center justify-center rounded bg-slate-200 font-bold text-slate-600">EX</span><span data-i18n="arLegendEX">Personnel Report / Excused</span></span>
+          </div>
+
+          <!-- Matrix -->
+          <div id="arGridScroll" class="mt-3 max-h-[34rem] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <table id="arGrid" class="border-collapse text-xs">
+              <thead class="sticky top-0 z-10 bg-[#042F8D] text-white">
+                <tr id="arGridHead"></tr>
+              </thead>
+              <tbody id="arGridBody" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+
+          <!-- Footer: stamp + approval -->
+          <div class="mt-4 hidden grid-cols-1 gap-4 print:grid sm:grid-cols-2">
+            <div class="flex h-28 flex-col items-center justify-end rounded-2xl border border-slate-200 bg-white p-3">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-400" data-i18n="arStamp">Training Center Stamp</p>
+            </div>
+            <div class="flex h-28 flex-col items-center justify-end rounded-2xl border border-slate-200 bg-white p-3">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-400" data-i18n="arApproval">Management Approval</p>
+            </div>
+          </div>
+        </div>
+      </fieldset>
+
+    </div>
+
+    <script src="../../js/global.js"></script>
+    <script src="../../js/utils/translation.js"></script>
+    <script src="./attendance-sheet.js"></script>
+  </body>
+</html>

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GSS · Candidate Details Report</title>
+    <script src="../../libs/tailwind.min.js"></script>
+    <script>
+      // Mirror the app's fluid typography config so the report matches tc.html.
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontSize: {
+              xs: ["clamp(0.7rem, 0.66rem + 0.2vw, 0.75rem)", { lineHeight: "1rem" }],
+              sm: ["clamp(0.8rem, 0.75rem + 0.25vw, 0.875rem)", { lineHeight: "1.25rem" }],
+              base: ["clamp(0.9rem, 0.85rem + 0.3vw, 1rem)", { lineHeight: "1.5rem" }],
+              lg: ["clamp(1rem, 0.93rem + 0.35vw, 1.125rem)", { lineHeight: "1.75rem" }],
+              xl: ["clamp(1.1rem, 1rem + 0.4vw, 1.25rem)", { lineHeight: "1.75rem" }],
+              "2xl": ["clamp(1.3rem, 1.15rem + 0.6vw, 1.5rem)", { lineHeight: "2rem" }],
+              "3xl": ["clamp(1.5rem, 1.3rem + 0.9vw, 1.875rem)", { lineHeight: "2.25rem" }],
+              "4xl": ["clamp(1.8rem, 1.5rem + 1.4vw, 2.25rem)", { lineHeight: "2.5rem" }],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      /* ── Structured scrolling ─────────────────────────────────────── */
+      html { scroll-behavior: smooth; }
+
+      /* ── Skeleton shimmer preloader ───────────────────────────────── */
+      @keyframes gssShimmer { 100% { transform: translateX(100%); } }
+      .gss-skel { position: relative; overflow: hidden; background-color: #e2e8f0; border-radius: 0.5rem; }
+      .gss-skel::after {
+        content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+        animation: gssShimmer 1.5s infinite;
+      }
+      #reportSkeleton { transition: opacity 0.35s ease; }
+      #reportSkeleton.is-hidden { opacity: 0; pointer-events: none; }
+
+      /* Group-header cells in the details grid keep their brand fill. */
+      #cdGrid th { white-space: nowrap; }
+
+      /* Frozen "Candidate Information" columns: pinned left while the rest
+         of the matrix scrolls horizontally. Left offsets are set inline by JS. */
+      #cdGrid .cd-freeze { position: sticky; z-index: 5; }
+      #cdGrid thead .cd-freeze { z-index: 25; }
+      #cdGrid tbody .cd-freeze { background-color: #ffffff; }
+      #cdGrid .cd-freeze-edge { box-shadow: 2px 0 0 0 rgba(4, 47, 141, 0.18); }
+
+      @media print {
+        @page { size: A4 landscape; margin: 0; }
+        *, *::before, *::after {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        /* Exclude the Candidate Details grid from the PDF (no space reserved). */
+        #cdGridScroll { display: none !important; }
+        /* Measurements Overview starts on its own page in the PDF. */
+        #cdMeasureCard { break-before: page; page-break-before: always; }
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
+
+    <!-- ═══════════════ SKELETON SHIMMER PRELOADER ═══════════════ -->
+    <div id="reportSkeleton" class="fixed inset-0 z-50 overflow-hidden bg-slate-50 print:hidden" aria-hidden="true">
+      <div class="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
+        <div class="mb-5 flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+          <div class="gss-skel h-14 w-14 rounded-2xl"></div>
+          <div class="flex-1 space-y-2">
+            <div class="gss-skel h-3 w-32"></div>
+            <div class="gss-skel h-5 w-56"></div>
+            <div class="gss-skel h-3 w-48"></div>
+          </div>
+          <div class="hidden gap-2 sm:flex">
+            <div class="gss-skel h-9 w-32 rounded-full"></div>
+            <div class="gss-skel h-9 w-24 rounded-full"></div>
+          </div>
+        </div>
+        <div class="mb-5 rounded-[20px] border-2 border-[#042F8D]/10 bg-white p-4 sm:p-5">
+          <div class="gss-skel h-6 w-36 rounded-lg"></div>
+          <div class="mt-4 grid grid-cols-6 gap-2 sm:grid-cols-12">
+            <div class="gss-skel h-9 w-full"></div><div class="gss-skel h-9 w-full"></div>
+            <div class="gss-skel h-9 w-full"></div><div class="gss-skel h-9 w-full"></div>
+            <div class="gss-skel h-9 w-full"></div><div class="gss-skel h-9 w-full"></div>
+            <div class="gss-skel h-9 w-full"></div><div class="gss-skel h-9 w-full"></div>
+            <div class="gss-skel h-9 w-full"></div><div class="gss-skel h-9 w-full"></div>
+            <div class="gss-skel h-9 w-full"></div><div class="gss-skel h-9 w-full"></div>
+          </div>
+        </div>
+        <div class="gss-skel h-72 w-full rounded-[20px]"></div>
+      </div>
+    </div>
+
+    <!-- Page container: fixed width; the candidate grid owns its own
+         horizontal/vertical scrolling so the page itself never scrolls sideways. -->
+    <div class="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 print:w-auto print:min-w-0 print:px-[10mm] print:py-[8mm]">
+
+      <!-- ═══════════════ PDF-ONLY HEADER ═══════════════ -->
+      <header id="pdfHeader" class="mb-6 hidden items-center justify-between gap-4 border-b-2 border-[#042F8D] pb-4 print:flex">
+        <div class="flex items-center gap-4">
+          <img src="../../img/logo.png" alt="GSS Training Center" class="h-16 w-auto object-contain" />
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wider text-[#042F8D]" data-i18n="cdBrand">GSS Training Center</p>
+            <h1 class="text-2xl font-bold text-slate-900" data-i18n="cdReportTitle">Candidate Details Report</h1>
+            <p class="text-sm text-slate-500" data-i18n="cdReportSubtitle">GSS Training Center — Candidate Details Report</p>
+          </div>
+        </div>
+        <div class="text-right text-xs text-slate-500">
+          <p><span data-i18n="cdGeneratedOn">Generated on</span> <span id="cdGenDatePdf" class="font-semibold text-slate-700">—</span></p>
+        </div>
+      </header>
+
+      <!-- ═══════════════ REPORT HEADER ═══════════════ -->
+      <header class="mb-5 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 lg:flex-row lg:items-center lg:justify-between print:hidden">
+        <div class="flex items-center gap-4">
+          <div class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-slate-200">
+            <img src="../../img/logo.png" alt="GSS Training Center" class="h-full w-full object-contain p-1.5" />
+          </div>
+          <div class="min-w-0">
+            <p class="text-xs font-semibold uppercase tracking-wider text-[#042F8D]" data-i18n="cdBrand">GSS Training Center</p>
+            <h1 class="truncate text-2xl font-bold text-slate-900" data-i18n="cdReportTitle">Candidate Details Report</h1>
+            <p class="mt-0.5 text-sm text-slate-500" data-i18n="cdReportSubtitle">GSS Training Center — Candidate Details Report</p>
+            <p class="mt-1 text-xs text-slate-400">
+              <span data-i18n="cdGeneratedOn">Generated on</span>
+              <span id="cdGenDate" class="font-medium text-slate-500">—</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 print:hidden">
+          <button type="button" id="btnExcel" title="Export to Excel"
+            class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:bg-emerald-100 focus:outline-none focus:ring-4 focus:ring-emerald-200">
+            <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span class="hidden sm:inline" data-i18n="cdExportExcel">Export to Excel</span>
+          </button>
+          <button type="button" id="btnPrint" title="Print"
+            class="inline-flex items-center gap-2 rounded-full bg-[#042F8D] px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0b4dc2] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/30">
+            <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            <span class="hidden sm:inline" data-i18n="cdPrint">Print</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- ═══════════════ SUMMARY ═══════════════ -->
+      <fieldset class="mb-5 rounded-[20px] border-2 border-[#042F8D]/20 p-4 sm:p-5">
+        <legend class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white">
+          <span data-i18n="cdSummaryTitle">Summary</span>
+        </legend>
+        <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div class="flex items-center gap-3 rounded-xl border border-sky-200 bg-sky-50 p-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-600"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+            <div class="min-w-0"><p id="cdSumEnrolled" class="text-xl font-bold text-sky-700">0</p><p class="truncate text-xs font-medium text-sky-600" data-i18n="cdSumEnrolled">Enrolled</p></div>
+          </div>
+          <div class="flex items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 p-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"/><path d="M5.5 21a8.38 8.38 0 0 1 13 0"/></svg></span>
+            <div class="min-w-0"><p id="cdSumMale" class="text-xl font-bold text-indigo-700">0</p><p class="truncate text-xs font-medium text-indigo-600" data-i18n="cdSumMale">Male</p></div>
+          </div>
+          <div class="flex items-center gap-3 rounded-xl border border-pink-200 bg-pink-50 p-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-pink-100 text-pink-600"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"/><path d="M5.5 21a8.38 8.38 0 0 1 13 0"/></svg></span>
+            <div class="min-w-0"><p id="cdSumFemale" class="text-xl font-bold text-pink-700">0</p><p class="truncate text-xs font-medium text-pink-600" data-i18n="cdSumFemale">Female</p></div>
+          </div>
+          <div class="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+            <div class="min-w-0"><p id="cdSumPaid" class="text-xl font-bold text-emerald-700">0</p><p class="truncate text-xs font-medium text-emerald-600" data-i18n="cdSumPaid">Paid</p></div>
+          </div>
+          <div class="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
+            <div class="min-w-0"><p id="cdSumFrench" class="text-xl font-bold text-amber-700">0</p><p class="truncate text-xs font-medium text-amber-600" data-i18n="cdSumFrench">French literate</p></div>
+          </div>
+          <div class="flex items-center gap-3 rounded-xl border border-violet-200 bg-violet-50 p-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600"><svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+            <div class="min-w-0"><p id="cdSumExperienced" class="text-xl font-bold text-violet-700">0</p><p class="truncate text-xs font-medium text-violet-600" data-i18n="cdSumExperienced">Security experience</p></div>
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- ═══════════════ DEMOGRAPHICS ═══════════════ -->
+      <fieldset class="mb-5 rounded-[20px] border-2 border-[#042F8D]/20 p-4 sm:p-5">
+        <legend class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white">
+          <span data-i18n="cdDemographicsTitle">Demographics</span>
+        </legend>
+        <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="rounded-2xl border border-slate-200 bg-white p-4">
+            <p class="mb-3 text-sm font-semibold text-slate-700" data-i18n="cdColMarital">Marital Status</p>
+            <div id="cdKpiMarital" class="space-y-2"></div>
+          </div>
+          <div class="rounded-2xl border border-slate-200 bg-white p-4">
+            <p class="mb-3 text-sm font-semibold text-slate-700" data-i18n="cdColNationality">Nationality</p>
+            <div id="cdKpiNationality" class="space-y-2"></div>
+          </div>
+          <div class="rounded-2xl border border-slate-200 bg-white p-4">
+            <p class="mb-3 text-sm font-semibold text-slate-700" data-i18n="cdColHealth">Health Status</p>
+            <div id="cdKpiHealth" class="space-y-2"></div>
+          </div>
+          <div class="rounded-2xl border border-slate-200 bg-white p-4">
+            <p class="mb-3 text-sm font-semibold text-slate-700" data-i18n="cdColEducation">Education Level</p>
+            <div id="cdKpiEducation" class="space-y-2"></div>
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- ═══════════════ MEASUREMENTS OVERVIEW ═══════════════ -->
+      <fieldset id="cdMeasureCard" class="mb-5 rounded-[20px] border-2 border-[#042F8D]/20 p-4 sm:p-5">
+        <legend class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white">
+          <span data-i18n="cdSizesTitle">Measurements Overview</span>
+        </legend>
+        <div class="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div class="rounded-2xl border border-slate-200 bg-white p-4 text-center">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500" data-i18n="cdColShoe">Shoe Size</p>
+            <p id="cdSizeShoe" class="mt-1 text-3xl font-bold text-[#042F8D]">—</p>
+            <p class="text-[0.7rem] text-slate-400" data-i18n="cdSizeMostCommon">Most common</p>
+            <div id="cdSizeShoeList" class="mt-3 space-y-1 text-xs"></div>
+          </div>
+          <div class="rounded-2xl border border-slate-200 bg-white p-4 text-center">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500" data-i18n="cdColShirt">Shirt Size</p>
+            <p id="cdSizeShirt" class="mt-1 text-3xl font-bold text-[#042F8D]">—</p>
+            <p class="text-[0.7rem] text-slate-400" data-i18n="cdSizeMostCommon">Most common</p>
+            <div id="cdSizeShirtList" class="mt-3 space-y-1 text-xs"></div>
+          </div>
+          <div class="rounded-2xl border border-slate-200 bg-white p-4 text-center">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500" data-i18n="cdColTrouser">Trouser Size</p>
+            <p id="cdSizeTrouser" class="mt-1 text-3xl font-bold text-[#042F8D]">—</p>
+            <p class="text-[0.7rem] text-slate-400" data-i18n="cdSizeMostCommon">Most common</p>
+            <div id="cdSizeTrouserList" class="mt-3 space-y-1 text-xs"></div>
+          </div>
+          <div class="rounded-2xl border border-slate-200 bg-white p-4 text-center">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500" data-i18n="cdColJacket">Jacket Size</p>
+            <p id="cdSizeJacket" class="mt-1 text-3xl font-bold text-[#042F8D]">—</p>
+            <p class="text-[0.7rem] text-slate-400" data-i18n="cdSizeMostCommon">Most common</p>
+            <div id="cdSizeJacketList" class="mt-3 space-y-1 text-xs"></div>
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- ═══════════════ CANDIDATE DETAILS ═══════════════ -->
+      <fieldset id="cdDetailsCard" class="mb-5 min-w-0 rounded-[20px] border-2 border-[#042F8D]/20 p-4 sm:p-5">
+        <legend class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white">
+          <span data-i18n="cdDetailsTitle">Candidate Details</span>
+        </legend>
+
+        <!-- Toolbar: global search across every grid column + live result count. -->
+        <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between print:hidden">
+          <div class="relative w-full sm:max-w-sm">
+            <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
+              <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </span>
+            <input id="cdSearch" type="search" autocomplete="off"
+              class="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-800 shadow-sm focus:border-[#042F8D] focus:ring-2 focus:ring-[#042F8D]/20"
+              data-i18n-attr="placeholder" data-i18n="cdSearchPlaceholder" placeholder="Search any field…" />
+          </div>
+          <p class="text-xs font-medium text-slate-500">
+            <span id="cdResultCount" class="font-bold text-[#042F8D]">0</span>
+            <span data-i18n="cdResultsSuffix">candidate(s)</span>
+          </p>
+        </div>
+
+        <!-- Candidate grid: owns its own horizontal/vertical scroll; its box
+             always matches the section width (never wider, never narrower). -->
+        <div id="cdGridScroll" class="mt-3 w-full min-w-0 max-h-[36rem] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <table id="cdGrid" class="border-collapse text-center text-xs">
+            <thead class="sticky top-0 z-10 bg-[#042F8D] text-white">
+              <tr id="cdGridGroupRow"></tr>
+              <tr id="cdGridHeadRow"></tr>
+            </thead>
+            <tbody id="cdGridBody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+
+        <!-- Footer: stamp + approval (print only) -->
+        <div class="mt-4 hidden grid-cols-1 gap-4 print:grid sm:grid-cols-2">
+          <div class="flex h-28 flex-col items-center justify-end rounded-2xl border border-slate-200 bg-white p-3">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400" data-i18n="cdStamp">Training Center Stamp</p>
+          </div>
+          <div class="flex h-28 flex-col items-center justify-end rounded-2xl border border-slate-200 bg-white p-3">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400" data-i18n="cdApproval">Management Approval</p>
+          </div>
+        </div>
+      </fieldset>
+
+    </div>
+
+    <script src="../../js/global.js"></script>
+    <script src="../../js/utils/translation.js"></script>
+    <script src="./candidate-details.js"></script>
+  </body>
+</html>
