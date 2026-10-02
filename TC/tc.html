@@ -134,6 +134,40 @@
           <span class="hidden sm:inline" data-i18n="examBtn">Exams</span>
         </button>
 
+        <!-- ── Reports (Admin / Head of Training) ── -->
+        <div id="reportsMenu" data-role-any="Admin,Head of Training" data-role-display="block" class="relative hidden">
+          <button type="button" id="reportsBtn" title="Reports" aria-haspopup="menu" aria-expanded="false" aria-controls="reportsDropdown"
+            class="flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="8" y1="9" x2="10" y2="9"/></svg>
+            <span class="hidden sm:inline" data-i18n="reportsBtn">Reports</span>
+            <svg class="h-3.5 w-3.5 opacity-70" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div id="reportsDropdown" role="menu" aria-labelledby="reportsBtn"
+            class="absolute right-0 z-[70] mt-2 hidden w-72 origin-top-right overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_24px_60px_rgba(4,47,141,0.25)]">
+            <button type="button" role="menuitem" data-report="attendance-sheet"
+              class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus:bg-slate-50 focus:outline-none">
+              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#042F8D]/10 text-[#042F8D]"><svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+              <span data-i18n="rptMenuAttendance">Attendance Sheet</span>
+            </button>
+            <button type="button" role="menuitem" data-report="end-of-training"
+              class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus:bg-slate-50 focus:outline-none">
+              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#042F8D]/10 text-[#042F8D]"><svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
+              <span data-i18n="rptMenuEndTraining">End-of-Training Report</span>
+            </button>
+            <button type="button" role="menuitem" data-report="candidate-details"
+              class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus:bg-slate-50 focus:outline-none">
+              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#042F8D]/10 text-[#042F8D]"><svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+              <span data-i18n="rptMenuCandidate">Candidate Details</span>
+            </button>
+            <div class="my-1 h-px bg-slate-100"></div>
+            <button type="button" role="menuitem" data-report="training-register"
+              class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-[#042F8D] transition-colors hover:bg-[#042F8D]/5 focus:bg-[#042F8D]/5 focus:outline-none">
+              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#042F8D] text-white"><svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
+              <span data-i18n="rptMenuRegister">Training Register</span>
+            </button>
+          </div>
+        </div>
+
         <!-- ── Take exam (Candidate) ── -->
         <button type="button" id="examTakeBtn" data-role-any="Candidate" data-role-display="inline-flex" title="Take your exam"
           class="hidden shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
@@ -357,8 +391,8 @@
     </div>
 
     <!-- ═══════════════════ MONTHLY ATTENDANCE TICK SHEET (Admin / Instructor) ═══════════════════ -->
-    <div id="attSheetOverlay" class="fixed inset-0 z-[1100] hidden items-center justify-center bg-[rgba(1,7,16,0.6)] p-3 backdrop-blur-sm sm:p-6 flex" aria-hidden="true">
-      <div class="mx-auto flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.35)]" role="dialog" aria-modal="true" aria-labelledby="attSheetTitle">
+    <div id="attSheetOverlay" class="fixed inset-0 z-[1100] hidden items-center justify-center bg-[rgba(1,7,16,0.6)] p-2 backdrop-blur-sm sm:p-4 flex" aria-hidden="true">
+      <div class="mx-auto flex h-[96vh] max-h-full w-full max-w-[min(98vw,1800px)] flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.35)]" role="dialog" aria-modal="true" aria-labelledby="attSheetTitle">
         <header class="flex shrink-0 flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-5 py-4 text-white">
           <div class="flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
@@ -2111,6 +2145,7 @@
     <!-- <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.3.1/build/js/intlTelInputWithUtils.min.js"></script> -->
     <script src="./libs/intlTelInputWithUtils.min.js"></script>
      <script src="./js/tc.js"></script>
+    <script src="./reports/reports.js"></script>
     <script>
       // Upgrade the Panel 1 phone fields to intl-tel-input.
 
