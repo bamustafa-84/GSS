@@ -149,11 +149,6 @@
               <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#042F8D]/10 text-[#042F8D]"><svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
               <span data-i18n="rptMenuAttendance">Attendance Sheet</span>
             </button>
-            <button type="button" role="menuitem" data-report="end-of-training"
-              class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus:bg-slate-50 focus:outline-none">
-              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#042F8D]/10 text-[#042F8D]"><svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
-              <span data-i18n="rptMenuEndTraining">End-of-Training Report</span>
-            </button>
             <button type="button" role="menuitem" data-report="candidate-details"
               class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus:bg-slate-50 focus:outline-none">
               <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#042F8D]/10 text-[#042F8D]"><svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
@@ -224,10 +219,14 @@
           </div>
 
           <!-- ── Course / Year filters ── -->
-          <div id="psGridFilters" class="flex items-center gap-2" style="display:none">
+          <div id="psGridFilters" class="flex min-w-0 flex-wrap items-center gap-2" style="display:none">
             <select id="psGridCourse" title="Filter by course" aria-label="Filter by course"
               class="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
               <option value="" data-i18n="psGridAllCourses">All courses</option>
+            </select>
+            <select id="psGridTrainer" title="Filter by trainer" aria-label="Filter by trainer"
+              class="max-w-full rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+              <option value="" data-i18n="psGridAllTrainers">All trainers</option>
             </select>
             <select id="psGridYear" title="Filter by year" aria-label="Filter by year"
               class="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
