@@ -284,28 +284,126 @@
     const completed = filtered.filter((r) => r.status === 'Completed').length;
     const inProgress = filtered.filter((r) => r.status === 'In Progress').length;
     const upcoming = filtered.filter((r) => r.status === 'Planned').length;
+    // Evaluation source → the human "Final Decision After Exam" (eval_final_decision).
     const recommended = filtered.reduce((s, r) => s + (Number(r.recommended) || 0), 0);
     const notRecommended = filtered.reduce((s, r) => s + (Number(r.non_recommended) || 0), 0);
+    const waiting = filtered.reduce((s, r) => s + (Number(r.waiting_list) || 0), 0);
+    // Exam source → the graded exam attempts (exam_attempts.passed).
     const passed = filtered.reduce((s, r) => s + (Number(r.pass_count) || 0), 0);
     const failed = filtered.reduce((s, r) => s + (Number(r.fail_count) || 0), 0);
-    const graded = passed + failed;
-    const passRate = graded ? Math.round((passed / graded) * 100) : 0;
-    const failRate = graded ? Math.round((failed / graded) * 100) : 0;
-    const evaluated = recommended + notRecommended;
-    const recRate = evaluated ? Math.round((recommended / evaluated) * 100) : 0;
     const set = (/** @type {string} */ id, /** @type {any} */ v) => { const el = $(id); if (el) el.textContent = String(v); };
     set('kpiTrainings', filtered.length);
     set('kpiCandidates', totalCandidates);
     set('kpiCompleted', completed);
     set('kpiInProgress', inProgress);
-    set('kpiRecommended', recommended);
-    set('kpiNotRecommended', notRecommended);
+    set('kpiUpcoming', upcoming);
+
+    // ── Exam section ── every card derived from exam grades only.
+    const examGraded = passed + failed;
+    const examPending = Math.max(totalCandidates - examGraded, 0);
+    const examPassRate = examGraded ? Math.round((passed / examGraded) * 100) : 0;
+    const examFailRate = examGraded ? Math.round((failed / examGraded) * 100) : 0;
+    set('kpiRecommended', passed);        // passing the exam ⇒ recommended by exam
+    set('kpiNotRecommended', failed);
+    set('kpiWaiting', examPending);       // registered but not yet graded
     set('kpiPassed', passed);
     set('kpiFailed', failed);
-    set('kpiPassRate', `${passRate}%`);
-    set('kpiFailRate', `${failRate}%`);
-    set('kpiRecRate', `${recRate}%`);
-    set('kpiUpcoming', upcoming);
+    set('kpiPassRate', `${examPassRate}%`);
+    set('kpiFailRate', `${examFailRate}%`);
+    set('kpiRecRate', `${examPassRate}%`);
+
+    // ── Evaluation section ── every card derived from the final decision only.
+    const evalDecided = recommended + notRecommended;
+    const evalRecRate = evalDecided ? Math.round((recommended / evalDecided) * 100) : 0;
+    const evalFailRate = evalDecided ? Math.round((notRecommended / evalDecided) * 100) : 0;
+    set('kpiRecommendedEval', recommended);
+    set('kpiNotRecommendedEval', notRecommended);
+    set('kpiWaitingEval', waiting);
+    set('kpiPassedEval', recommended);    // recommended ⇒ "passed" the evaluation
+    set('kpiFailedEval', notRecommended);
+    set('kpiPassRateEval', `${evalRecRate}%`);
+    set('kpiFailRateEval', `${evalFailRate}%`);
+    set('kpiRecRateEval', `${evalRecRate}%`);
+  };
+
+  const initStatsGroups = () => {
+    const groups = $('trStatsGroups');
+    const cards = $('trStatsCards');
+    if (!groups || !cards) return;
+    const frame = (/** @type {string} */ key, /** @type {string} */ label) => {
+      const section = document.createElement('fieldset');
+      section.className = 'min-w-0 rounded-lg border border-slate-200 p-3 sm:p-4';
+      section.innerHTML = `<legend class="px-2 text-xs font-bold uppercase tracking-wide text-[#042F8D]"><span data-i18n="${key}">${esc(t(key, label))}</span></legend><div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"></div>`;
+      return section;
+    };
+    const training = frame('trTrainingCategory', 'Training Category');
+    groups.appendChild(training);
+    ['kpiTrainings', 'kpiCompleted', 'kpiInProgress', 'kpiUpcoming'].forEach((id) => {
+      const card = $(id)?.closest('.group');
+      if (card) training.querySelector('div')?.appendChild(card);
+    });
+    const candidateCard = $('kpiCandidates')?.closest('.group');
+    if (candidateCard) groups.appendChild(candidateCard);
+    const tabs = document.createElement('div');
+    tabs.className = 'flex gap-1 border-b border-slate-200 print:hidden';
+    tabs.setAttribute('role', 'tablist');
+    groups.appendChild(tabs);
+    const exam = frame('trExamCategory', 'Exam');
+    const evaluation = frame('trFinalDecisionAfterExam', 'Final Decision After Exam');
+    exam.id = 'trExamStats';
+    evaluation.id = 'trEvaluationStats';
+    exam.setAttribute('role', 'tabpanel');
+    evaluation.setAttribute('role', 'tabpanel');
+    evaluation.classList.add('hidden', 'print:block');
+    groups.append(exam, evaluation);
+    const metricIds = ['kpiRecommended', 'kpiNotRecommended', 'kpiWaiting', 'kpiPassed', 'kpiFailed', 'kpiPassRate', 'kpiFailRate', 'kpiRecRate'];
+    const waitingCard = document.createElement('div');
+    waitingCard.className = 'group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm';
+    waitingCard.innerHTML = `<span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-100 text-orange-600"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/></svg></span><div class="min-w-0"><p id="kpiWaiting" class="text-xl font-bold leading-tight text-slate-900">0</p><p class="text-xs font-medium text-slate-500" data-i18n="trKpiWaiting">${esc(t('trKpiWaiting', 'Waiting List'))}</p></div>`;
+    cards.appendChild(waitingCard);
+    metricIds.forEach((id) => {
+      const card = $(id)?.closest('.group');
+      if (!card) return;
+      exam.querySelector('div')?.appendChild(card);
+      const copy = card.cloneNode(true);
+      const value = /** @type {HTMLElement} */ (copy).querySelector(`#${id}`);
+      if (value) value.id = `${id}Eval`;
+      evaluation.querySelector('div')?.appendChild(copy);
+    });
+    cards.remove();
+    [
+      { key: 'trExamCategory', label: 'Exam', panel: exam },
+      { key: 'trEvaluationCategory', label: 'Evaluation', panel: evaluation },
+    ].forEach((item, index) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.id = `${item.panel.id}Tab`;
+      button.setAttribute('role', 'tab');
+      button.setAttribute('aria-controls', item.panel.id);
+      item.panel.setAttribute('aria-labelledby', button.id);
+      button.setAttribute('data-i18n', item.key);
+      button.textContent = t(item.key, item.label);
+      const activate = () => {
+        Array.from(tabs.children).forEach((tab) => {
+          const selected = tab === button;
+          tab.setAttribute('aria-selected', String(selected));
+          tab.className = `border-b-2 px-4 py-2 text-sm font-semibold ${selected ? 'border-[#042F8D] text-[#042F8D]' : 'border-transparent text-slate-500'}`;
+        });
+        exam.classList.toggle('hidden', item.panel !== exam);
+        evaluation.classList.toggle('hidden', item.panel !== evaluation);
+        exam.classList.add('print:block');
+      };
+      button.addEventListener('click', activate);
+      button.addEventListener('keydown', (event) => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        event.preventDefault();
+        const next = /** @type {HTMLButtonElement} */ (tabs.children[index === 0 ? 1 : 0]);
+        next?.click();
+        next?.focus();
+      });
+      tabs.appendChild(button);
+      if (index === 1) /** @type {HTMLButtonElement} */ (tabs.children[0]).click();
+    });
   };
 
   // ── Top 5 most-taken courses (ranked by number of sessions) ─
@@ -931,6 +1029,7 @@
     if (!GSSAccess.canViewReports()) { denyAccess(); return; }
 
     wire();
+    initStatsGroups();
     initCollapsibles();
     applyDefaultDates();  // open on the current-year window by default
     load();

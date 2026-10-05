@@ -98,6 +98,36 @@
           line-height: 1.1 !important;
           overflow: hidden !important;
         }
+
+        /* ── Keep the full Training Statistics block on page 1 ──────────
+           Trim the header/section spacing and compact every KPI card so the
+           grouped Training / Exam / Evaluation metrics fit above the fold. */
+        #pdfHeader { margin-bottom: 0.6rem !important; padding-bottom: 0.5rem !important; }
+        #pdfHeader img { height: 2.75rem !important; }
+        #pdfHeader h1 { font-size: 1.15rem !important; }
+        #secKpi { margin-bottom: 0.6rem !important; break-inside: avoid; padding: 0.6rem 0.75rem !important; }
+        #secKpi > legend { font-size: 0.62rem !important; padding: 0.2rem 0.6rem !important; }
+        #trStatsGroups { margin-top: 0.5rem !important; }
+        #trStatsGroups > fieldset { padding: 0.35rem 0.6rem !important; }
+        #trStatsGroups > fieldset > legend { font-size: 0.58rem !important; padding: 0 0.4rem !important; }
+        #trStatsGroups .grid {
+          grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+          gap: 0.3rem !important;
+          margin-top: 0.25rem !important;
+        }
+        #secKpi .group {
+          padding: 0.3rem 0.45rem !important;
+          gap: 0.4rem !important;
+          border-radius: 0.5rem !important;
+        }
+        #secKpi .group > span {
+          height: 1.6rem !important;
+          width: 1.6rem !important;
+          border-radius: 0.4rem !important;
+        }
+        #secKpi .group svg { height: 0.9rem !important; width: 0.9rem !important; }
+        #secKpi .group p.text-xl { font-size: 0.9rem !important; line-height: 1.1 !important; }
+        #secKpi .group p.text-xs { font-size: 0.58rem !important; line-height: 1.1 !important; }
       }
     </style>
   </head>
@@ -269,12 +299,13 @@
       </fieldset>
 
       <!-- ═══════════════ KPI STATISTICS ═══════════════ -->
-      <fieldset class="mb-5 rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 shadow-sm sm:p-5">
+      <fieldset id="secKpi" class="mb-5 rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 shadow-sm sm:p-5">
         <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
           <svg class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="8"/><rect x="12" y="6" width="3" height="12"/><rect x="17" y="13" width="3" height="5"/></svg>
           <span data-i18n="trStatsTitle">Training Statistics</span>
         </legend>
-        <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div id="trStatsGroups" class="mt-4 space-y-5"></div>
+        <div id="trStatsCards" class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         <div class="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
           <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#042F8D]/10 text-[#042F8D]"><svg class="h-4.5 w-4.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
           <div class="min-w-0">
@@ -389,7 +420,7 @@
       </fieldset>
 
       <!-- ═══════════════ TRAINING REGISTER GRID ═══════════════ -->
-      <fieldset id="secGrid" class="mb-5 rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 shadow-sm sm:p-5 print:mt-6">
+      <fieldset id="secGrid" class="mb-5 min-w-0 rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 shadow-sm sm:p-5 print:mt-6">
         <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
           <svg class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
           <span data-i18n="trGridLegend">Training Grid</span>
@@ -515,6 +546,7 @@
 
     <script src="../../js/global.js"></script>
     <script src="../../js/utils/translation.js"></script>
+    <script src="../report-metadata.js"></script>
     <script src="./training-register.js"></script>
   </body>
 </html>

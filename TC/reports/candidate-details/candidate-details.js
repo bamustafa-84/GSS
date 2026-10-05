@@ -30,6 +30,25 @@
   let filtered = [];
   /** current global search term (lower-cased) */
   let search = '';
+  /** @type {number|undefined} */
+  let filterTimer;
+  const FILTERS = [
+    { id: 'cdDateFrom', label: 'Start Date', key: 'cdFltStartDate', type: 'date' },
+    { id: 'cdDateTo', label: 'End Date', key: 'cdFltEndDate', type: 'date' },
+    { id: 'cdAgeFrom', label: 'Age From', key: 'cdAgeFrom', type: 'number', min: 0, max: 120 },
+    { id: 'cdAgeTo', label: 'Age To', key: 'cdAgeTo', type: 'number', min: 0, max: 120 },
+    { id: 'cdGender', label: 'Gender', key: 'gcGender', type: 'select' },
+    { id: 'cdTraining', label: 'Training Title', key: 'cdTrainingTitle', type: 'select' },
+    { id: 'cdTrainerFilter', label: 'Trainer', key: 'cdTrainer', type: 'select' },
+    { id: 'cdHeightFrom', label: 'Height From (cm)', key: 'cdHeightFrom', type: 'number', min: 0, max: 300 },
+    { id: 'cdHeightTo', label: 'Height To (cm)', key: 'cdHeightTo', type: 'number', min: 0, max: 300 },
+    { id: 'cdBlood', label: 'Blood Group', key: 'cdColBlood', type: 'select' },
+    { id: 'cdHealthFilter', label: 'Health Status', key: 'cdColHealth', type: 'select' },
+    { id: 'cdEducation', label: 'Education Level', key: 'cdColEducation', type: 'select' },
+    { id: 'cdFrench', label: 'French Reading/Writing', key: 'cdColFrench', type: 'select' },
+    { id: 'cdExperience', label: 'Security Experience', key: 'cdColSecExp', type: 'select' },
+    { id: 'cdPayment', label: 'Payment Status', key: 'cdColPayStatus', type: 'select' },
+  ];
   const GRID_PAGE = 60; // grid rows rendered per lazy-load batch
   let gridRendered = 0; // grid rows currently mounted in the DOM
   /** @type {Set<string>} group keys currently collapsed (default: none → all expanded) */
@@ -97,6 +116,77 @@
     : t('cdHealthGood', 'Good'));
   const blank = () => '—';
   const or = (/** @type {any} */ v) => { const s = v == null ? '' : String(v).trim(); return s === '' ? '—' : s; };
+  const currentAge = (/** @type {any} */ dob) => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dob || ''));
+    if (!match) return null;
+    const year = Number(match[1]); const month = Number(match[2]) - 1; const day = Number(match[3]);
+    const date = new Date(year, month, day);
+    const today = new Date();
+    if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== day || date > today) return null;
+    return today.getFullYear() - year - (today.getMonth() < month || (today.getMonth() === month && today.getDate() < day) ? 1 : 0);
+  };
+  const booleanValue = (/** @type {any} */ value) => value == null ? '' : String(isTrue(value));
+  const genderValue = (/** @type {any} */ value) => sex(value);
+  const filterValue = (/** @type {string} */ id) => /** @type {HTMLInputElement|HTMLSelectElement|null} */ ($(id))?.value || '';
+
+  const populateFilters = () => {
+    const distinct = (/** @type {(row:any)=>any} */ getter) => Array.from(new Set(candidates.map(getter).filter((value) => value != null && value !== '')))
+      .map((value) => ({ value: String(value), label: String(value) })).sort((first, second) => first.label.localeCompare(second.label));
+    const binary = (/** @type {string} */ yes, /** @type {string} */ no) => [{ value: 'true', label: yes }, { value: 'false', label: no }];
+    /** @type {Record<string, {value:string,label:string}[]>} */
+    const options = {
+      cdGender: distinct((row) => genderValue(row.gender)),
+      cdTraining: distinct((row) => row.training_title),
+      cdTrainerFilter: distinct((row) => row.trainer),
+      cdBlood: distinct((row) => row.blood_group),
+      cdHealthFilter: binary(t('cdHealthIssues', 'Issues'), t('cdHealthGood', 'Good')),
+      cdEducation: distinct((row) => row.education_level),
+      cdFrench: binary(t('cdYes', 'Yes'), t('cdNo', 'No')),
+      cdExperience: binary(t('cdYes', 'Yes'), t('cdNo', 'No')),
+      cdPayment: binary(t('cdPaid', 'Paid'), t('cdUnpaid', 'Unpaid')),
+    };
+    Object.entries(options).forEach(([id, values]) => {
+      const select = /** @type {HTMLSelectElement|null} */ ($(id));
+      if (!select) return;
+      const keep = select.value;
+      select.innerHTML = `<option value="">${esc(t('trAll', 'All'))}</option>` + values.map((option) => `<option value="${esc(option.value)}">${esc(option.label)}</option>`).join('');
+      select.value = keep;
+    });
+  };
+
+  const initFilters = () => {
+    const root = $('cdFilters');
+    if (!root) return;
+    FILTERS.forEach((spec) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'min-w-0';
+      const label = document.createElement('label');
+      label.htmlFor = spec.id;
+      label.className = 'mb-1 block text-xs font-semibold text-slate-600';
+      label.setAttribute('data-i18n', spec.key);
+      label.textContent = t(spec.key, spec.label);
+      const control = document.createElement(spec.type === 'select' ? 'select' : 'input');
+      control.id = spec.id;
+      control.className = 'w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-[#042F8D] focus:ring-2 focus:ring-[#042F8D]/20';
+      if (control instanceof HTMLInputElement && spec.type === 'number') {
+        control.type = 'number';
+        control.min = String(spec.min); control.max = String(spec.max);
+        control.step = spec.id.startsWith('cdAge') ? '1' : '0.1';
+        control.addEventListener('input', () => {
+          clearTimeout(filterTimer);
+          filterTimer = window.setTimeout(applyFilter, 180);
+        });
+      } else if (control instanceof HTMLInputElement && spec.type === 'date') {
+        control.type = 'date';
+      }
+      control.addEventListener('change', () => { clearTimeout(filterTimer); applyFilter(); });
+      wrap.append(label, control);
+      root.appendChild(wrap);
+    });
+    const searchWrap = $('cdSearch')?.parentElement;
+    if (searchWrap) $('cdFilterSearch')?.appendChild(searchWrap);
+    populateFilters();
+  };
 
   // ── Column model (mirrors the printed registration sheet) ────
   // Each group becomes a colspan header; each column a sub-header + getter.
@@ -184,6 +274,7 @@
     if (resolved === lang) return;
     lang = resolved;
     applyLang();
+    populateFilters();
     renderSummary();
     renderDemographics();
     renderSizes();
@@ -201,18 +292,51 @@
 
   // ── Data ─────────────────────────────────────────────────
   const load = async () => {
+    const state = $('cdLoadState');
+    const message = $('cdLoadMessage');
+    const retry = $('cdRetry');
+    state?.classList.remove('hidden'); state?.classList.add('flex');
+    retry?.classList.add('hidden');
+    if (message) { message.setAttribute('data-i18n', 'cdLoading'); message.textContent = t('cdLoading', 'Loading…'); }
+    $('cdFiltersSection')?.setAttribute('aria-busy', 'true');
     try {
       const res = await fetch(`${API_BASE}/api/reports/candidate-details`, { headers: { Accept: 'application/json' } });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = /** @type {any} */ (await res.json());
       candidates = Array.isArray(data && data.candidates) ? data.candidates : [];
+      state?.classList.add('hidden');
     } catch (err) {
       console.error('Candidate details report load failed:', err);
       candidates = [];
+      if (message) { message.setAttribute('data-i18n', 'cdLoadError'); message.textContent = t('cdLoadError', 'Unable to load candidates.'); }
+      retry?.classList.remove('hidden');
     }
+    $('cdFiltersSection')?.setAttribute('aria-busy', 'false');
+    populateFilters();
     applyFilter();
     updateGenDate();
     hideSkeleton();
+  };
+
+  // Summarise the active filters for the PDF (the Filters panel is screen-only,
+  // so the printed report needs its own record of what was applied).
+  const renderFilterSummary = () => {
+    const box = $('cdFilterSummary');
+    if (!box) return;
+    /** @type {string[]} */
+    const parts = [];
+    FILTERS.forEach((spec) => {
+      const el = /** @type {HTMLInputElement|HTMLSelectElement|null} */ ($(spec.id));
+      const value = el?.value || '';
+      if (!value) return;
+      const text = el instanceof HTMLSelectElement ? (el.options[el.selectedIndex]?.text || value) : value;
+      parts.push(`<span class="font-semibold text-slate-700">${esc(t(spec.key, spec.label))}:</span> ${esc(text)}`);
+    });
+    if (search.trim()) parts.push(`<span class="font-semibold text-slate-700">${esc(t('cdSearchLabel', 'Search'))}:</span> ${esc(search.trim())}`);
+    const label = esc(t('cdAppliedFilters', 'Applied Filters'));
+    box.innerHTML = parts.length
+      ? `<span class="font-bold text-[#042F8D]">${label}:</span> ${parts.join(' &nbsp;·&nbsp; ')}`
+      : `<span class="font-bold text-[#042F8D]">${label}:</span> ${esc(t('cdFilterNone', 'None — all candidates'))}`;
   };
 
   // ── Global search ────────────────────────────────────────
@@ -221,9 +345,41 @@
   const applyFilter = () => {
     const cols = flatCols();
     const q = search.trim().toLowerCase();
-    filtered = !q
-      ? candidates.slice()
-      : candidates.filter((c) => cols.some((col) => String(col.get(c)).toLowerCase().includes(q)));
+    const number = (/** @type {string} */ id) => filterValue(id) === '' ? null : Number(filterValue(id));
+    const ageFrom = number('cdAgeFrom'); const ageTo = number('cdAgeTo');
+    const heightFrom = number('cdHeightFrom'); const heightTo = number('cdHeightTo');
+    const dateFrom = filterValue('cdDateFrom') || null; const dateTo = filterValue('cdDateTo') || null;
+    const invalid = (ageFrom != null && ageTo != null && ageFrom > ageTo)
+      || (heightFrom != null && heightTo != null && heightFrom > heightTo)
+      || (dateFrom != null && dateTo != null && dateTo < dateFrom)
+      || FILTERS.some((spec) => spec.type === 'number' && !/** @type {HTMLInputElement|null} */ ($(spec.id))?.validity.valid);
+    $('cdRangeError')?.classList.toggle('hidden', !invalid);
+    const matchValue = (/** @type {string} */ id, /** @type {any} */ value) => !filterValue(id) || String(value ?? '') === filterValue(id);
+    const sessionDate = (/** @type {any} */ candidate) => String(candidate.date_from || '').slice(0, 10);
+    filtered = invalid ? [] : candidates.filter((candidate) => {
+      const age = currentAge(candidate.date_of_birth);
+      const height = candidate.height_cm == null || candidate.height_cm === '' ? null : Number(candidate.height_cm);
+      const sdate = sessionDate(candidate);
+      if (ageFrom != null && (age == null || age < ageFrom)) return false;
+      if (ageTo != null && (age == null || age > ageTo)) return false;
+      if (heightFrom != null && (height == null || !Number.isFinite(height) || height < heightFrom)) return false;
+      if (heightTo != null && (height == null || !Number.isFinite(height) || height > heightTo)) return false;
+      if (dateFrom != null && (!sdate || sdate < dateFrom)) return false;
+      if (dateTo != null && (!sdate || sdate > dateTo)) return false;
+      return matchValue('cdGender', genderValue(candidate.gender))
+        && matchValue('cdTraining', candidate.training_title)
+        && matchValue('cdTrainerFilter', candidate.trainer)
+        && matchValue('cdBlood', candidate.blood_group)
+        && matchValue('cdHealthFilter', booleanValue(candidate.has_health_issues))
+        && matchValue('cdEducation', candidate.education_level)
+        && matchValue('cdFrench', booleanValue(candidate.is_french_literate))
+        && matchValue('cdExperience', booleanValue(candidate.has_security_experience))
+        && matchValue('cdPayment', booleanValue(candidate.ispaid))
+        && (!q || cols.some((col) => String(col.get(candidate)).toLowerCase().includes(q)));
+    });
+    const scroll = $('cdGridScroll');
+    if (scroll) scroll.scrollTop = 0;
+    renderFilterSummary();
     renderSummary();
     renderDemographics();
     renderSizes();
@@ -268,8 +424,8 @@
     filtered.forEach((c) => {
       const raw = keyFn(c);
       const k = raw == null ? '' : String(raw).trim();
-      if (!k) return;
-      map.set(k, (map.get(k) || 0) + 1);
+      const label = k || t('cdUnknown', 'Unknown');
+      map.set(label, (map.get(label) || 0) + 1);
     });
     return Array.from(map.entries())
       .map(([label, count]) => ({ label, count }))
@@ -281,16 +437,38 @@
     if (!el) return;
     if (!dist.length) { el.innerHTML = `<p class="text-xs text-slate-400">${esc(t('cdNoData', 'No data'))}</p>`; return; }
     const max = dist[0].count || 1;
-    el.innerHTML = dist.map((d) => {
+    /** @type {Record<string, string[]>} */
+    const palettes = {
+      cdKpiGender: ['bg-sky-600', 'bg-sky-400'],
+      cdKpiAge: ['bg-amber-600', 'bg-amber-400'],
+      cdKpiBlood: ['bg-rose-600', 'bg-rose-400'],
+      cdKpiExperience: ['bg-orange-600', 'bg-orange-400'],
+      cdKpiMarital: ['bg-indigo-600', 'bg-indigo-400'],
+      cdKpiNationality: ['bg-violet-600', 'bg-violet-400'],
+      cdKpiHealth: ['bg-emerald-600', 'bg-emerald-400'],
+      cdKpiEducation: ['bg-teal-600', 'bg-teal-400'],
+    };
+    const palette = palettes[id] || ['bg-[#042F8D]'];
+    el.innerHTML = dist.map((d, index) => {
       const pct = Math.round((d.count / max) * 100);
       return '<div class="flex items-center gap-2">'
-        + `<span class="w-24 shrink-0 truncate text-xs font-medium text-slate-600" title="${esc(d.label)}">${esc(d.label)}</span>`
-        + `<span class="relative h-2 flex-1 overflow-hidden rounded-full bg-slate-100"><span class="absolute inset-y-0 left-0 rounded-full bg-[#042F8D]" style="width:${pct}%"></span></span>`
-        + `<span class="w-6 shrink-0 text-right text-xs font-bold text-slate-700">${d.count}</span></div>`;
+        + `<span class="w-24 shrink-0 break-words text-xs font-medium text-slate-700" title="${esc(d.label)}">${esc(d.label)}</span>`
+        + `<span class="relative h-2 min-w-4 flex-1 overflow-hidden rounded-full bg-slate-100"><span class="absolute inset-y-0 left-0 rounded-full ${palette[index % palette.length]}" style="width:${pct}%"></span></span>`
+        + `<span class="w-10 shrink-0 text-right text-xs font-bold text-slate-700">${d.count}</span></div>`;
     }).join('');
   };
 
   const renderDemographics = () => {
+    renderBreakdown('cdKpiGender', distribution((candidate) => {
+      const value = genderValue(candidate.gender);
+      return value === 'M' ? t('cdSumMale', 'Male') : value === 'F' ? t('cdSumFemale', 'Female') : t('cdUnknown', 'Unknown');
+    }));
+    renderBreakdown('cdKpiAge', distribution((candidate) => {
+      const age = currentAge(candidate.date_of_birth);
+      return age == null ? t('cdUnknown', 'Unknown') : age < 18 ? '<18' : age < 26 ? '18-25' : age < 36 ? '26-35' : age < 46 ? '36-45' : '46+';
+    }));
+    renderBreakdown('cdKpiBlood', distribution((candidate) => candidate.blood_group));
+    renderBreakdown('cdKpiExperience', distribution((candidate) => candidate.has_security_experience == null ? t('cdUnknown', 'Unknown') : yn(candidate.has_security_experience)));
     renderBreakdown('cdKpiMarital', distribution((c) => c.marital_status));
     renderBreakdown('cdKpiNationality', distribution((c) => c.nationality));
     renderBreakdown('cdKpiHealth', distribution((c) => health(c)));
@@ -762,7 +940,17 @@
     $('btnExcel')?.addEventListener('click', exportExcel);
     $('btnPrint')?.addEventListener('click', doPrint);
     $('cdSearch')?.addEventListener('input', (e) => {
-      setSearch(/** @type {HTMLInputElement} */ (e.target).value);
+      search = /** @type {HTMLInputElement} */ (e.target).value;
+      clearTimeout(filterTimer);
+      filterTimer = window.setTimeout(applyFilter, 180);
+    });
+    $('cdRetry')?.addEventListener('click', load);
+    $('cdResetFilters')?.addEventListener('click', () => {
+      clearTimeout(filterTimer);
+      FILTERS.forEach((spec) => { const control = /** @type {HTMLInputElement|HTMLSelectElement|null} */ ($(spec.id)); if (control) control.value = ''; });
+      const searchInput = /** @type {HTMLInputElement|null} */ ($('cdSearch'));
+      if (searchInput) searchInput.value = '';
+      setSearch('');
     });
     $('cdGridScroll')?.addEventListener('scroll', onGridScroll, { passive: true });
     // Delegated +/− handler: collapse/expand a single grid section.
@@ -803,6 +991,7 @@
     if (!GSSAccess.canViewReports()) { denyAccess(); return; }
 
     wire();
+    initFilters();
     initCollapsible();
     load();
   };
