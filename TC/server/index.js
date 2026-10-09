@@ -149,6 +149,32 @@ const callProc = async (fn, signature, params) => {
   return result.rows[0] ? result.rows[0].result : null;
 };
 
+/**
+ * True when the acting user holds the Admin role (per the actor header).
+ * @param {http.IncomingMessage} req
+ * @returns {boolean}
+ */
+const actorIsAdmin = (req) => String(actorOf(req).role || '').toLowerCase() === 'admin';
+
+/**
+ * Server-side permission check against the dynamic permission store. Resolves
+ * the acting user by their login id (actor header) and asks `user_can`. Admins
+ * always pass. When no id is present we fall back to the role header so Admins
+ * are never locked out; all other roles are denied on guarded routes.
+ * @param {http.IncomingMessage} req
+ * @param {string} section  e.g. '1.1'
+ * @param {string} action   e.g. 'delete'
+ * @returns {Promise<boolean>}
+ */
+const actorCan = async (req, section, action) => {
+  const actor = actorOf(req);
+  if (actor.id != null) {
+    const ok = await callProc('user_can', '$1::bigint, $2, $3', [actor.id, section, action]);
+    return ok === true;
+  }
+  return String(actor.role || '').toLowerCase() === 'admin';
+};
+
 /** @type {Map<string, { dataType: string, insertable: boolean }> | null} */
 let columnMetaCache = null;
 /** @type {string | null} The identity/primary key column (e.g. candidate_no). */
@@ -741,6 +767,7 @@ const server = http.createServer(async (req, res) => {
 
     // ── Delete an applicant (and dependent rows) via stored procedure ──
     if (method === 'DELETE' && url.startsWith('/api/applicants')) {
+      if (!(await actorCan(req, '1.1', 'delete'))) { sendJson(res, 403, { ok: false, status: 'forbidden' }); return; }
       const id = Number.parseInt(new URL(url, 'http://localhost').searchParams.get('id') || '', 10);
       if (!Number.isFinite(id)) {
         sendJson(res, 400, { error: 'A valid applicant id is required.' });
@@ -834,6 +861,59 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // ── Dashboard statistic: trainees who completed training ───
+    if (method === 'GET' && url.startsWith('/api/stats/trainees-trained')) {
+      const result = await callProc('trainees_trained_count', '', []);
+      sendJson(res, 200, result || { ok: true, count: 0 });
+      return;
+    }
+
+    // ── Instructor courses (permissions panel) ─────────────────
+    if (method === 'GET' && url.startsWith('/api/instructor-courses')) {
+      const trainer = new URL(url, 'http://localhost').searchParams.get('trainer') || '';
+      const rows = await callProc('instructor_courses', '$1', [trainer]);
+      sendJson(res, 200, { ok: true, courses: Array.isArray(rows) ? rows : [] });
+      return;
+    }
+
+    // ── Active instructors (attendance trainer dropdown) ───────
+    if (method === 'GET' && url.startsWith('/api/instructors')) {
+      const rows = await callProc('instructors_list', '', []);
+      sendJson(res, 200, { ok: true, instructors: Array.isArray(rows) ? rows : [] });
+      return;
+    }
+
+    // ── Permissions: effective set for the signed-in user (UI gating) ──
+    // Declared before the generic /api/me handler so it isn't shadowed.
+    if (method === 'GET' && url.startsWith('/api/me/permissions')) {
+      const actor = actorOf(req);
+      const username = new URL(url, 'http://localhost').searchParams.get('username') || actor.name || '';
+      const result = await callProc('user_effective_permissions', '$1', [username]);
+      sendJson(res, 200, result || { ok: false, permissions: {} });
+      return;
+    }
+
+    // ── Permissions: read / write a user's stored set (admin) ──
+    if (method === 'GET' && url.startsWith('/api/permissions')) {
+      const loginId = Number.parseInt(new URL(url, 'http://localhost').searchParams.get('login_id') || '', 10);
+      if (!Number.isFinite(loginId)) { sendJson(res, 400, { ok: false, status: 'invalid' }); return; }
+      const result = await callProc('user_permissions_get', '$1', [loginId]);
+      sendJson(res, result && result.ok ? 200 : 404, result || { ok: false });
+      return;
+    }
+
+    if (method === 'POST' && url === '/api/permissions') {
+      if (!actorIsAdmin(req)) { sendJson(res, 403, { ok: false, status: 'forbidden' }); return; }
+      const body = await readJsonBody(req);
+      const loginId = Number.parseInt(String(body && (body.login_id != null ? body.login_id : body.id)), 10);
+      if (!Number.isFinite(loginId)) { sendJson(res, 400, { ok: false, status: 'invalid' }); return; }
+      const actor = actorOf(req);
+      const payload = { items: Array.isArray(body && body.items) ? body.items : [] };
+      const result = await callProc('user_permissions_save', '$1, $2::jsonb, $3', [loginId, JSON.stringify(payload), actor.name || 'ADMIN']);
+      sendJson(res, result && result.ok ? 200 : 400, result || { ok: false });
+      return;
+    }
+
     // ── Current user's live role/status (self-heals stale sessions) ──
     if (method === 'GET' && url.startsWith('/api/me')) {
       const username = new URL(url, 'http://localhost').searchParams.get('username') || '';
@@ -850,6 +930,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'POST' && url === '/api/users') {
+      if (!actorIsAdmin(req)) { sendJson(res, 403, { ok: false, status: 'forbidden' }); return; }
       const body = await readJsonBody(req);
       injectActor(body, actorOf(req));
       const idRaw = body && (body.login_id != null ? body.login_id : body.id);

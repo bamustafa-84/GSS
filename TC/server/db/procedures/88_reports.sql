@@ -60,6 +60,7 @@ AS $$
       count(at.candidate_no)                                              AS registered,
       count(*) FILTER (WHERE ap.eval_final_decision = 'recommended')      AS recommended,
       count(*) FILTER (WHERE ap.eval_final_decision = 'not-recommended')  AS non_recommended,
+      count(*) FILTER (WHERE ap.eval_final_decision = 'waiting')          AS waiting_list,
       coalesce(max(eg.pass_count), 0)::int                                AS pass_count,
       coalesce(max(eg.fail_count), 0)::int                                AS fail_count,
       -- Daily session length in hours (end time-of-day − start time-of-day).
