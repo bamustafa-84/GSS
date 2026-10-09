@@ -61,142 +61,145 @@
     </style>
   </head>
 
-  <body class="relative min-h-screen overflow-hidden bg-white font-sans text-[#042F8D]">
-    <!-- ═══════════ Decorative background ═══════════ -->
-    <div class="pointer-events-none absolute inset-0 select-none" aria-hidden="true">
-      <span class="absolute -left-24 -top-24 h-80 w-80 rounded-full bg-[#042F8D] opacity-[0.06] blur-3xl animate-floaty"></span>
-      <span class="absolute -bottom-28 -right-16 h-96 w-96 rounded-full bg-[#0b4dc2] opacity-[0.05] blur-3xl animate-floaty [animation-delay:-4s]"></span>
-      <span class="absolute left-1/2 top-1/3 h-72 w-72 -translate-x-1/2 rounded-full bg-[#042F8D] opacity-[0.04] blur-3xl animate-floaty [animation-delay:-2s]"></span>
+  <body class="relative min-h-screen overflow-x-hidden bg-[#01030F] font-sans text-slate-100">
+    <!-- ═══════════ Background photo (full image, left) ═══════════ -->
+    <div class="fixed inset-0 -z-20" aria-hidden="true">
+      <img src="./img/background_Image.jpeg" alt="" class="h-full w-full object-scale-down object-left" />
     </div>
 
-    <main class="relative z-10 flex min-h-screen items-center justify-center p-4 sm:p-6">
-      <div class="relative grid w-full max-w-5xl overflow-hidden rounded-[28px] border border-[#042F8D]/15 bg-white shadow-[0_40px_120px_rgba(4,47,141,0.13)] lg:grid-cols-[1.05fr_0.95fr]">
+    <main class="relative z-10 flex min-h-screen flex-col">
+      <!-- ═══════════ Center stage ═══════════ -->
+      <div class="relative mx-auto flex w-full max-w-[1800px] flex-1 items-center px-4 py-10 sm:px-8">
 
-        <!-- ─────────── Language switcher ─────────── -->
-        <div class="absolute right-4 top-4 z-20 inline-flex gap-1.5 rounded-full border border-slate-200 bg-white/90 p-1.5 shadow-sm backdrop-blur" role="group" aria-label="Language switcher">
-          <button type="button" class="rounded-full px-3 py-1.5 text-sm font-bold transition-all duration-200" data-lang="fr">FR</button>
-          <button type="button" class="rounded-full px-3 py-1.5 text-sm font-bold transition-all duration-200" data-lang="en">EN</button>
+        <!-- Right-side brand watermark + tagline (decorative) -->
+        <!-- <div class="pointer-events-none absolute inset-y-0 right-0 hidden w-[42%] select-none lg:block" aria-hidden="true">
+          <span class="absolute right-10 top-10 origin-top-right rotate-[22deg] whitespace-nowrap text-[clamp(1.1rem,0.6rem+1vw,1.6rem)] font-semibold tracking-wide text-white/15">Guarde Security Service</span>
+          <img src="./img/logo.png" alt="" class="absolute right-6 top-1/2 h-[26rem] w-[26rem] max-w-[60%] -translate-y-1/2 object-contain opacity-[0.07]" />
+          <div class="absolute right-8 top-[17%]">
+            <p class="text-right text-[clamp(1.25rem,0.9rem+0.9vw,1.75rem)] font-light uppercase leading-[1.8] tracking-[0.42em] text-slate-200/85" data-i18n-html="loginTagline">A&nbsp;Safer<br>Tomorrow<br>Together</p>
+            <span class="ml-auto mt-4 block h-1 w-20 rounded-full bg-[#2f6bff]"></span>
+          </div>
+        </div> -->
+
+        <!-- ═══════════ Login card ═══════════ -->
+        <div class="relative z-10 mx-auto w-full max-w-[460px] lg:mx-0 lg:ml-auto pl-[30px]">
+          <div class="relative rounded-[26px] border border-white/40 bg-white/95 p-7 text-slate-800 shadow-[0_40px_120px_rgba(1,10,35,0.55)] backdrop-blur-sm sm:p-9">
+
+            <!-- ─────────── Language switcher ─────────── -->
+            <div class="absolute right-5 top-5 inline-flex gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-sm" role="group" aria-label="Language switcher">
+              <button type="button" class="rounded-full px-3 py-1 text-sm font-bold text-[#042F8D] transition-all duration-200" data-lang="fr">FR</button>
+              <button type="button" class="rounded-full px-3 py-1 text-sm font-bold text-[#042F8D] transition-all duration-200" data-lang="en">EN</button>
+            </div>
+
+            <!-- Logo -->
+            <div class="flex justify-center">
+              <img src="./img/logo.png" alt="" class="h-28 w-28 object-contain drop-shadow-[0_8px_18px_rgba(4,47,141,0.2)]" />
+            </div>
+
+            <!-- Heading -->
+            <div class="mt-3">
+              <h1 class="text-3xl font-bold text-slate-900" data-i18n="loginTitle">Login</h1>
+              <p class="mt-1 text-sm text-slate-500" data-i18n="loginSubtitle">Enter your credentials to access your dashboard.</p>
+            </div>
+
+            <form id="loginForm" class="mt-6 space-y-4" novalidate>
+              <!-- Username -->
+              <div class="space-y-1.5">
+                <label for="email" class="text-sm font-semibold text-slate-700" data-i18n="loginEmailLabel">Username</label>
+                <div class="group relative">
+                  <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition group-focus-within:text-[#042F8D]">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+                  </span>
+                  <input id="email" name="email" type="text" inputmode="text" autocomplete="username" required
+                    placeholder="Enter your username" data-i18n-placeholder="loginUserPh"
+                    class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white py-3 pl-11 pr-3 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                </div>
+              </div>
+
+              <!-- Password -->
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <label for="password" class="text-sm font-semibold text-slate-700" data-i18n="loginPasswordLabel">Password</label>
+                  <!-- <a href="#" id="forgotLink" class="text-xs font-semibold text-[#042F8D] transition hover:underline" data-i18n="loginForgot">Forgot password?</a> -->
+                </div>
+                <div class="group relative">
+                  <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition group-focus-within:text-[#042F8D]">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                  </span>
+                  <input id="password" name="password" type="password" autocomplete="current-password" required
+                    placeholder="Enter your password" data-i18n-placeholder="loginPassPh"
+                    class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white py-3 pl-11 pr-11 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                  <button type="button" id="togglePassword" aria-label="Show password"
+                    class="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-[#042F8D]">
+                    <svg id="eyeOpen" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg id="eyeClosed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="hidden h-5 w-5"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19M6.61 6.61A18.5 18.5 0 0 0 2 12s3.5 7 10 7a9.12 9.12 0 0 0 5.17-1.56"/><path d="m2 2 20 20"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Remember me -->
+              <label class="flex cursor-pointer items-center gap-2.5 text-sm text-slate-600">
+                <input type="checkbox" id="remember" class="peer sr-only" />
+                <span class="flex h-5 w-5 items-center justify-center rounded-md border-[1.5px] border-[#dbe2f0] bg-white transition peer-checked:border-[#042F8D] peer-checked:bg-[#042F8D] peer-focus-visible:ring-4 peer-focus-visible:ring-[#042F8D]/10">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" class="h-3 w-3 opacity-0 transition peer-checked:opacity-100"><path d="m20 6-11 11-5-5"/></svg>
+                </span>
+                <span data-i18n="loginRemember">Remember me</span>
+              </label>
+
+              <!-- Submit -->
+              <button type="submit"
+                class="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-4 py-3.5 text-sm font-bold text-white shadow-[0_14px_30px_rgba(4,47,141,0.34)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_44px_rgba(4,47,141,0.44)] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/25">
+                <span class="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-white/25 transition-transform duration-700 group-hover:translate-x-[420%]"></span>
+                <span class="relative flex items-center justify-center gap-2">
+                  <span data-i18n="loginSubmit">Sign in</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4 transition group-hover:translate-x-1"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </span>
+              </button>
+
+              <p id="formStatus" class="min-h-5 text-center text-sm font-semibold text-red-600" aria-live="polite"></p>
+            </form>
+
+            <!-- Divider -->
+            <!-- <div class="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-widest text-slate-400">
+              <span class="h-px flex-1 bg-slate-200"></span><span data-i18n="loginOr">or</span><span class="h-px flex-1 bg-slate-200"></span>
+            </div> -->
+
+            <!-- <p class="text-center text-sm text-slate-600">
+              <span data-i18n="loginNoAccount">Don't have an account yet?</span>
+              <a href="#" id="openSignupBtn" class="font-semibold text-[#042F8D] transition hover:underline" data-i18n="loginCreate">Create an account</a>
+            </p> -->
+
+            <!-- Candidate exam portal (temporary exam credentials — no account) -->
+            <p class="mt-2 text-center text-sm text-slate-600">
+              <span data-i18n="loginHaveExam">Have exam credentials?</span>
+              <a href="./exam-portal.html" class="font-semibold text-[#042F8D] transition hover:underline" data-i18n="loginTakeExam">Take an exam</a>
+            </p>
+          </div>
         </div>
-
-        <!-- ─────────── Brand / hero side ─────────── -->
-        <section class="relative hidden overflow-hidden bg-slate-50 border-r border-slate-200 p-[clamp(1.5rem,1rem+2vw,2.75rem)] text-[#042F8D] lg:flex lg:flex-col lg:justify-between">
-          <!-- moving sheen -->
-          <span class="pointer-events-none absolute inset-y-[-20%] -left-1/3 w-2/3 -skew-x-12 bg-gradient-to-r from-transparent via-[#0b4dc2]/8 to-transparent blur-2xl animate-shine [animation-delay:-2.4s]"></span>
-
-          <!-- Logo watermark -->
-          <!-- <div class="pointer-events-none absolute inset-0 z-0 flex items-center justify-center" aria-hidden="true">
-        
-            <img src="./img/logo.png" alt=""
-              class="relative h-56 w-56 object-contain opacity-[0.18] animate-floaty drop-shadow-[0_0_40px_rgba(4,47,141,0.2)]" />
-          </div> -->
-
-          <div class="relative z-10">
-            <span class="mb-4 inline-block rounded-full bg-[#042F8D]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#042F8D]" data-i18n="loginEyebrow">Secure area</span>
-            <h1 class="text-4xl font-bold leading-tight text-[#042F8D]" data-i18n="loginHeroTitle">Welcome to your GSS portal.</h1>
-            <p class="mt-3 max-w-md text-base leading-7 text-slate-500" data-i18n="loginHeroText">Sign in to manage registrations, training and the follow-up of security agents in complete confidentiality.</p>
-
-            <ul class="mt-8 space-y-3 text-slate-600">
-              <li class="flex items-center gap-3"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-[#042F8D]/10 text-sm text-[#042F8D]">✦</span><span class="text-sm" data-i18n="loginFeat1">Encrypted and protected access</span></li>
-              <li class="flex items-center gap-3"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-[#042F8D]/10 text-sm text-[#042F8D]">✦</span><span class="text-sm" data-i18n="loginFeat2">Centralized file management</span></li>
-              <li class="flex items-center gap-3"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-[#042F8D]/10 text-sm text-[#042F8D]">✦</span><span class="text-sm" data-i18n="loginFeat3">24/7 administrative support</span></li>
-            </ul>
-          </div>
-
-          <p class="relative mt-8 text-xs text-slate-400">© <span id="year"></span> Guarde Security Service. <span data-i18n="loginRights">All rights reserved.</span></p>
-        </section>
-
-        <!-- ─────────── Form side ─────────── -->
-        <section class="p-[clamp(1.5rem,1rem+2.5vw,3rem)]">
-          <!-- Mobile brand -->
-          <div class="mb-8 flex items-center gap-3 lg:hidden">
-            <div class="rounded-xl">
-              <img src="./img/logo.png" alt="Guarde Security Service" class="h-10 w-10 rounded-lg object-contain" />
-            </div>
-            <div>
-              <p class="text-sm font-bold uppercase tracking-[0.18em] text-[#042F8D]">GSS</p>
-              <p class="text-xs font-medium text-slate-500" data-i18n="brandSub">Security Service</p>
-            </div>
-          </div>
-
-          <div class="mb-7">
-            <h2 class="text-3xl font-bold text-[#042F8D]" data-i18n="loginTitle">Login</h2>
-            <p class="mt-2 text-sm text-slate-600" data-i18n="loginSubtitle">Enter your credentials to access your dashboard.</p>
-          </div>
-
-          <form id="loginForm" class="space-y-5" novalidate>
-            <!-- Email -->
-            <div class="space-y-1.5">
-              <label for="email" class="text-sm font-semibold text-slate-700" data-i18n="loginEmailLabel">Username</label>
-              <div class="group relative">
-                <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition group-focus-within:text-[#042F8D]">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
-                </span>
-                <input id="email" name="email" type="text" inputmode="text" autocomplete="username" required
-                  placeholder="name@example.com" data-i18n-placeholder="loginEmailPh"
-                  class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white py-3 pl-11 pr-3 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-              </div>
-            </div>
-
-            <!-- Password -->
-            <div class="space-y-1.5">
-              <div class="flex items-center justify-between">
-                <label for="password" class="text-sm font-semibold text-slate-700" data-i18n="loginPasswordLabel">Password</label>
-                <a href="#" id="forgotLink" class="text-xs font-semibold text-[#042F8D] transition hover:underline" data-i18n="loginForgot">Forgot password?</a>
-              </div>
-              <div class="group relative">
-                <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition group-focus-within:text-[#042F8D]">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-                </span>
-                <input id="password" name="password" type="password" autocomplete="current-password" required
-                  placeholder="••••••••"
-                  class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white py-3 pl-11 pr-11 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-                <button type="button" id="togglePassword" aria-label="Show password"
-                  class="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-[#042F8D]">
-                  <svg id="eyeOpen" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                  <svg id="eyeClosed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="hidden h-5 w-5"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19M6.61 6.61A18.5 18.5 0 0 0 2 12s3.5 7 10 7a9.12 9.12 0 0 0 5.17-1.56"/><path d="m2 2 20 20"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/></svg>
-                </button>
-              </div>
-            </div>
-
-            <!-- Remember me -->
-            <label class="flex cursor-pointer items-center gap-2.5 text-sm text-slate-600">
-              <input type="checkbox" id="remember" class="peer sr-only" />
-              <span class="flex h-5 w-5 items-center justify-center rounded-md border-[1.5px] border-[#dbe2f0] bg-white transition peer-checked:border-[#042F8D] peer-checked:bg-[#042F8D] peer-focus-visible:ring-4 peer-focus-visible:ring-[#042F8D]/10">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" class="h-3 w-3 opacity-0 transition peer-checked:opacity-100"><path d="m20 6-11 11-5-5"/></svg>
-              </span>
-              <span data-i18n="loginRemember">Remember me</span>
-            </label>
-
-            <!-- Submit -->
-            <button type="submit"
-              class="group relative w-full overflow-hidden rounded-full bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-4 py-3.5 text-sm font-bold text-white shadow-[0_14px_30px_rgba(4,47,141,0.34)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_44px_rgba(4,47,141,0.44)] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/25">
-              <span class="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-white/25 transition-transform duration-700 group-hover:translate-x-[420%]"></span>
-              <span class="relative flex items-center justify-center gap-2">
-                <span data-i18n="loginSubmit">Sign in</span>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4 transition group-hover:translate-x-1"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-              </span>
-            </button>
-
-            <p id="formStatus" class="min-h-5 text-center text-sm font-semibold text-red-600" aria-live="polite"></p>
-          </form>
-
-          <!-- Divider -->
-          <div class="my-6 flex items-center gap-3 text-xs font-medium uppercase tracking-widest text-slate-400">
-            <span class="h-px flex-1 bg-slate-200"></span><span data-i18n="loginOr">or</span><span class="h-px flex-1 bg-slate-200"></span>
-          </div>
-
-          <p class="text-center text-sm text-slate-600">
-            <span data-i18n="loginNoAccount">Don't have an account yet?</span>
-            <a href="#" id="openSignupBtn" class="font-semibold text-[#042F8D] transition hover:underline" data-i18n="loginCreate">Create an account</a>
-          </p>
-
-          <!-- Candidate exam portal (temporary exam credentials — no account) -->
-          <p class="mt-3 text-center text-sm text-slate-600">
-            <span data-i18n="loginHaveExam">Have exam credentials?</span>
-            <a href="./exam-portal.html" class="font-semibold text-[#042F8D] transition hover:underline" data-i18n="loginTakeExam">Take an exam</a>
-          </p>
-        </section>
       </div>
+
+      <!-- ═══════════ Footer bar ═══════════ -->
+      <footer class="relative z-10 border-t border-white/10 bg-[#03102e]/80 backdrop-blur-sm">
+        <div class="mx-auto flex max-w-[1500px] flex-col items-center gap-4 px-6 py-4 text-sm md:flex-row md:justify-between">
+          <ul class="flex flex-col items-center gap-x-10 gap-y-2 text-slate-200 sm:flex-row">
+            <li class="flex items-center gap-2.5">
+              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0b4dc2]/40 text-[#8fb4ff]"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span>
+              <span data-i18n="loginBadge1">Secure and protected access</span>
+            </li>
+            <li class="hidden h-6 w-px bg-white/15 sm:block" aria-hidden="true"></li>
+            <li class="flex items-center gap-2.5">
+              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0b4dc2]/40 text-[#8fb4ff]"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+              <span data-i18n="loginBadge2">Centralized training management</span>
+            </li>
+            <li class="hidden h-6 w-px bg-white/15 sm:block" aria-hidden="true"></li>
+            <li class="flex items-center gap-2.5">
+              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0b4dc2]/40 text-[#8fb4ff]"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg></span>
+              <span data-i18n="loginBadge3">24/7 administrative support</span>
+            </li>
+          </ul>
+          <p class="text-center text-xs text-slate-300 md:text-right">© <span id="year"></span> Guarde Security Service. <span data-i18n="loginRights">All rights reserved.</span></p>
+        </div>
+      </footer>
     </main>
 
     <!-- ═══════════════════════ Sign up modal ═══════════════════════ -->
