@@ -279,3 +279,76 @@ const GSSAccess = Object.freeze({
   };
 })();
 
+/* ------------------------------------------------------------------
+ * Permission-aware UI gating (GSSPerms)
+ * ------------------------------------------------------------------
+ * Fetches the signed-in user's effective permission map and hides any
+ * element tagged with data-perm="section:action" when the action is not
+ * allowed. This is a usability layer only — the server independently
+ * enforces access on sensitive endpoints, so hiding a control is never
+ * the sole protection (header-based auth is best-effort by design).
+ * ---------------------------------------------------------------- */
+const GSSPerms = (() => {
+  /** @type {Record<string, string[]>} */
+  let permMap = {};
+  let loaded = false;
+
+  /**
+   * @param {string} section e.g. '1.1'
+   * @param {string} action  e.g. 'view'
+   * @returns {boolean}
+   */
+  const can = (section, action) => {
+    if (!loaded) return true; // avoid hiding controls before the map arrives
+    const a = permMap[section];
+    return Array.isArray(a) && a.indexOf(action) !== -1;
+  };
+
+  const apply = () => {
+    if (!loaded || typeof document === 'undefined') return;
+    document.querySelectorAll('[data-perm]').forEach((el) => {
+      const spec = String(el.getAttribute('data-perm') || '');
+      const parts = spec.split(':');
+      const section = (parts[0] || '').trim();
+      const action = (parts[1] || '').trim();
+      if (!section || !action) return;
+      el.classList.toggle('hidden', !can(section, action));
+    });
+  };
+
+  const refresh = async () => {
+    try {
+      const sess = (typeof GSSSession !== 'undefined' && GSSSession.get()) || null;
+      const uname = sess ? String(sess.username || '') : '';
+      if (!uname) return;
+      const d = await fetch(`${API_BASE}/api/me/permissions?username=${encodeURIComponent(uname)}`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
+      if (d && d.permissions) { permMap = d.permissions; loaded = true; apply(); }
+    } catch (_) { /* leave UI ungated on error */ }
+  };
+
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refresh);
+    else refresh();
+  }
+
+  return { can, refresh, apply, get map() { return permMap; } };
+})();
+/** @type {any} */ (window).GSSPerms = GSSPerms;
+
+/* ------------------------------------------------------------------
+ * Dashboard statistic: real number of trainees who completed training.
+ * Replaces the hard-coded placeholder when the stat element is present.
+ * ---------------------------------------------------------------- */
+(() => {
+  if (typeof document === 'undefined') return;
+  const fill = () => {
+    const el = document.getElementById('statTraineesTrained');
+    if (!el) return;
+    fetch(`${API_BASE}/api/stats/trainees-trained`, { headers: { Accept: 'application/json' } })
+      .then((r) => r.json())
+      .then((d) => { if (d && typeof d.count === 'number') el.textContent = '+' + d.count; })
+      .catch(() => { /* keep the static fallback */ });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fill);
+  else fill();
+})();

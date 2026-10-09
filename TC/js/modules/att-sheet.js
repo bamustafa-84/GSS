@@ -281,6 +281,14 @@
   /** Is a status one that counts as "present" (shows a tick)? */
   const isPresent = (/** @type {string} */ status) => status === 'AH' || status === 'AR';
 
+  // Once a candidate is marked Excluded (EX) on any day, their whole sheet is
+  // frozen for this training — only the EX cell itself stays editable so the
+  // exclusion can be corrected.
+  const isExcluded = (/** @type {string} */ key) => {
+    const rec = records[key];
+    return !!rec && Object.keys(rec).some((d) => rec[d] && rec[d].status === 'EX');
+  };
+
   /** Default arrival/departure times for the active training (from the From/To). */
   const defaultTimes = () => {
     const meta = trainingMeta[activeTitle] || { from: '', to: '' };
@@ -559,15 +567,49 @@
     const status = cell ? cell.status : '';
     btn.textContent = cellGlyph(status);
     const inRange = isDayInTrainingRange(Number(day));
-    const stateClass = inRange
-      ? (canEdit() ? 'cursor-pointer hover:scale-110' : 'cursor-default opacity-95')
-      : 'cursor-not-allowed opacity-30';
+    // Excluded candidates: every cell except the EX cell itself is locked.
+    const locked = isExcluded(key) && status !== 'EX';
+    const editable = inRange && canEdit() && !locked;
+    const stateClass = !inRange
+      ? 'cursor-not-allowed opacity-30'
+      : locked
+        ? 'cursor-not-allowed opacity-40'
+        : (canEdit() ? 'cursor-pointer hover:scale-110' : 'cursor-default opacity-95');
     btn.className = `mx-auto flex h-6 w-6 items-center justify-center rounded-md text-xs font-bold ring-1 transition ${cellClasses(status)} ${stateClass}`;
-    btn.disabled = !inRange || !canEdit();
+    btn.disabled = !editable;
     btn.setAttribute('aria-label', `${btn.dataset.name || ''} · ${day}${status ? ' · ' + status : ''}`);
-    if (cell && cell.observation) btn.title = cell.observation;
+    if (locked) btn.title = t('attSheetExcludedLock', 'Candidate excluded — attendance locked');
+    else if (cell && cell.observation) btn.title = cell.observation;
     else if (!inRange) btn.title = t('attSheetOutsideRange', 'Outside the training date range');
     else btn.removeAttribute('title');
+  };
+
+  /** Add/remove the "Excluded" badge + dimming on a candidate's row. */
+  const updateExcludedRow = (/** @type {string} */ key) => {
+    const anyBtn = tbody.querySelector(`button[data-key="${cssEscape(key)}"]`);
+    const tr = anyBtn ? anyBtn.closest('tr') : null;
+    if (!tr) return;
+    const nameTd = tr.querySelector('td');
+    if (!nameTd) return;
+    const excluded = isExcluded(key);
+    tr.classList.toggle('bg-slate-50/70', excluded);
+    let badge = nameTd.querySelector('[data-ex-badge]');
+    if (excluded && !badge) {
+      badge = document.createElement('span');
+      badge.setAttribute('data-ex-badge', '');
+      badge.className = 'ml-2 inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600 ring-1 ring-slate-300';
+      badge.textContent = t('attSheetExcludedTag', 'Excluded');
+      nameTd.appendChild(badge);
+    } else if (!excluded && badge) {
+      badge.remove();
+    }
+  };
+
+  /** Repaint every cell in a candidate's row and refresh its excluded state. */
+  const repaintRow = (/** @type {string} */ key) => {
+    tbody.querySelectorAll(`button[data-key="${cssEscape(key)}"]`)
+      .forEach((b) => paintCell(/** @type {HTMLButtonElement} */ (b)));
+    updateExcludedRow(key);
   };
 
   /** Sync a day-column header checkbox with whether all its students are present. */
@@ -679,6 +721,7 @@
         tr.appendChild(td);
       }
       tbody.appendChild(tr);
+      updateExcludedRow(key);
     });
 
     for (let d = 1; d <= total; d++) syncDayHeader(d);
@@ -696,6 +739,8 @@
       const key = btn.dataset.key || '';
       const id = btn.dataset.cand || '';
       if (!key) return;
+      // Excluded candidates are frozen — never touched by select-all.
+      if (isExcluded(key)) return;
       if (checked) {
         const existing = records[key] && records[key][String(day)];
         const cell = {
@@ -750,8 +795,10 @@
   const openCellEditor = (key, id, name, day) => {
     if (!cellOverlay || !cellStatus || !cellArrival || !cellDeparture || !cellObs) return;
     if (!isDayInTrainingRange(day)) return;
-    editing = { key, id, name, day };
     const existing = records[key] && records[key][String(day)];
+    // A frozen (excluded) candidate can only be edited through their EX cell.
+    if (isExcluded(key) && (!existing || existing.status !== 'EX')) return;
+    editing = { key, id, name, day };
     const defaults = defaultTimes();
 
     cellStatus.value = existing ? existing.status : DEFAULT_STATUS;
@@ -779,8 +826,7 @@
     if (!records[key]) records[key] = {};
     records[key][String(day)] = cell;
 
-    const btn = /** @type {HTMLButtonElement | null} */ (tbody.querySelector(`button[data-key="${cssEscape(key)}"][data-day="${day}"]`));
-    if (btn) paintCell(btn);
+    repaintRow(key);
     syncDayHeader(day);
     closeCellEditor();
     await saveCell(id, day, cell);
@@ -797,8 +843,7 @@
     if (!editing) return;
     const { key, id, day } = editing;
     if (records[key]) delete records[key][String(day)];
-    const btn = /** @type {HTMLButtonElement | null} */ (tbody.querySelector(`button[data-key="${cssEscape(key)}"][data-day="${day}"]`));
-    if (btn) paintCell(btn);
+    repaintRow(key);
     syncDayHeader(day);
     closeCellEditor();
     await saveCell(id, day, null);

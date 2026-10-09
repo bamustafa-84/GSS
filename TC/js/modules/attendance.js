@@ -195,6 +195,18 @@ function makeSelectHook(select) {
   /** @type {any} */ (window).GSSTrainingTitle = makeSelectHook(trainingSelect);
   /** @type {any} */ (window).GSSTrainer = makeSelectHook(trainerSelect);
 
+  // The Trainer list is populated from the application's Instructor users
+  // (no longer the dictionary). The stored value is the instructor full name.
+  (async () => {
+    try {
+      const d = await fetch(`${API_BASE}/api/instructors`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
+      const list = (d && Array.isArray(d.instructors)) ? d.instructors : [];
+      if (list.length) {
+        /** @type {any} */ (window).GSSTrainer.setOptions(list.map((u) => ({ label: String(u.full_name || u.username || '') })));
+      }
+    } catch (_) { /* keep static fallback */ }
+  })();
+
   // Read-only history starts empty; rows arrive via GSSPresences.setRows().
   updatePresenceSummary();
 

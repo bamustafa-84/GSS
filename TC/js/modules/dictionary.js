@@ -56,10 +56,6 @@
       const hook = /** @type {any} */ (window).GSSTrainingTitle;
       if (hook && typeof hook.setOptions === 'function') loadCategoryInto('training_title', hook);
     },
-    trainer: () => {
-      const hook = /** @type {any} */ (window).GSSTrainer;
-      if (hook && typeof hook.setOptions === 'function') loadCategoryInto('trainer', hook);
-    },
   });
 
   /** @type {string} The category currently being managed. */
@@ -276,7 +272,6 @@
   const LINKED_DROPDOWNS = [
     { hook: 'GSSEducationLevel', cat: 'edu_lvl' },
     { hook: 'GSSTrainingTitle', cat: 'training_title' },
-    { hook: 'GSSTrainer', cat: 'trainer' },
   ];
 
   const populateLinkedDropdowns = () => {

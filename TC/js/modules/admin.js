@@ -88,7 +88,7 @@
 
   // ── Manage Users ───────────────────────────────────────────────
   const usersOverlay = document.getElementById('usersOverlay');
-  const usersBtn = document.getElementById('usersBtn');
+  const usersBtn = document.getElementById('openUsersBtn');
   const usersClose = document.getElementById('usersClose');
   const usersRefresh = document.getElementById('usersRefresh');
   const usersAddBtn = document.getElementById('usersAddBtn');
@@ -101,8 +101,10 @@
   const userFullName = /** @type {HTMLInputElement | null} */ (document.getElementById('userFullName'));
   const userRole = /** @type {HTMLSelectElement | null} */ (document.getElementById('userRole'));
   const userPassword = /** @type {HTMLInputElement | null} */ (document.getElementById('userPassword'));
-  const userPasswordWrap = document.getElementById('userPasswordWrap');
-  const userActive = /** @type {HTMLInputElement | null} */ (document.getElementById('userActive'));
+  const userPasswordConfirm = /** @type {HTMLInputElement | null} */ (document.getElementById('userPasswordConfirm'));
+  const userCredsSection = document.getElementById('userCredsSection');
+  const userStatus = /** @type {HTMLSelectElement | null} */ (document.getElementById('userStatus'));
+  const userMustChange = /** @type {HTMLInputElement | null} */ (document.getElementById('userMustChange'));
   const userCancel = document.getElementById('userCancel');
   const userFormStatus = document.getElementById('userFormStatus');
 
@@ -143,10 +145,12 @@
     if (userUsername) { userUsername.value = user ? String(user.username || '') : ''; userUsername.disabled = false; }
     if (userFullName) userFullName.value = user ? String(user.full_name || '') : '';
     if (userRole) userRole.value = user ? String(user.role || 'Candidate') : 'Candidate';
-    if (userActive) userActive.checked = user ? user.is_active !== false : true;
-    // Password is only set when creating a new user.
-    if (userPasswordWrap) userPasswordWrap.style.display = user ? 'none' : '';
+    if (userStatus) userStatus.value = (user ? user.is_active !== false : true) ? 'enabled' : 'disabled';
+    // Credentials are only set when creating a new user.
+    if (userCredsSection) userCredsSection.style.display = user ? 'none' : '';
+    if (userMustChange) userMustChange.checked = true;
     if (userPassword) userPassword.value = '';
+    if (userPasswordConfirm) userPasswordConfirm.value = '';
   };
 
   const roleLabel = (/** @type {string} */ r) => {
@@ -258,7 +262,7 @@
       const username = userUsername ? userUsername.value.trim() : '';
       const fullName = userFullName ? userFullName.value.trim() : '';
       const roleVal = userRole ? userRole.value : 'Candidate';
-      const isActive = !!(userActive && userActive.checked);
+      const isActive = !(userStatus && userStatus.value === 'disabled');
 
       if (!username) { setFormStatus(t('usersErrUsername', 'A username is required.'), false); return; }
 
@@ -266,8 +270,11 @@
         await updateUser({ login_id: id, username, full_name: fullName, role: roleVal, is_active: isActive }, false);
       } else {
         const password = userPassword ? userPassword.value : '';
+        const confirm = userPasswordConfirm ? userPasswordConfirm.value : '';
         if (password.length < 8) { setFormStatus(t('usersErrPw', 'Password must be at least 8 characters.'), false); return; }
-        await updateUser({ username, full_name: fullName, role: roleVal, password, mustChange: true }, false);
+        if (password !== confirm) { setFormStatus(t('usersErrPwMatch', 'Passwords do not match.'), false); return; }
+        const mustChange = !userMustChange || userMustChange.checked;
+        await updateUser({ username, full_name: fullName, role: roleVal, password, mustChange }, false);
       }
     });
   }
@@ -310,5 +317,5 @@
   else init();
 
   // Let other modules refresh the notification counts after data changes.
-  /** @type {any} */ (window).GSSAdmin = { refreshCounts, get role() { return role; } };
+  /** @type {any} */ (window).GSSAdmin = { refreshCounts, openUsers, closeUsers, get role() { return role; } };
 })();

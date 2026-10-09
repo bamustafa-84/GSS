@@ -450,9 +450,10 @@
 
   /** @type {string} Selected course (training group key) filter ('' = all). */
   let gridCourseFilter = '';
+  let gridTrainerFilter = '';
   /** @type {string} Selected year filter ('' = all). */
   let gridYearFilter = '';
-  /** @type {{ key: string, title: string }[]} Courses present in the current grid. */
+  /** @type {{ key: string, title: string, trainer: string }[]} Courses present in the current grid. */
   let gridCourseList = [];
   /** @type {Set<string>} Years present in the current grid. */
   let gridYearSet = new Set();
@@ -494,6 +495,7 @@
   // Course / Year filter DOM.
   const gridFiltersRoot = document.getElementById('psGridFilters');
   const gridCourseSel = /** @type {HTMLSelectElement | null} */ (document.getElementById('psGridCourse'));
+  const gridTrainerSel = /** @type {HTMLSelectElement | null} */ (document.getElementById('psGridTrainer'));
   const gridYearSel = /** @type {HTMLSelectElement | null} */ (document.getElementById('psGridYear'));
   const gridExpandAllBtn = document.getElementById('psGridExpandAll');
   const gridCollapseAllBtn = document.getElementById('psGridCollapseAll');
@@ -1481,7 +1483,7 @@
         grand += d.count;
         if (d.key !== UNASSIGNED) {
           const title = String(d.meta.training_title || '').trim();
-          gridCourseList.push({ key: d.key, title: title || d.key });
+          gridCourseList.push({ key: d.key, title: title || d.key, trainer: String(d.meta.trainer || '').trim() });
           [d.meta.date_from, d.meta.date_to].forEach((dt) => {
             const y = String(dt || '').slice(0, 4);
             if (/^\d{4}$/.test(y)) gridYearSet.add(y);
@@ -1689,7 +1691,7 @@
     } else {
       gridSort = { key: '', dir: 1 };
     }
-    if (gridCourseFilter || gridYearFilter) applyColumnFilters();
+    if (gridCourseFilter || gridTrainerFilter || gridYearFilter) applyColumnFilters();
     updateGridCount();
   };
 
@@ -2061,7 +2063,7 @@
 
   gridExpandAllBtn?.addEventListener('click', async () => {
     if (gridExpandAll) await gridExpandAll();
-    if (gridCourseFilter || gridYearFilter) applyColumnFilters();
+    if (gridCourseFilter || gridTrainerFilter || gridYearFilter) applyColumnFilters();
     updateGridCount();
   });
   gridCollapseAllBtn?.addEventListener('click', () => {
@@ -2076,9 +2078,9 @@
     if (gridFiltersRoot) gridFiltersRoot.style.display = hasFilters ? 'flex' : 'none';
     if (gridCourseSel) {
       const courses = gridCourseList
-        .filter((c, i, a) => a.findIndex((x) => x.key === c.key) === i)
+        .filter((c, i, a) => a.findIndex((x) => x.title === c.title) === i)
         .sort((a, b) => a.title.localeCompare(b.title));
-      if (!courses.some((c) => c.key === gridCourseFilter)) gridCourseFilter = '';
+      if (!courses.some((c) => c.title === gridCourseFilter)) gridCourseFilter = '';
       const allLabel = gridI18n('psGridAllCourses', 'All courses');
       gridCourseSel.innerHTML = '';
       const optAll = document.createElement('option');
@@ -2087,11 +2089,27 @@
       gridCourseSel.appendChild(optAll);
       courses.forEach((c) => {
         const o = document.createElement('option');
-        o.value = c.key;
+        o.value = c.title;
         o.textContent = c.title;
         gridCourseSel.appendChild(o);
       });
       gridCourseSel.value = gridCourseFilter;
+    }
+    if (gridTrainerSel) {
+      const trainers = Array.from(new Set(gridCourseList.map((course) => course.trainer).filter(Boolean))).sort();
+      if (!trainers.includes(gridTrainerFilter)) gridTrainerFilter = '';
+      gridTrainerSel.innerHTML = '';
+      const all = document.createElement('option');
+      all.value = '';
+      all.textContent = gridI18n('psGridAllTrainers', 'All trainers');
+      gridTrainerSel.appendChild(all);
+      trainers.forEach((trainer) => {
+        const option = document.createElement('option');
+        option.value = trainer;
+        option.textContent = trainer;
+        gridTrainerSel.appendChild(option);
+      });
+      gridTrainerSel.value = gridTrainerFilter;
     }
     if (gridYearSel) {
       const years = Array.from(gridYearSet).sort((a, b) => Number(b) - Number(a));
@@ -2116,8 +2134,16 @@
     gridCourseFilter = gridCourseSel.value;
     // Selecting a specific course expands + lazily loads that group so its rows
     // are present to display.
-    if (gridCourseFilter && gridExpandGroup) await gridExpandGroup(gridCourseFilter);
+    if (gridCourseFilter && gridExpandGroup) {
+      for (const course of gridCourseList.filter((item) => item.title === gridCourseFilter)) {
+        await gridExpandGroup(course.key);
+      }
+    }
     applyColumnFilters();
+    if (gridCourseFilter && gridLoadAllVisible) {
+      await gridLoadAllVisible();
+      applyColumnFilters();
+    }
   });
   gridYearSel?.addEventListener('change', async () => {
     gridYearFilter = gridYearSel.value;
@@ -2137,9 +2163,23 @@
     applyColumnFilters();
   });
 
+  gridTrainerSel?.addEventListener('change', async () => {
+    gridTrainerFilter = gridTrainerSel.value;
+    if (gridExpandGroup) {
+      for (const course of gridCourseList.filter((item) =>
+        (!gridTrainerFilter || item.trainer === gridTrainerFilter)
+        && (!gridCourseFilter || item.title === gridCourseFilter))) {
+        await gridExpandGroup(course.key);
+      }
+    }
+    applyColumnFilters();
+    if (gridLoadAllVisible) await gridLoadAllVisible();
+    applyColumnFilters();
+  });
+
   /** True when any grid filter (course, year, or a column text box) is active. */
   function hasActiveGridFilter() {
-    if (gridCourseFilter || gridYearFilter) return true;
+    if (gridCourseFilter || gridTrainerFilter || gridYearFilter) return true;
     if (!gridBody) return false;
     return Array.prototype.some.call(
       gridBody.querySelectorAll('thead input[data-col]'),
@@ -2187,10 +2227,13 @@
       const cells = tr.__cells || {};
       const colMatch = Object.keys(query).every((k) => !query[k] || (cells[k] || '').includes(query[k]));
       const extMatch = !externalRowFilter || externalRowFilter(tr.__record || {});
-      const courseMatch = !gridCourseFilter || tr.dataset.group === gridCourseFilter;
+      const courseMatch = !gridCourseFilter || gridCourseList.some((course) =>
+        course.key === tr.dataset.group && course.title === gridCourseFilter);
+      const trainerMatch = !gridTrainerFilter || gridCourseList.some((course) =>
+        course.key === tr.dataset.group && course.trainer === gridTrainerFilter);
       const yearMatch = !gridYearFilter
         || (tr.dataset.groupYear || '').split(',').indexOf(gridYearFilter) !== -1;
-      const contentMatch = colMatch && extMatch && courseMatch && yearMatch;
+      const contentMatch = colMatch && extMatch && courseMatch && trainerMatch && yearMatch;
       let match;
       if (hasColFilter) {
         // Text filter: reveal matching rows under their group regardless of the
@@ -2216,7 +2259,10 @@
       const header = /** @type {HTMLElement} */ (h);
       const key = header.dataset.groupHeader || '';
       let visible = true;
-      if (gridCourseFilter) visible = key === gridCourseFilter;
+      if (gridCourseFilter) visible = gridCourseList.some((course) =>
+        course.key === key && course.title === gridCourseFilter);
+      if (visible && gridTrainerFilter) visible = gridCourseList.some((course) =>
+        course.key === key && course.trainer === gridTrainerFilter);
       if (visible && gridYearFilter) {
         visible = (header.dataset.groupYear || '').split(',').indexOf(gridYearFilter) !== -1;
       }
@@ -2241,6 +2287,11 @@
   const updateGridCount = (/** @type {number} */ shown = -1) => {
     if (!gridCount) return;
     const loaded = gridBody ? gridBody.querySelectorAll('#psGridRows tr[data-row]').length : 0;
+    if (hasActiveGridFilter() || externalRowFilter) {
+      const matching = shown >= 0 ? shown : gridBody ? gridBody.querySelectorAll('#psGridRows tr[data-row]:not(.hidden)').length : 0;
+      gridCount.textContent = `${gridI18n('psGridTotal', 'Total')}: ${matching}`;
+      return;
+    }
     // Hybrid grouped grid: report the true dataset size plus how many rows are
     // currently loaded in the DOM (only a subset is paged in).
     if (gridGrandTotal > 0) {
