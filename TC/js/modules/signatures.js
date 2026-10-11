@@ -55,6 +55,7 @@
   // ── Open / close ───────────────────────────────────────────────
   const isOpen = () => !overlay.classList.contains('hidden');
   const open = () => {
+    if (!GSSPerms.canSection('10.3', 'view')) return;
     overlay.classList.remove('hidden');
     overlay.setAttribute('aria-hidden', 'false');
     // Nudge the signature pad to (re)size now that it is visible.
@@ -115,6 +116,7 @@
   // ── Save ───────────────────────────────────────────────────────
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!GSSPerms.canSection('10.3', 'add')) return;
     const name = nameInput.value.trim();
     const image = dataInput.value.trim();
     if (!name) {
@@ -164,7 +166,7 @@
 
   // ── Delete a saved signature (with confirmation) ───────────────
   const deleteSignature = async (/** @type {any} */ id) => {
-    if (id == null) return;
+    if (id == null || !GSSPerms.canSection('10.3', 'delete')) return;
     if (!window.confirm(t('confirmDeleteSignature', 'Delete this signature? This action cannot be undone.'))) return;
     try {
       const res = await fetch(`${API_BASE}/api/signatures?id=${encodeURIComponent(String(id))}`, {

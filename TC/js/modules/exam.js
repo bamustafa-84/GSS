@@ -1,4 +1,4 @@
-// @ts-check
+﻿// @ts-check
 /// <reference path="../utils/translation.js" />
 /**
  * GSS · Exam configuration (Admin)
@@ -45,6 +45,8 @@
 
   /** @type {Map<number, string>} training_id → trainer/instructor name */
   const trainerById = new Map();
+  /** @type {Map<number, string>} training_id → plain training title */
+  const titleById = new Map();
 
   const t = (/** @type {string} */ key, /** @type {string} */ fallback) => {
     try {
@@ -88,13 +90,16 @@
       const rows = Array.isArray(data.trainings) ? data.trainings : [];
       const current = trainingSelect.value;
       trainerById.clear();
+      titleById.clear();
       trainingSelect.innerHTML = `<option value="">${t('examPickCourse', 'Select a course…')}</option>`;
       rows.forEach((/** @type {any} */ row) => {
         const opt = document.createElement('option');
         opt.value = String(row.training_id);
-        opt.textContent = row.training_title || row.title;
+        const title = row.training_title || row.title || '';
+        opt.textContent = row.trainer ? `${title} — ${row.trainer}` : title;
         trainingSelect.appendChild(opt);
         trainerById.set(Number(row.training_id), row.trainer || '');
+        titleById.set(Number(row.training_id), title);
       });
       if (current) trainingSelect.value = current;
       renderInstructor();
@@ -722,6 +727,7 @@
   };
 
   const save = async (/** @type {boolean} */ quiet) => {
+    if (!GSSPerms.canSection('10.6', 'edit')) return;
     if (!examConfig.training_id) { setStatus(t('examSelectFirst', 'Please select a training course first.'), false); return; }
 
     // Non-destructive: persist which questions are in the exam, their order and
@@ -762,7 +768,7 @@
       setStatus(t('examPreviewUnavailable', 'Preview is unavailable.'), false);
       return;
     }
-    const title = trainingSelect.options[trainingSelect.selectedIndex]?.textContent || '';
+    const title = titleById.get(Number(examConfig.training_id)) || '';
     api.openPayload({
       ok: true,
       exam: {
@@ -819,6 +825,7 @@
   };
 
   const publish = async () => {
+    if (!GSSPerms.canSection('10.6', 'approve')) return;
     if (!examConfig.training_id) { setStatus(t('examSelectFirst', 'Please select a training course first.'), false); return; }
     if (!validExamDate()) { setStatus(t('examNeedDate', 'Enter a valid exam date before publishing.'), false); return; }
     if (!examConfig.questions.length) { setStatus(t('examErrEmpty', 'Add at least one question before publishing.'), false); return; }
@@ -906,6 +913,7 @@
 
   // ── Open / close ───────────────────────────────────────────────
   const open = async () => {
+    if (!GSSPerms.canSection('10.6', 'view')) return;
     overlay.classList.remove('hidden');
     overlay.classList.add('flex');
     overlay.setAttribute('aria-hidden', 'false');

@@ -17,6 +17,7 @@ AS $$
       'login_id', l.login_id,
       'username', l.username,
       'full_name', l.full_name,
+      'email', l.email,
       'role', l.role,
       'is_active', l.is_active,
       'must_change_password', l.must_change_password,
@@ -29,13 +30,16 @@ $$;
 
 -- Login_User_Update: update a user's editable fields from a JSON payload.
 -- Only the keys present in p_data are applied (full_name, role, is_active,
--- username). Returns the updated row (without the password) or NULL.
+-- username, email, must_change_password). When a non-empty `password` key is
+-- supplied the password hash is rotated (never stored or returned in plain
+-- text). Returns the updated row (without the password) or an error status.
 CREATE OR REPLACE FUNCTION login_user_update(p_login_id bigint, p_data jsonb)
 RETURNS jsonb
 LANGUAGE plpgsql
 AS $$
 DECLARE
   v_user login%ROWTYPE;
+  v_new_password text := NULLIF(p_data->>'password', '');
 BEGIN
   -- Reject a username change that collides with another account.
   IF p_data ? 'username'
@@ -48,6 +52,11 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'status', 'exists');
   END IF;
 
+  -- Enforce the same minimum-length rule as account creation.
+  IF v_new_password IS NOT NULL AND length(v_new_password) < 8 THEN
+    RETURN jsonb_build_object('ok', false, 'status', 'weak');
+  END IF;
+
   UPDATE login SET
     full_name = CASE WHEN p_data ? 'full_name'
                      THEN coalesce(NULLIF(trim(p_data->>'full_name'), ''), full_name)
@@ -55,8 +64,18 @@ BEGIN
     username  = CASE WHEN p_data ? 'username'
                      THEN coalesce(NULLIF(trim(p_data->>'username'), ''), username)
                      ELSE username END,
+    email     = CASE WHEN p_data ? 'email'
+                     THEN NULLIF(trim(p_data->>'email'), '')
+                     ELSE email END,
     role      = CASE WHEN p_data ? 'role' THEN auth_valid_role(p_data->>'role') ELSE role END,
     is_active = CASE WHEN p_data ? 'is_active' THEN (p_data->>'is_active')::boolean ELSE is_active END,
+    password  = CASE WHEN v_new_password IS NOT NULL
+                     THEN crypt(v_new_password, gen_salt('bf'))
+                     ELSE password END,
+    must_change_password = CASE
+                     WHEN p_data ? 'must_change_password' THEN (p_data->>'must_change_password')::boolean
+                     WHEN v_new_password IS NOT NULL THEN true
+                     ELSE must_change_password END,
     updated_by = coalesce(nullif(p_data->>'updated_by_name', ''), 'ADMIN'),
     updated_at = now()
   WHERE login_id = p_login_id
@@ -69,10 +88,12 @@ BEGIN
   RETURN jsonb_build_object(
     'ok', true,
     'status', 'ok',
+    'password_changed', v_new_password IS NOT NULL,
     'user', jsonb_build_object(
       'login_id', v_user.login_id,
       'username', v_user.username,
       'full_name', v_user.full_name,
+      'email', v_user.email,
       'role', v_user.role,
       'is_active', v_user.is_active,
       'must_change_password', v_user.must_change_password,

@@ -31,6 +31,8 @@ try {
 }
 
 const db = require('./db');
+const rbac = require('./rbac');
+const email = require('./email');
 
 const PORT = Number.parseInt(String(process.env.PORT), 10) || 3000;
 
@@ -101,6 +103,8 @@ const crud = async (action, table, data = {}, filters = {}) => {
  * @returns {{ id: number | null, name: string, role: string }}
  */
 const actorOf = (req) => {
+  const verified = rbac.verifyToken(rbac.bearerOf(req));
+  if (verified) return { id: verified.id, name: verified.name, role: verified.role };
   const h = req.headers || {};
   const rawId = Array.isArray(h['x-gss-user-id']) ? h['x-gss-user-id'][0] : h['x-gss-user-id'];
   const rawName = Array.isArray(h['x-gss-user-name']) ? h['x-gss-user-name'][0] : h['x-gss-user-name'];
@@ -154,27 +158,61 @@ const callProc = async (fn, signature, params) => {
  * @param {http.IncomingMessage} req
  * @returns {boolean}
  */
-const actorIsAdmin = (req) => String(actorOf(req).role || '').toLowerCase() === 'admin';
+const actorIsAdmin = (req) => {
+  const v = rbac.verifyToken(rbac.bearerOf(req));
+  return !!v && String(v.role || '').toLowerCase() === 'admin';
+};
 
 /**
- * Server-side permission check against the dynamic permission store. Resolves
- * the acting user by their login id (actor header) and asks `user_can`. Admins
- * always pass. When no id is present we fall back to the role header so Admins
- * are never locked out; all other roles are denied on guarded routes.
+ * Mandatory Admin-only gate (System Management). Independent of the Permission
+ * Matrix: requires a valid token AND a live Admin role in the database, so a
+ * demoted user loses access immediately. Sends 401/403 and returns false.
+ * @returns {Promise<boolean>}
+ */
+const requireAdmin = async (req, res) => {
+  const v = rbac.verifyToken(rbac.bearerOf(req));
+  if (!v) { sendJson(res, 401, { ok: false, status: 'unauthenticated' }); return false; }
+  const info = await callProc('auth_user_role', '$1', [v.name]);
+  if (!info || String(info.role || '').toLowerCase() !== 'admin') {
+    sendJson(res, 403, { ok: false, status: 'forbidden' });
+    return false;
+  }
+  return true;
+};
+
+/**
+ * Server-side permission check against the dynamic permission store. Only a
+ * verified bearer token identifies the actor (headers are never trusted);
+ * user_can` then resolves admin / inactive / stored rows / role defaults.
  * @param {http.IncomingMessage} req
  * @param {string} section  e.g. '1.1'
  * @param {string} action   e.g. 'delete'
  * @returns {Promise<boolean>}
  */
 const actorCan = async (req, section, action) => {
-  const actor = actorOf(req);
-  if (actor.id != null) {
-    const ok = await callProc('user_can', '$1::bigint, $2, $3', [actor.id, section, action]);
-    return ok === true;
-  }
-  return String(actor.role || '').toLowerCase() === 'admin';
+  const v = rbac.verifyToken(rbac.bearerOf(req));
+  if (!v) return false;
+  const ok = await callProc('user_can', '$1::bigint, $2, $3', [v.id, section, action]);
+  return ok === true;
 };
 
+/**
+ * Enforce { section, action } requirements. Sends 401 when the caller is not
+ * authenticated and 403 when any requirement is not granted. Every role,
+ * Candidate included, is resolved from the saved Permission Matrix.
+ * @returns {Promise<boolean>} true when the request may proceed
+ */
+const authorize = async (req, res, requirements, opts = {}) => {
+  const v = rbac.verifyToken(rbac.bearerOf(req));
+  if (!v) { sendJson(res, 401, { ok: false, status: 'unauthenticated' }); return false; }
+  for (const r of requirements) {
+    if (!(await actorCan(req, r.section, r.action))) {
+      sendJson(res, 403, { ok: false, status: 'forbidden', section: r.section, action: r.action });
+      return false;
+    }
+  }
+  return true;
+};
 /** @type {Map<string, { dataType: string, insertable: boolean }> | null} */
 let columnMetaCache = null;
 /** @type {string | null} The identity/primary key column (e.g. candidate_no). */
@@ -744,7 +782,7 @@ const server = http.createServer(async (req, res) => {
   // is served by Live Server on port 5500 instead of this Node server).
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-GSS-User-Id, X-GSS-User-Name, X-GSS-Role');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-GSS-User-Id, X-GSS-User-Name, X-GSS-Role, Authorization');
 
   if (method === 'OPTIONS') {
     res.writeHead(204);
@@ -761,13 +799,17 @@ const server = http.createServer(async (req, res) => {
 
     if (method === 'POST' && url === '/api/applicants') {
       const body = await readJsonBody(req);
+      const idRaw = body && (body.candidate_no || body.CandidateNo);
+      const isUpdate = Number.isFinite(Number.parseInt(String(idRaw), 10));
+      const needs = rbac.requirementsForSave(Object.keys(body || {}).filter((k) => body[k] !== '' && body[k] != null), isUpdate);
+      if (!(await authorize(req, res, needs, {}))) return;
       await createApplicant(res, body, actorOf(req));
       return;
     }
 
     // ── Delete an applicant (and dependent rows) via stored procedure ──
     if (method === 'DELETE' && url.startsWith('/api/applicants')) {
-      if (!(await actorCan(req, '1.1', 'delete'))) { sendJson(res, 403, { ok: false, status: 'forbidden' }); return; }
+      if (!(await authorize(req, res, [{ section: '1.1', action: 'delete' }]))) return;
       const id = Number.parseInt(new URL(url, 'http://localhost').searchParams.get('id') || '', 10);
       if (!Number.isFinite(id)) {
         sendJson(res, 400, { error: 'A valid applicant id is required.' });
@@ -780,6 +822,7 @@ const server = http.createServer(async (req, res) => {
 
     // ── Registration (applicant) search via stored procedure ──
     if (method === 'GET' && url.startsWith('/api/registration/search')) {
+      if (!(await authorize(req, res, [{ section: '1.1', action: 'view' }]))) return;
       const params = new URL(url, 'http://localhost').searchParams;
       const rows = await callProc('registration_search', '$1, $2, $3', [
         params.get('q') || '',
@@ -791,6 +834,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'GET' && (url === '/api/applicants' || url.startsWith('/api/applicants?'))) {
+      if (!(await authorize(req, res, [{ section: '1.1', action: 'view' }]))) return;
       const id = new URL(url, 'http://localhost').searchParams.get('id');
       if (id) {
         const applicant = await callProc('registration_get', '$1', [Number(id)]);
@@ -809,6 +853,9 @@ const server = http.createServer(async (req, res) => {
       const password = String((body && body.password) || '');
       const forceChange = Boolean(body && (body.forceChange || body.force_change));
       const result = await callProc('auth_login', '$1, $2, $3', [username, password, forceChange]);
+      if (result && result.ok && result.user && result.user.user_id != null && !result.must_change_password) {
+        result.token = rbac.signToken({ id: Number(result.user.user_id), name: result.user.username || result.user.full_name || '', role: result.user.role || '' });
+      }
       sendJson(res, 200, result || { ok: false, status: 'invalid' });
       return;
     }
@@ -837,14 +884,17 @@ const server = http.createServer(async (req, res) => {
       const fullName = String((body && (body.fullName || body.full_name || body.name)) || '').trim();
       const password = String((body && body.password) || '');
       const mustChange = Boolean(body && (body.mustChange || body.must_change));
-      const role = String((body && body.role) || 'Candidate');
+      // Public sign-up can only create Candidate accounts; staff roles are admin-assigned.
+      const role = 'Candidate';
       const result = await callProc('auth_register', '$1, $2, $3, $4, $5', [username, fullName, password, mustChange, role]);
+      if (result && result.ok) await callProc('permissions_seed_missing', '', []);
       sendJson(res, result && result.ok ? 201 : 200, result || { ok: false, status: 'invalid' });
       return;
     }
 
     // ── Measurements (panel-mensuration) ───────────────────────
     if (method === 'GET' && url.startsWith('/api/measurements')) {
+      if (!(await authorize(req, res, [{ section: '8.1', action: 'view' }]))) return;
       const candidateNo = new URL(url, 'http://localhost').searchParams.get('candidate_no') || '';
       const id = Number.parseInt(String(candidateNo), 10);
       if (!Number.isFinite(id)) { sendJson(res, 400, { error: 'A valid candidate number is required.' }); return; }
@@ -854,6 +904,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'POST' && url.startsWith('/api/measurements')) {
+      if (!(await authorize(req, res, [{ section: '8.1', action: 'edit' }]))) return;
       const body = await readJsonBody(req);
       injectActor(body, actorOf(req));
       const result = await callProc('measurements_upsert', '$1::jsonb', [JSON.stringify(body || {})]);
@@ -870,6 +921,7 @@ const server = http.createServer(async (req, res) => {
 
     // ── Instructor courses (permissions panel) ─────────────────
     if (method === 'GET' && url.startsWith('/api/instructor-courses')) {
+      if (!(await requireAdmin(req, res))) return;
       const trainer = new URL(url, 'http://localhost').searchParams.get('trainer') || '';
       const rows = await callProc('instructor_courses', '$1', [trainer]);
       sendJson(res, 200, { ok: true, courses: Array.isArray(rows) ? rows : [] });
@@ -886,15 +938,16 @@ const server = http.createServer(async (req, res) => {
     // ── Permissions: effective set for the signed-in user (UI gating) ──
     // Declared before the generic /api/me handler so it isn't shadowed.
     if (method === 'GET' && url.startsWith('/api/me/permissions')) {
-      const actor = actorOf(req);
-      const username = new URL(url, 'http://localhost').searchParams.get('username') || actor.name || '';
-      const result = await callProc('user_effective_permissions', '$1', [username]);
+      const v = rbac.verifyToken(rbac.bearerOf(req));
+      if (!v) { sendJson(res, 401, { ok: false, status: 'unauthenticated' }); return; }
+      const result = await callProc('user_effective_permissions', '$1', [v.name]);
       sendJson(res, 200, result || { ok: false, permissions: {} });
       return;
     }
 
     // ── Permissions: read / write a user's stored set (admin) ──
     if (method === 'GET' && url.startsWith('/api/permissions')) {
+      if (!(await requireAdmin(req, res))) return;
       const loginId = Number.parseInt(new URL(url, 'http://localhost').searchParams.get('login_id') || '', 10);
       if (!Number.isFinite(loginId)) { sendJson(res, 400, { ok: false, status: 'invalid' }); return; }
       const result = await callProc('user_permissions_get', '$1', [loginId]);
@@ -903,7 +956,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'POST' && url === '/api/permissions') {
-      if (!actorIsAdmin(req)) { sendJson(res, 403, { ok: false, status: 'forbidden' }); return; }
+      if (!(await requireAdmin(req, res))) return;
       const body = await readJsonBody(req);
       const loginId = Number.parseInt(String(body && (body.login_id != null ? body.login_id : body.id)), 10);
       if (!Number.isFinite(loginId)) { sendJson(res, 400, { ok: false, status: 'invalid' }); return; }
@@ -911,6 +964,63 @@ const server = http.createServer(async (req, res) => {
       const payload = { items: Array.isArray(body && body.items) ? body.items : [] };
       const result = await callProc('user_permissions_save', '$1, $2::jsonb, $3', [loginId, JSON.stringify(payload), actor.name || 'ADMIN']);
       sendJson(res, result && result.ok ? 200 : 400, result || { ok: false });
+      return;
+    }
+
+    // ── Permission templates: list / read (admin) ─────────────
+    if (method === 'GET' && url.startsWith('/api/permission-templates')) {
+      if (!(await requireAdmin(req, res))) return;
+      const tid = Number.parseInt(new URL(url, 'http://localhost').searchParams.get('template_id') || '', 10);
+      if (Number.isFinite(tid)) {
+        const one = await callProc('permission_template_get', '$1', [tid]);
+        sendJson(res, one && one.ok ? 200 : 404, one || { ok: false });
+        return;
+      }
+      const rows = await callProc('permission_templates_list', '', []);
+      sendJson(res, 200, { ok: true, templates: Array.isArray(rows) ? rows : [] });
+      return;
+    }
+
+    // ── Permission templates: save / create / duplicate / delete / apply (admin) ──
+    if (method === 'POST' && url === '/api/permission-templates') {
+      if (!(await requireAdmin(req, res))) return;
+      const body = await readJsonBody(req);
+      const actorName = actorOf(req).name || 'ADMIN';
+      const op = String((body && body.op) || '').toLowerCase();
+      const payload = JSON.stringify({ items: Array.isArray(body && body.items) ? body.items : [] });
+      const tid = Number.parseInt(String(body && body.template_id), 10);
+      if (op === 'save') {
+        if (!Number.isFinite(tid)) { sendJson(res, 400, { ok: false, status: 'invalid' }); return; }
+        const r = await callProc('permission_template_save', '$1, $2::jsonb, $3', [tid, payload, actorName]);
+        sendJson(res, r && r.ok ? 200 : 400, r || { ok: false });
+        return;
+      }
+      if (op === 'create') {
+        const roleArg = String((body && body.role) || '').trim() || null;
+        const r = await callProc('permission_template_create', '$1, $2, $3::jsonb, $4', [String((body && body.name) || ''), roleArg, payload, actorName]);
+        sendJson(res, r && r.ok ? 201 : 400, r || { ok: false });
+        return;
+      }
+      if (op === 'duplicate') {
+        if (!Number.isFinite(tid)) { sendJson(res, 400, { ok: false, status: 'invalid' }); return; }
+        const r = await callProc('permission_template_duplicate', '$1, $2, $3', [tid, String((body && body.name) || ''), actorName]);
+        sendJson(res, r && r.ok ? 201 : 400, r || { ok: false });
+        return;
+      }
+      if (op === 'delete') {
+        if (!Number.isFinite(tid)) { sendJson(res, 400, { ok: false, status: 'invalid' }); return; }
+        const r = await callProc('permission_template_delete', '$1', [tid]);
+        sendJson(res, r && r.ok ? 200 : 400, r || { ok: false });
+        return;
+      }
+      if (op === 'apply' || op === 'reset') {
+        if (!Number.isFinite(tid)) { sendJson(res, 400, { ok: false, status: 'invalid' }); return; }
+        const ids = Array.isArray(body && body.login_ids) ? body.login_ids : [];
+        const r = await callProc('permission_template_apply', '$1, $2::jsonb, $3', [tid, JSON.stringify(ids), actorName]);
+        sendJson(res, r && r.ok ? 200 : 400, r || { ok: false });
+        return;
+      }
+      sendJson(res, 400, { ok: false, status: 'unknown_op' });
       return;
     }
 
@@ -924,21 +1034,42 @@ const server = http.createServer(async (req, res) => {
 
     // ── User management (admin) ────────────────────────────────
     if (method === 'GET' && url.startsWith('/api/users')) {
+      if (!(await requireAdmin(req, res))) return;
       const rows = await callProc('login_users_list', '', []);
       sendJson(res, 200, { ok: true, users: Array.isArray(rows) ? rows : [] });
       return;
     }
 
     if (method === 'POST' && url === '/api/users') {
-      if (!actorIsAdmin(req)) { sendJson(res, 403, { ok: false, status: 'forbidden' }); return; }
+      if (!(await requireAdmin(req, res))) return;
       const body = await readJsonBody(req);
       injectActor(body, actorOf(req));
+      const notifyWanted = !!(body && body.notify);
+      const emailAddr = String((body && body.email) || '').trim();
+      // Validate the email format on the backend regardless of the UI state.
+      if (emailAddr && !email.isValidEmail(emailAddr)) {
+        sendJson(res, 400, { ok: false, status: 'invalid_email' });
+        return;
+      }
+      const lang = String((body && body.lang) || 'en');
       const idRaw = body && (body.login_id != null ? body.login_id : body.id);
       const id = Number.parseInt(String(idRaw), 10);
       if (Number.isFinite(id)) {
-        // Update an existing account (role / active / details).
+        // Update an existing account (role / active / details / password).
         const result = await callProc('login_user_update', '$1, $2::jsonb', [id, JSON.stringify(body || {})]);
-        sendJson(res, result && result.ok ? 200 : 400, result || { ok: false, status: 'invalid' });
+        if (!(result && result.ok)) { sendJson(res, 400, result || { ok: false, status: 'invalid' }); return; }
+        // Only after a successful DB write do we consider notifying.
+        /** @type {any} */
+        let notification = { attempted: false, sent: false, skipped: true, reason: 'not_requested' };
+        const u = result.user || {};
+        if (notifyWanted && email.isValidEmail(u.email)) {
+          const kind = result.password_changed ? 'passwordChanged' : 'accountUpdated';
+          notification = await email.notify(kind, {
+            email: u.email, fullName: u.full_name, username: u.username, lang,
+            mustChange: u.must_change_password, changes: Array.isArray(body.changes) ? body.changes : [],
+          });
+        }
+        sendJson(res, 200, Object.assign({}, result, { notification }));
         return;
       }
       // Create a new account (used by the admin "add user" form).
@@ -947,13 +1078,30 @@ const server = http.createServer(async (req, res) => {
       const password = String((body && body.password) || '');
       const mustChange = body && body.mustChange != null ? Boolean(body.mustChange) : true;
       const role = String((body && body.role) || 'Candidate');
-      const result = await callProc('auth_register', '$1, $2, $3, $4, $5', [username, fullName, password, mustChange, role]);
-      sendJson(res, result && result.ok ? 201 : 200, result || { ok: false, status: 'invalid' });
+      const result = await callProc('auth_register', '$1, $2, $3, $4, $5, $6', [username, fullName, password, mustChange, role, emailAddr || null]);
+      if (result && result.ok) {
+        // Apply the role's default permission template (if any) to the new
+        // account, then run the lazy seeder for roles without a template.
+        const newUser = result.user || {};
+        const newId = Number.parseInt(String(newUser.user_id != null ? newUser.user_id : newUser.login_id), 10);
+        if (Number.isFinite(newId)) await callProc('user_apply_role_template', '$1, $2', [newId, actorOf(req).name || 'ADMIN']);
+        await callProc('permissions_seed_missing', '', []);
+      }
+      // Notify only when the account was actually created and an address exists.
+      /** @type {any} */
+      let notification = { attempted: false, sent: false, skipped: true, reason: 'not_requested' };
+      if (result && result.ok && notifyWanted && email.isValidEmail(emailAddr)) {
+        notification = await email.notify('newAccount', {
+          email: emailAddr, fullName, username, lang, mustChange,
+        });
+      }
+      sendJson(res, result && result.ok ? 201 : 200, result && result.ok ? Object.assign({}, result, { notification }) : (result || { ok: false, status: 'invalid' }));
       return;
     }
 
     // ── Applicant work-queue notifications ─────────────────────
     if (method === 'GET' && url.startsWith('/api/applicants/pending')) {
+      if (!(await authorize(req, res, [{ section: '10.4', action: 'view' }]))) return;
       const count = await callProc('applicant_pending_count', '', []);
       const rows = await callProc('applicant_pending_list', '', []);
       sendJson(res, 200, { ok: true, count: Number(count) || 0, applicants: Array.isArray(rows) ? rows : [] });
@@ -961,6 +1109,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'GET' && url.startsWith('/api/applicants/secretary-queue')) {
+      if (!(await authorize(req, res, [{ section: '10.5', action: 'view' }]))) return;
       const count = await callProc('applicant_secretary_count', '', []);
       const rows = await callProc('applicant_secretary_list', '', []);
       sendJson(res, 200, { ok: true, count: Number(count) || 0, applicants: Array.isArray(rows) ? rows : [] });
@@ -1002,12 +1151,14 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'POST' && url.startsWith('/api/signatures')) {
+      if (!(await authorize(req, res, [{ section: '10.3', action: 'add' }]))) return;
       const body = await readJsonBody(req);
       await createSignature(res, body);
       return;
     }
 
     if (method === 'DELETE' && url.startsWith('/api/signatures')) {
+      if (!(await authorize(req, res, [{ section: '10.3', action: 'delete' }]))) return;
       const id = new URL(url, 'http://localhost').searchParams.get('id');
       if (!id) {
         sendJson(res, 400, { error: 'Missing signature id' });
@@ -1125,12 +1276,14 @@ const server = http.createServer(async (req, res) => {
 
     // ── Attendance sheet (attSheetTable) ───────────────────────
     if (method === 'GET' && url.startsWith('/api/attendance/candidate')) {
+      if (!(await authorize(req, res, [{ section: '5.1', action: 'view' }], {}))) return;
       const candidateNo = new URL(url, 'http://localhost').searchParams.get('candidate_no') || '';
       await listCandidateAttendance(res, candidateNo);
       return;
     }
 
     if (method === 'GET' && url.startsWith('/api/attendance')) {
+      if (!(await authorize(req, res, [{ section: '5.1', action: 'view' }]))) return;
       const params = new URL(url, 'http://localhost').searchParams;
       await listAttendance(res, {
         trainingId: params.get('training_id'),
@@ -1143,6 +1296,17 @@ const server = http.createServer(async (req, res) => {
 
     if (method === 'POST' && url.startsWith('/api/attendance')) {
       const body = await readJsonBody(req);
+      const isDelete = !!body && (body.delete === true || body._delete === true);
+      if (isDelete) {
+        if (!(await authorize(req, res, [{ section: '5.1', action: 'delete' }]))) return;
+      } else if (!(await actorCan(req, '5.1', 'add')) && !(await actorCan(req, '5.1', 'edit'))) {
+        if (!(await authorize(req, res, [{ section: '5.1', action: 'edit' }]))) return;
+      }
+      const trainingId = Number.parseInt(String((body && body.training_id) || ''), 10);
+      if (Number.isFinite(trainingId)) {
+        const own = await callProc('instructor_owns_training', '$1::bigint, $2::bigint', [actorOf(req).id, trainingId]);
+        if (own !== true) { sendJson(res, 403, { ok: false, status: 'forbidden', reason: 'not_assigned_course' }); return; }
+      }
       injectActor(body, actorOf(req));
       await saveAttendance(res, body);
       return;
@@ -1150,6 +1314,7 @@ const server = http.createServer(async (req, res) => {
 
     // ── Exam configuration (questions per training) ───────────
     if (method === 'GET' && url.startsWith('/api/questions')) {
+      if (!(await authorize(req, res, [{ section: '10.6', action: 'view' }]))) return;
       const trainingId = new URL(url, 'http://localhost').searchParams.get('training_id') || '';
       const id = Number.parseInt(String(trainingId), 10);
       if (!Number.isFinite(id)) {
@@ -1164,6 +1329,7 @@ const server = http.createServer(async (req, res) => {
     // Create / edit a single library question (+ its answers).
     if (method === 'POST' && url.startsWith('/api/question/save')) {
       const body = await readJsonBody(req);
+      if (!(await authorize(req, res, [{ section: '10.6', action: body && body.question_id ? 'edit' : 'add' }]))) return;
       injectActor(body, actorOf(req));
       const result = await callProc('question_save', '$1::jsonb', [JSON.stringify(body || {})]);
       sendJson(res, result && result.ok ? 200 : 400, result || { ok: false, status: 'invalid' });
@@ -1172,6 +1338,7 @@ const server = http.createServer(async (req, res) => {
 
     // Delete a single library question.
     if (method === 'POST' && url.startsWith('/api/question/delete')) {
+      if (!(await authorize(req, res, [{ section: '10.6', action: 'delete' }]))) return;
       const body = await readJsonBody(req);
       const id = Number.parseInt(String(body && body.question_id), 10);
       if (!Number.isFinite(id)) { sendJson(res, 400, { error: 'question_id required' }); return; }
@@ -1182,6 +1349,7 @@ const server = http.createServer(async (req, res) => {
 
     // Save which questions belong to the exam (order/points/instructions).
     if (method === 'POST' && url.startsWith('/api/exam/config')) {
+      if (!(await authorize(req, res, [{ section: '10.6', action: 'edit' }]))) return;
       const body = await readJsonBody(req);
       injectActor(body, actorOf(req));
       const result = await callProc('exam_config_save', '$1::jsonb', [JSON.stringify(body || {})]);
@@ -1191,6 +1359,7 @@ const server = http.createServer(async (req, res) => {
 
     // Admin "preview as candidate" (questions WITHOUT the answer key).
     if (method === 'GET' && url.startsWith('/api/exam/preview')) {
+      if (!(await authorize(req, res, [{ section: '10.6', action: 'view' }]))) return;
       const id = Number.parseInt(new URL(url, 'http://localhost').searchParams.get('training_id') || '', 10);
       if (!Number.isFinite(id)) { sendJson(res, 400, { error: 'training_id required' }); return; }
       const result = await callProc('exam_preview_for_training', '$1', [id]);
@@ -1200,6 +1369,7 @@ const server = http.createServer(async (req, res) => {
 
     // ── Publish an exam + generate temporary exam accounts ─────
     if (method === 'POST' && url.startsWith('/api/exam/publish')) {
+      if (!(await authorize(req, res, [{ section: '10.6', action: 'approve' }]))) return;
       const body = await readJsonBody(req);
       injectActor(body, actorOf(req));
       const result = await callProc('exam_publish', '$1::jsonb', [JSON.stringify(body || {})]);
@@ -1209,6 +1379,7 @@ const server = http.createServer(async (req, res) => {
 
     // ── Credential management table (Admin / Instructor / Head of Training) ──
     if (method === 'GET' && url.startsWith('/api/exam/credentials')) {
+      if (!(await authorize(req, res, [{ section: '10.6', action: 'view' }]))) return;
       const p = new URL(url, 'http://localhost').searchParams;
       const payload = { exam_id: p.get('exam_id') || null, training_id: p.get('training_id') || null };
       const result = await callProc('exam_credentials_list', '$1::jsonb', [JSON.stringify(payload)]);
@@ -1217,6 +1388,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'POST' && url.startsWith('/api/exam/credential/reveal')) {
+      if (!(await authorize(req, res, [{ section: '10.6', action: 'view' }]))) return;
       const body = await readJsonBody(req);
       const id = Number.parseInt(String(body && body.access_id), 10);
       if (!Number.isFinite(id)) { sendJson(res, 400, { error: 'access_id required' }); return; }
@@ -1226,6 +1398,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'POST' && url.startsWith('/api/exam/credential/send')) {
+      if (!(await authorize(req, res, [{ section: '10.6', action: 'edit' }]))) return;
       const body = await readJsonBody(req);
       injectActor(body, actorOf(req));
       const result = await callProc('exam_access_send', '$1::jsonb', [JSON.stringify(body || {})]);
@@ -1234,6 +1407,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'POST' && url.startsWith('/api/exam/credential/disable')) {
+      if (!(await authorize(req, res, [{ section: '10.6', action: 'edit' }]))) return;
       const body = await readJsonBody(req);
       injectActor(body, actorOf(req));
       const result = await callProc('exam_access_disable', '$1::jsonb', [JSON.stringify(body || {})]);
@@ -1243,6 +1417,7 @@ const server = http.createServer(async (req, res) => {
 
     // ── Generate a credential for a single "Not Generated" candidate ──
     if (method === 'POST' && url.startsWith('/api/exam/credential/generate')) {
+      if (!(await authorize(req, res, [{ section: '10.6', action: 'add' }]))) return;
       const body = await readJsonBody(req);
       injectActor(body, actorOf(req));
       const result = await callProc('exam_access_generate', '$1::jsonb', [JSON.stringify(body || {})]);

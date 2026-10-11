@@ -1,4 +1,4 @@
-// @ts-check
+﻿// @ts-check
 /// <reference path="../js/utils/translation.js" />
 // ── GSS login page · UI logic ─────────────────────────────────────
 // Translation strings live in translation.js (see `loginTranslations`),
@@ -190,6 +190,17 @@
           changePwdStatus.classList.remove('text-red-600');
           changePwdStatus.classList.add('text-emerald-600');
           changePwdStatus.textContent = dict.cpSuccess;
+          // Sign in again with the new password to obtain an API token.
+          try {
+            const relogin = await fetch(`\/api/login`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username: pendingUsername, password: next }),
+            }).then((r) => r.json());
+            if (relogin && relogin.ok && relogin.token) {
+              storeUser(Object.assign({}, relogin.user || { username: pendingUsername }, { token: relogin.token }));
+            }
+          } catch (_) { /* user can sign in again manually */ }
           window.setTimeout(enterApp, 800);
           return;
         }
@@ -315,7 +326,8 @@
         const data = await res.json().catch(() => ({}));
 
         if (data && data.ok) {
-          const user = (data.user && typeof data.user === 'object') ? data.user : { username };
+          const user = (data.user && typeof data.user === 'object') ? Object.assign({}, data.user) : { username };
+          if (data.token) user.token = data.token;
           storeUser(user);
 
           // First-login / forced change: gather a new password before entering.

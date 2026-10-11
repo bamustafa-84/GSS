@@ -1,4 +1,4 @@
-// @ts-check
+﻿// @ts-check
 /// <reference path="./modules/registration.js" />
 /// <reference path="./modules/applicant-link.js" />
 
@@ -191,6 +191,10 @@ const switchTab = (tabName) => {
   // Enforce the sequential workflow: locked tabs cannot be opened.
   if (!isTabUnlocked(tabName)) return;
 
+  // RBAC: a tab the user may not view can never be opened (nav, deep link, programmatic).
+  const perms = /** @type {any} */ (window).GSSPerms;
+  if (perms && perms.loaded && !perms.canViewTab(tabName)) return;
+
   // Hide all panels
   document.querySelectorAll('.gss-tab-panel').forEach(p => p.classList.add('hidden'));
 
@@ -312,6 +316,7 @@ updateTabLocks();
 // Public helper so other modules (e.g. applicant-link.js) can force a tab to be
 // locked/unlocked independently of the sequential flow, then refresh the UI.
 /** @type {any} */ (window).GSSTabs = {
+  switchTab: (/** @type {string} */ tab) => switchTab(tab),
   setForcedLock: (/** @type {string} */ tab, /** @type {boolean} */ locked) => {
     if (locked) forcedLockedTabs.add(tab);
     else forcedLockedTabs.delete(tab);

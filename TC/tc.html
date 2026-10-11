@@ -66,17 +66,25 @@
   <body class="min-h-screen bg-white text-[#042F8D] font-sans">
     <!-- ═══════════════════ TOP PANEL SEARCH BAR ═══════════════════ -->
     <div class="sticky top-0 z-[60] border-b border-slate-200 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70">
-      <div class="mx-auto flex max-w-7xl items-center gap-3 px-5 py-3 sm:px-6 lg:px-8">
-      
+      <div class="mx-auto flex w-full max-w-[1700px] items-center gap-3 px-5 py-3 sm:px-6 lg:px-8">
+
+        <!-- ── Brand ── -->
+        <a href="#" class="flex shrink-0 items-center gap-2.5" aria-label="Guarde Security Service">
+          <img src="./img/logo.png" alt="Guarde Security Service" class="h-10 w-10 shrink-0 object-contain" />
+          <span class="hidden min-w-0 flex-col leading-tight lg:flex">
+            <span class="truncate text-sm font-extrabold tracking-tight text-[#042F8D]">GUARDE SECURITY SERVICE</span>
+            <span class="truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400" data-i18n="brandTagline">Professional Security Training</span>
+          </span>
+        </a>
 
         <!-- ── Search pill ── -->
-        <div class="relative flex flex-1 items-stretch rounded-full border border-slate-200 bg-white shadow-sm transition-colors focus-within:border-[#042F8D] focus-within:ring-4 focus-within:ring-[#042F8D]/10">
+        <div class="relative flex min-w-0 flex-1 items-stretch rounded-full border border-slate-200 bg-slate-50 shadow-sm transition-colors focus-within:border-[#042F8D] focus-within:bg-white focus-within:ring-4 focus-within:ring-[#042F8D]/10">
           <!-- Text search -->
-          <div id="psSearch" class="relative flex-1">
+          <div id="psSearch" class="relative min-w-0 flex-1">
             <div class="relative">
-              <svg xmlns="http://www.w3.org/2000/svg" class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" class="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
               <input id="psSearchInput" type="text" autocomplete="off" data-i18n-placeholder="psSearchPlaceholder" placeholder="Search records…"
-                class="w-full rounded-full border-0 bg-transparent py-2.5 pl-10 pr-3 text-sm text-slate-800 focus:outline-none focus:ring-0" />
+                class="w-full rounded-full border-0 bg-transparent py-3 pl-11 pr-4 text-[15px] leading-5 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-0" />
             </div>
             <div id="psResults" class="absolute left-0 top-full z-[70] mt-2 hidden w-full overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-[0_24px_60px_rgba(4,47,141,0.25)]">
               <ul id="psResultsList" role="listbox" aria-label="Results" class="max-h-80 overflow-y-auto p-1.5"></ul>
@@ -85,112 +93,178 @@
           </div>
         </div>
 
-        <!-- ── Open grid button ── -->
-        <button type="button" id="psGridBtn" title="Panels grid" aria-label="Open panels grid"
-          class="flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
-          <span class="hidden sm:inline" data-i18n="psGrid">Grid</span>
-        </button>
+        <!-- ── Primary navigation ── -->
+        <nav class="flex shrink-0 items-center divide-x divide-slate-200" aria-label="Primary">
 
-        <!-- ── Open signatures manager button ── -->
-        <button type="button" id="sigBtn" title="Signatures" data-role-any="Admin" aria-label="Manage signatures"
-          class="flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
-          <span class="hidden sm:inline" data-i18n="sigBtn">Signatures</span>
-        </button>
-
-        <!-- ── Pending interviews notification (all users) ── -->
-        <button type="button" id="pendingBell" data-role-any="Admin,Head of Training,Secretary" title="Pending interviews" aria-label="Pending interviews"
-          class="relative inline-flex shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white p-2.5 text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          <span id="pendingBadge" class="absolute -right-1 -top-1 hidden min-w-[1.15rem] rounded-full bg-red-500 px-1 py-0.5 text-center text-[10px] font-bold leading-none text-white">0</span>
-        </button>
-
-        <!-- ── System Management (Admin only) — dropdown with Users / Roles & Permissions ── -->
-        <div id="sysMgmtWrap" data-role-any="Admin" data-role-display="inline-flex" class="relative hidden shrink-0 items-center">
-          <button type="button" id="sysMgmtBtn" title="System Management" aria-haspopup="menu" aria-expanded="false"
-            class="flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-            <span class="hidden sm:inline" data-i18n="sysMgmtBtn">System Management</span>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          <!-- Grid -->
+          <button type="button" id="psGridBtn" title="Panels grid" aria-label="Open panels grid"
+            class="flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-semibold text-[#042F8D] transition-colors hover:text-[#0b4dc2] focus:outline-none">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+            <span class="hidden sm:inline" data-i18n="psGrid">Grid</span>
           </button>
-          <div id="sysMgmtMenu" role="menu" aria-labelledby="sysMgmtBtn"
-            class="absolute right-0 top-full z-[80] mt-2 hidden w-60 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_24px_60px_rgba(4,47,141,0.25)]">
-            <button type="button" id="openUsersBtn" role="menuitem"
-              class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition-colors hover:bg-[#042F8D]/5 hover:text-[#042F8D]">
-              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#042F8D]/10 text-[#042F8D]"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
-              <span>
-                <span class="block" data-i18n="menuUsers">Users</span>
-                <span class="block text-xs font-normal text-slate-400" data-i18n="menuUsersSub">Create and manage accounts</span>
-              </span>
+
+          <!-- Signatures -->
+          <button type="button" id="sigBtn" title="Signatures" data-perm="10.3:view" aria-label="Manage signatures"
+            class="hidden shrink-0 flex items-center gap-2 px-3 py-2 text-sm font-semibold text-[#042F8D] transition-colors hover:text-[#0b4dc2] focus:outline-none">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+            <span class="hidden sm:inline" data-i18n="sigBtn">Signatures</span>
+          </button>
+
+          <!-- Users (Manage Users dropdown) -->
+          <div id="sysMgmtWrap" data-role-any="Admin" data-role-display="inline-flex" class="relative hidden shrink-0 items-center">
+            <button type="button" id="sysMgmtBtn" title="Users" aria-haspopup="menu" aria-expanded="false"
+              class="flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-semibold text-[#042F8D] transition-colors hover:text-[#0b4dc2] focus:outline-none">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span class="hidden sm:inline" data-i18n="sysMgmtBtn">Users</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
             </button>
-            <button type="button" id="openPermsBtn" role="menuitem"
-              class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition-colors hover:bg-[#042F8D]/5 hover:text-[#042F8D]">
-              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#042F8D]/10 text-[#042F8D]"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span>
-              <span>
-                <span class="block" data-i18n="menuPerms">Roles &amp; Permissions</span>
-                <span class="block text-xs font-normal text-slate-400" data-i18n="menuPermsSub">Manage access rights</span>
-              </span>
+            <div id="sysMgmtMenu" role="menu" aria-labelledby="sysMgmtBtn"
+              class="absolute right-0 top-full z-[80] mt-2 hidden w-60 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_24px_60px_rgba(4,47,141,0.25)]">
+              <button type="button" id="openUsersBtn" role="menuitem"
+                class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition-colors hover:bg-[#042F8D]/5 hover:text-[#042F8D]">
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#042F8D]/10 text-[#042F8D]"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+                <span>
+                  <span class="block" data-i18n="menuUsers">Users</span>
+                  <span class="block text-xs font-normal text-slate-400" data-i18n="menuUsersSub">Create and manage accounts</span>
+                </span>
+              </button>
+              <button type="button" id="openPermsBtn" role="menuitem"
+                class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition-colors hover:bg-[#042F8D]/5 hover:text-[#042F8D]">
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#042F8D]/10 text-[#042F8D]"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span>
+                <span>
+                  <span class="block" data-i18n="menuPerms">Roles &amp; Permissions</span>
+                  <span class="block text-xs font-normal text-slate-400" data-i18n="menuPermsSub">Manage access rights</span>
+                </span>
+              </button>
+              <button type="button" id="openDictConfigBtn" role="menuitem"
+                class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition-colors hover:bg-[#042F8D]/5 hover:text-[#042F8D]">
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#042F8D]/10 text-[#042F8D]"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h6"/><path d="M9 11h4"/></svg></span>
+                <span>
+                  <span class="block" data-i18n="menuDictConfig">Dictionary Configuration</span>
+                  <span class="block text-xs font-normal text-slate-400" data-i18n="menuDictConfigSub">Manage reference lists</span>
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Attendance -->
+          <button type="button" id="attSheetBtn" data-role-any="Admin,Instructor,Secretary,Head of Training" data-role-display="inline-flex" title="Monthly attendance sheet"
+            class="hidden shrink-0 items-center gap-2 px-3 py-2 text-sm font-semibold text-[#042F8D] transition-colors hover:text-[#0b4dc2] focus:outline-none">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            <span class="hidden sm:inline" data-i18n="attSheetBtn">Attendance</span>
+          </button>
+
+          <!-- Exams -->
+          <button type="button" id="examConfigBtn" data-perm="10.6:view" title="Configure exams"
+            class="hidden shrink-0 inline-flex items-center gap-2 px-3 py-2 text-sm font-semibold text-[#042F8D] transition-colors hover:text-[#0b4dc2] focus:outline-none">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            <span class="hidden sm:inline" data-i18n="examBtn">Exams</span>
+          </button>
+
+          <!-- Reports (Admin / Head of Training) -->
+          <div id="reportsMenu" data-role-any="Admin,Head of Training" data-role-display="block" class="relative hidden">
+            <button type="button" id="reportsBtn" title="Reports" aria-haspopup="menu" aria-expanded="false" aria-controls="reportsDropdown"
+              class="flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-semibold text-[#042F8D] transition-colors hover:text-[#0b4dc2] focus:outline-none">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              <span class="hidden sm:inline" data-i18n="reportsBtn">Reports</span>
+              <svg class="h-3.5 w-3.5 opacity-70" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
+            <div id="reportsDropdown" role="menu" aria-labelledby="reportsBtn"
+              class="absolute right-0 z-[70] mt-2 hidden w-72 origin-top-right overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_24px_60px_rgba(4,47,141,0.25)]">
+              <button type="button" role="menuitem" data-report="attendance-sheet"
+                class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus:bg-slate-50 focus:outline-none">
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#042F8D]/10 text-[#042F8D]"><svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+                <span data-i18n="rptMenuAttendance">Attendance Sheet</span>
+              </button>
+              <button type="button" role="menuitem" data-report="candidate-details"
+                class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus:bg-slate-50 focus:outline-none">
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#042F8D]/10 text-[#042F8D]"><svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+                <span data-i18n="rptMenuCandidate">Candidate Details</span>
+              </button>
+              <div class="my-1 h-px bg-slate-100"></div>
+              <button type="button" role="menuitem" data-report="training-register"
+                class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-[#042F8D] transition-colors hover:bg-[#042F8D]/5 focus:bg-[#042F8D]/5 focus:outline-none">
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#042F8D] text-white"><svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
+                <span data-i18n="rptMenuRegister">Training Register</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Take exam (Candidate) -->
+          <button type="button" id="examTakeBtn" data-role-any="Candidate" data-role-display="inline-flex" title="Take your exam"
+            class="hidden shrink-0 items-center gap-2 px-3 py-2 text-sm font-semibold text-[#042F8D] transition-colors hover:text-[#0b4dc2] focus:outline-none">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>
+            <span class="hidden sm:inline" data-i18n="examTakeBtn">Take exam</span>
+          </button>
+        </nav>
+
+        <!-- ── Notifications + profile ── -->
+        <div class="flex shrink-0 items-center gap-1 border-l border-slate-200 pl-2 sm:pl-3">
+          <!-- Role-based notification bell (single bell; alerts gated per permission) -->
+          <div id="notifWrap" class="relative hidden shrink-0 items-center">
+            <button type="button" id="notifBell" aria-haspopup="menu" aria-expanded="false" aria-controls="notifMenu" title="Notifications" aria-label="Notifications"
+              class="relative inline-flex items-center justify-center gap-1 rounded-full p-2 text-[#042F8D] transition-colors hover:text-[#0b4dc2] focus:outline-none">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              <svg id="notifChevron" class="hidden h-3.5 w-3.5 opacity-70" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              <span id="notifBadge" class="absolute -right-0.5 -top-0.5 hidden min-w-[1.1rem] rounded-full bg-red-500 px-1 py-0.5 text-center text-[10px] font-bold leading-none text-white">0</span>
+            </button>
+            <div id="notifMenu" role="menu" aria-labelledby="notifBell"
+              class="absolute right-0 top-full z-[90] mt-2 hidden w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_24px_60px_rgba(4,47,141,0.25)]">
+              <p class="px-3 pb-1 pt-2 text-xs font-bold uppercase tracking-wide text-slate-400" data-i18n="notifTitle">Notifications</p>
+
+              <!-- Alert: pending applications awaiting review (Admin · Head of Training) -->
+              <button type="button" id="pendingBell" data-perm="10.4:view" role="menuitem" title="Pending interviews"
+                class="hidden w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-[#042F8D]/5 focus:bg-[#042F8D]/5 focus:outline-none">
+                <span class="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500/10 text-red-600">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  <span id="pendingBadge" class="absolute -right-1 -top-1 hidden min-w-[1.1rem] rounded-full bg-red-500 px-1 py-0.5 text-center text-[10px] font-bold leading-none text-white">0</span>
+                </span>
+                <span class="min-w-0">
+                  <span class="block text-sm font-semibold text-slate-700" data-i18n="notifPending">Pending applications to review</span>
+                  <span class="block text-xs text-slate-400" data-i18n="notifPendingSub">Applicants awaiting interview review</span>
+                </span>
+              </button>
+
+              <!-- Alert: applicants awaiting processing (Admin · Secretary) -->
+              <button type="button" id="secretaryBell" data-perm="10.5:view" role="menuitem" title="Applicants to process"
+                class="hidden w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-[#042F8D]/5 focus:bg-[#042F8D]/5 focus:outline-none">
+                <span class="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-amber-600">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6a2 2 0 0 1 2 2v1h1a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h1V4a2 2 0 0 1 2-2z"/><path d="M9 5h6"/><path d="m9 14 2 2 4-4"/></svg>
+                  <span id="secretaryBadge" class="absolute -right-1 -top-1 hidden min-w-[1.1rem] rounded-full bg-amber-500 px-1 py-0.5 text-center text-[10px] font-bold leading-none text-white">0</span>
+                </span>
+                <span class="min-w-0">
+                  <span class="block text-sm font-semibold text-slate-700" data-i18n="notifSecretary">Applicants to process</span>
+                  <span class="block text-xs text-slate-400" data-i18n="notifSecretarySub">Accepted applicants awaiting processing</span>
+                </span>
+              </button>
+
+              <p id="notifEmpty" class="hidden px-3 py-6 text-center text-sm text-slate-400" data-i18n="notifEmpty">No notifications</p>
+            </div>
+          </div>
+
+          <!-- User profile + logout menu -->
+          <div id="userChip" class="relative hidden shrink-0 items-center">
+            <button type="button" id="userMenuBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="userMenu"
+              class="flex items-center gap-2 rounded-full py-1 pl-1 pr-1.5 transition-colors hover:bg-[#042F8D]/5 focus:outline-none focus:ring-2 focus:ring-[#042F8D]/20">
+              <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#042F8D] text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+              </span>
+              <span class="hidden flex-col items-start text-left leading-tight sm:flex">
+                <span id="userChipName" class="text-sm font-bold text-[#042F8D]">User</span>
+                <span id="userChipRole" class="hidden"><span id="userChipRoleText" class="text-[11px] font-medium text-slate-400">—</span></span>
+              </span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div id="userMenu" role="menu" aria-labelledby="userMenuBtn"
+              class="absolute right-0 top-full z-[90] mt-2 hidden w-44 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_24px_60px_rgba(4,47,141,0.25)]">
+              <button type="button" id="logoutBtn" role="menuitem"
+                class="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition-colors hover:bg-[#042F8D]/5 hover:text-[#042F8D]">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+                <span data-i18n="logout">Log out</span>
+              </button>
+            </div>
           </div>
         </div>
-
-        <!-- ── Secretary work queue notification (Secretary / Admin) ── -->
-        <button type="button" id="secretaryBell" data-role-any="Secretary,Admin" title="Applicants to process" aria-label="Applicants to process"
-          class="relative hidden shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white p-2.5 text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6a2 2 0 0 1 2 2v1h1a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h1V4a2 2 0 0 1 2-2z"/><path d="M9 5h6"/><path d="m9 14 2 2 4-4"/></svg>
-          <span id="secretaryBadge" class="absolute -right-1 -top-1 hidden min-w-[1.15rem] rounded-full bg-amber-500 px-1 py-0.5 text-center text-[10px] font-bold leading-none text-white">0</span>
-        </button>
-
-        <!-- ── Monthly attendance tick sheet (Instructor edits · Admin / Head of Training view) ── -->
-        <button type="button" id="attSheetBtn" data-role-any="Admin,Instructor,Secretary,Head of Training" data-role-display="inline-flex" title="Monthly attendance sheet"
-          class="hidden shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-          <span class="hidden sm:inline" data-i18n="attSheetBtn">Attendance sheet</span>
-        </button>
-
-        <!-- ── Exam configuration (Admin / Secretary) ── -->
-        <button type="button" id="examConfigBtn" data-role-any="Admin" data-role-display="inline-flex" title="Configure exams"
-          class="hidden shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-          <span class="hidden sm:inline" data-i18n="examBtn">Exams</span>
-        </button>
-
-        <!-- ── Reports (Admin / Head of Training) ── -->
-        <div id="reportsMenu" data-role-any="Admin,Head of Training" data-role-display="block" class="relative hidden">
-          <button type="button" id="reportsBtn" title="Reports" aria-haspopup="menu" aria-expanded="false" aria-controls="reportsDropdown"
-            class="flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="8" y1="9" x2="10" y2="9"/></svg>
-            <span class="hidden sm:inline" data-i18n="reportsBtn">Reports</span>
-            <svg class="h-3.5 w-3.5 opacity-70" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
-          <div id="reportsDropdown" role="menu" aria-labelledby="reportsBtn"
-            class="absolute right-0 z-[70] mt-2 hidden w-72 origin-top-right overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_24px_60px_rgba(4,47,141,0.25)]">
-            <button type="button" role="menuitem" data-report="attendance-sheet"
-              class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus:bg-slate-50 focus:outline-none">
-              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#042F8D]/10 text-[#042F8D]"><svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
-              <span data-i18n="rptMenuAttendance">Attendance Sheet</span>
-            </button>
-            <button type="button" role="menuitem" data-report="candidate-details"
-              class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus:bg-slate-50 focus:outline-none">
-              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#042F8D]/10 text-[#042F8D]"><svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-              <span data-i18n="rptMenuCandidate">Candidate Details</span>
-            </button>
-            <div class="my-1 h-px bg-slate-100"></div>
-            <button type="button" role="menuitem" data-report="training-register"
-              class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-[#042F8D] transition-colors hover:bg-[#042F8D]/5 focus:bg-[#042F8D]/5 focus:outline-none">
-              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#042F8D] text-white"><svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
-              <span data-i18n="rptMenuRegister">Training Register</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- ── Take exam (Candidate) ── -->
-        <button type="button" id="examTakeBtn" data-role-any="Candidate" data-role-display="inline-flex" title="Take your exam"
-          class="hidden shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-[#042F8D] shadow-sm transition-colors hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>
-          <span class="hidden sm:inline" data-i18n="examTakeBtn">Take exam</span>
-        </button>
       </div>
     </div>
 
@@ -361,6 +435,76 @@
             </div>
 
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ DICTIONARY CONFIGURATION OVERLAY ═══════════════════ -->
+    <div id="dictConfigOverlay" class="fixed inset-0 z-[1100] hidden bg-[rgba(1,7,16,0.6)] p-3 backdrop-blur-sm sm:p-6" aria-hidden="true">
+      <div class="mx-auto flex h-full w-full max-w-2xl flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.35)]" role="dialog" aria-modal="true" aria-labelledby="dictConfigTitle">
+        <div class="flex shrink-0 items-center justify-between gap-3 bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-5 py-4 text-white">
+          <div class="flex items-center gap-2">
+            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h6"/><path d="M9 11h4"/></svg>
+            </span>
+            <div>
+              <h2 id="dictConfigTitle" class="text-base font-semibold leading-tight" data-i18n="dictConfigTitle">Dictionary Configuration</h2>
+              <p class="text-xs text-white/80" data-i18n="dictConfigSubtitle">Manage all reference lists used across the application</p>
+            </div>
+          </div>
+          <button type="button" id="dictConfigClose" data-i18n-title="closeBtn" data-i18n-aria-label="closeBtn" title="Close" aria-label="Close" class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25 focus:outline-none focus:ring-2 focus:ring-white/60">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+
+        <div class="flex-1 overflow-auto p-4 sm:p-5">
+          <!-- Registration -->
+          <section class="mb-5">
+            <h3 class="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500">
+              <span class="h-px flex-1 bg-slate-200"></span>
+              <span data-i18n="dictGroupRegistration">Registration</span>
+              <span class="h-px flex-1 bg-slate-200"></span>
+            </h3>
+            <ul class="space-y-2">
+              <li class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-[#042F8D]/40">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#042F8D]/10 text-[#042F8D]">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-bold text-slate-800" data-i18n="dictEduTitle">Education Level</p>
+                  <p class="truncate text-xs text-slate-500" data-i18n="dictConfigEduDesc">Values for the Education Level selector</p>
+                </div>
+                <button type="button" data-dict-category="edu_lvl" data-dict-title-i18n="dictEduTitle" class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#042F8D] px-3.5 py-2 text-xs font-bold text-white transition hover:bg-[#0b4dc2] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/20">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                  <span data-i18n="dictManage">Dictionary Management</span>
+                </button>
+              </li>
+            </ul>
+          </section>
+
+          <!-- Attendance -->
+          <section class="mb-1">
+            <h3 class="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500">
+              <span class="h-px flex-1 bg-slate-200"></span>
+              <span data-i18n="dictGroupAttendance">Attendance</span>
+              <span class="h-px flex-1 bg-slate-200"></span>
+            </h3>
+            <ul class="space-y-2">
+              <li class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-[#042F8D]/40">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#042F8D]/10 text-[#042F8D]">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-bold text-slate-800" data-i18n="dictTrainingTitle">Training Title</p>
+                  <p class="truncate text-xs text-slate-500" data-i18n="dictConfigTrainingDesc">Values for the Training Title selector</p>
+                </div>
+                <button type="button" data-dict-category="training_title" data-dict-title-i18n="dictTrainingTitle" class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#042F8D] px-3.5 py-2 text-xs font-bold text-white transition hover:bg-[#0b4dc2] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/20">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                  <span data-i18n="dictManage">Dictionary Management</span>
+                </button>
+              </li>
+            </ul>
+          </section>
         </div>
       </div>
     </div>
@@ -693,12 +837,24 @@
     <!-- ═══════════════════ MANAGE USERS OVERLAY (Admin) ═══════════════════ -->
     <div id="usersOverlay" class="fixed inset-0 z-[1100] hidden bg-[rgba(1,7,16,0.6)] p-3 backdrop-blur-sm sm:p-6" aria-hidden="true">
       <div class="mx-auto flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.35)]" role="dialog" aria-modal="true" aria-labelledby="usersTitle">
-        <header class="flex items-center justify-between gap-3 bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-5 py-4 text-white">
+        <header class="flex flex-wrap items-center gap-3 bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-5 py-4 text-white">
           <h2 id="usersTitle" class="text-base font-semibold" data-i18n="usersTitle">Manage Users</h2>
-          <div class="flex items-center gap-2">
-            <button type="button" id="usersAddBtn" class="inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-white/25" data-i18n="usersAdd">Add user</button>
-            <button type="button" id="usersRefresh" class="rounded-full bg-white/15 px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-white/25" data-i18n="sigRefresh">Refresh</button>
-            <button type="button" id="usersClose" class="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/25" data-i18n="closeBtn">Close</button>
+          <div class="relative order-last w-full sm:order-none sm:ml-auto sm:w-auto sm:max-w-sm sm:flex-1">
+            <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/70">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </span>
+            <input id="usersSearch" type="search" autocomplete="off" data-i18n-placeholder="usersSearchPlaceholder" placeholder="Search users by name, username or role…" aria-label="Search users" data-i18n-aria-label="usersSearchPlaceholder" class="w-full rounded-full border border-white/25 bg-white/15 py-2 pl-10 pr-3 text-sm text-white placeholder-white/60 focus:border-white/60 focus:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/40" />
+          </div>
+          <div class="ml-auto flex items-center gap-2">
+            <button type="button" id="usersAddBtn" data-i18n-title="usersAdd" data-i18n-aria-label="usersAdd" title="Add User" aria-label="Add User" class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25 focus:outline-none focus:ring-2 focus:ring-white/60">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            </button>
+            <button type="button" id="usersRefresh" data-i18n-title="sigRefresh" data-i18n-aria-label="sigRefresh" title="Refresh" aria-label="Refresh" class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25 focus:outline-none focus:ring-2 focus:ring-white/60">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            </button>
+            <button type="button" id="usersClose" data-i18n-title="closeBtn" data-i18n-aria-label="closeBtn" title="Close" aria-label="Close" class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25 focus:outline-none focus:ring-2 focus:ring-white/60">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
           </div>
         </header>
         <div class="flex-1 overflow-auto p-4 sm:p-5">
@@ -733,14 +889,24 @@
                     <option value="Instructor" data-i18n="roleInstructor">Instructor</option>
                   </select>
                 </div>
-                <div class="flex flex-col gap-1.5">
+                <div id="userStatusField" class="flex flex-col gap-1.5">
                   <label for="userStatus" class="text-xs font-semibold text-slate-600"><span data-i18n="usersStatusCol">Status</span> <span class="text-red-500">*</span></label>
                   <select id="userStatus" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
                     <option value="enabled" data-i18n="usersEnabled">Enabled</option>
                     <option value="disabled" data-i18n="usersDisabled">Disabled</option>
                   </select>
                 </div>
+                <div class="flex flex-col gap-1.5">
+                  <label for="userEmail" class="text-xs font-semibold text-slate-600"><span data-i18n="usersEmail">Email</span></label>
+                  <input id="userEmail" type="email" autocomplete="off" inputmode="email" placeholder="name@example.com" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                  <p id="userEmailErr" class="hidden text-xs font-semibold text-red-500" data-i18n="usersEmailInvalid">Please enter a valid email address.</p>
+                </div>
               </div>
+              <label id="userNotifyField" class="mt-4 hidden cursor-pointer items-center gap-2 text-sm text-slate-700">
+                <input type="checkbox" id="userNotifyEmail" class="h-4 w-4 rounded accent-[#042F8D]" />
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#042F8D]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>
+                <span data-i18n="usersNotifyEmail">Notify by Email</span>
+              </label>
             </div>
 
             <!-- ── 2. Login Credentials ── -->
@@ -753,15 +919,16 @@
               </div>
               <div class="grid gap-4 sm:grid-cols-2">
                 <div class="flex flex-col gap-1.5">
-                  <label for="userPassword" class="text-xs font-semibold text-slate-600"><span data-i18n="userTempPw">Temporary Password</span> <span class="text-red-500">*</span></label>
+                  <label for="userPassword" class="text-xs font-semibold text-slate-600"><span id="userPasswordLabel" data-i18n="usersPassword">Password</span> <span id="userPasswordReq" class="text-red-500">*</span></label>
                   <div class="relative">
                     <input id="userPassword" type="password" autocomplete="new-password" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 pr-10 text-sm text-slate-800 focus:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                     <button type="button" data-pw-toggle="userPassword" aria-label="Show password" class="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-[#042F8D]">
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
                     </button>
                   </div>
+                  <p id="userPwHint" class="hidden text-xs text-slate-500" data-i18n="userPwKeepHint">Leave blank to keep the current password.</p>
                 </div>
-                <div class="flex flex-col gap-1.5">
+                <div id="userConfirmPwField" class="flex flex-col gap-1.5">
                   <label for="userPasswordConfirm" class="text-xs font-semibold text-slate-600"><span data-i18n="userConfirmPw">Confirm Password</span> <span class="text-red-500">*</span></label>
                   <div class="relative">
                     <input id="userPasswordConfirm" type="password" autocomplete="new-password" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 pr-10 text-sm text-slate-800 focus:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
@@ -778,7 +945,7 @@
             </div>
 
             <!-- ── 3. Role & Permissions ── -->
-            <div class="p-5">
+            <div id="userPermsSectionWrap" class="p-5">
               <div class="mb-4 flex items-center gap-2.5">
                 <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-[#042F8D]/10 text-[#042F8D]">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -797,6 +964,17 @@
               </div>
             </div>
 
+            <!-- ── 4. Courses (Instructor only) ── -->
+            <div id="userCoursesSection" class="hidden border-t border-slate-100 p-5">
+              <div class="mb-4 flex items-center gap-2.5">
+                <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-[#042F8D]/10 text-[#042F8D]">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                </span>
+                <h4 class="text-sm font-bold text-slate-800"><span class="text-[#042F8D]">4.</span> <span data-i18n="userCoursesSection">Courses</span></h4>
+              </div>
+              <div id="userCoursesHost"></div>
+            </div>
+
             <!-- Actions -->
             <div class="flex items-center gap-2 border-t border-slate-100 bg-slate-50 px-5 py-4">
               <button type="submit" id="userSave" class="rounded-full bg-[#042F8D] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#0b4dc2]" data-i18n="dictSaveBtn">Save</button>
@@ -805,8 +983,10 @@
             </div>
           </form>
 
-          <div id="usersTableWrap" class="overflow-x-auto rounded-xl border border-slate-200"></div>
-          <p id="usersListEmpty" class="hidden px-2 py-6 text-center text-sm text-slate-400" data-i18n="usersNone">No users found.</p>
+          <div id="usersListView">
+            <div id="usersTableWrap" class="overflow-x-auto rounded-xl border border-slate-200"></div>
+            <p id="usersListEmpty" class="hidden px-2 py-6 text-center text-sm text-slate-400" data-i18n="usersNone">No users found.</p>
+          </div>
           <p id="usersStatus" class="mt-2 min-h-5 text-sm font-semibold"></p>
         </div>
       </div>
@@ -858,20 +1038,17 @@
             </div>
           </div>
 
-          <!-- Tabs + load default -->
+          <!-- Tabs -->
           <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
             <div class="inline-flex rounded-xl bg-slate-100 p-1" role="tablist">
               <button type="button" class="perms-tab rounded-lg px-4 py-2 text-sm font-semibold transition" data-perms-tab="permissions" aria-selected="true">
                 <span class="inline-flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg><span data-i18n="permsTabPermissions">Permissions</span></span>
               </button>
-              <button type="button" class="perms-tab rounded-lg px-4 py-2 text-sm font-semibold transition" data-perms-tab="courses" aria-selected="false">
-                <span class="inline-flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span data-i18n="permsTabCourses">Instructor Courses</span></span>
+              <button type="button" class="perms-tab rounded-lg px-4 py-2 text-sm font-semibold transition" data-perms-tab="templates" aria-selected="false">
+                <span class="inline-flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg><span data-i18n="permsTabTemplates">Templates</span></span>
               </button>
             </div>
-            <button type="button" id="permsLoadDefault" class="inline-flex items-center gap-2 rounded-full border border-[#042F8D]/30 bg-white px-3.5 py-2 text-sm font-semibold text-[#042F8D] transition hover:bg-[#042F8D]/5">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-              <span data-i18n="permsLoadDefault">Load Default Permissions</span>
-            </button>
+
           </div>
         </div>
 
@@ -879,30 +1056,125 @@
         <div class="flex-1 overflow-auto p-4">
           <!-- Permissions tab -->
           <div data-perms-panel="permissions">
-            <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-              <table class="w-full border-collapse text-sm">
-                <thead>
-                  <tr class="bg-[#042F8D] text-left text-xs font-bold uppercase tracking-wide text-white">
-                    <th class="w-[190px] px-2 py-2.5"></th>
-                    <th class="w-[52px] px-3 py-2.5" data-i18n="permsColNo">No.</th>
-                    <th class="w-[230px] px-3 py-2.5" data-i18n="permsColSection">Section</th>
-                    <th class="px-2 py-2.5 text-center" data-i18n="permsColView">View</th>
-                    <th class="px-2 py-2.5 text-center" data-i18n="permsColAdd">Add</th>
-                    <th class="px-2 py-2.5 text-center" data-i18n="permsColEdit">Edit</th>
-                    <th class="px-2 py-2.5 text-center" data-i18n="permsColDelete">Delete</th>
-                    <th class="px-2 py-2.5 text-center" data-i18n="permsColApprove">Approve</th>
-                    <th class="px-2 py-2.5 text-center" data-i18n="permsColPrint">Print</th>
-                    <th class="px-2 py-2.5 text-center" data-i18n="permsColExport">Export</th>
-                    <th class="w-[150px] px-3 py-2.5" data-i18n="permsColRemark">Remark</th>
+            <div class="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3">
+              <span class="text-xs font-semibold text-slate-600" data-i18n="permsApplyTplLabel">Apply a permission template to this user:</span>
+              <select id="permsUserTplSelect" class="min-w-[220px] rounded-lg border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm text-slate-800 focus:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10"></select>
+              <span class="inline-flex items-center gap-1 text-xs text-slate-400" data-i18n="permsApplyTplHint">Selecting a template overwrites this user's custom permissions.</span>
+            </div>
+            <div class="max-h-[calc(100vh-18rem)] overflow-auto rounded-xl border border-slate-200 bg-white">
+              <table class="w-full min-w-[980px] border-separate border-spacing-0 text-sm">
+                <thead class="sticky top-0 z-10">
+                  <tr class="bg-[#042F8D] text-left text-[11px] font-bold uppercase tracking-wider text-white">
+                    <th class="w-[200px] px-4 py-3 align-middle" data-i18n="permsColModule">Module</th>
+                    <th class="w-[56px] px-3 py-3 align-middle" data-i18n="permsColNo">No.</th>
+                    <th class="w-[230px] px-3 py-3 align-middle" data-i18n="permsColSection">Section</th>
+                    <th class="px-2 py-3 text-center align-middle" data-i18n="permsColView">View</th>
+                    <th class="px-2 py-3 text-center align-middle" data-i18n="permsColAdd">Add</th>
+                    <th class="px-2 py-3 text-center align-middle" data-i18n="permsColEdit">Edit</th>
+                    <th class="px-2 py-3 text-center align-middle" data-i18n="permsColDelete">Delete</th>
+                    <th class="px-2 py-3 text-center align-middle" data-i18n="permsColApprove">Approve</th>
+                    <th class="px-2 py-3 text-center align-middle" data-i18n="permsColPrint">Print</th>
+                    <th class="px-2 py-3 text-center align-middle" data-i18n="permsColExport">Export</th>
+                    <th class="w-[260px] px-4 py-3 align-middle" data-i18n="permsColRemark">Remark</th>
                   </tr>
                 </thead>
                 <tbody id="permsGrid"></tbody>
               </table>
             </div>
           </div>
-          <!-- Instructor Courses tab -->
-          <div data-perms-panel="courses" class="hidden">
-            <div id="permsCourses"></div>
+
+          <!-- Templates tab -->
+          <div data-perms-panel="templates" class="hidden">
+            <div class="mb-4 grid gap-4 lg:grid-cols-[1.25fr_1fr]">
+              <!-- Template selector + history + actions -->
+              <div class="rounded-xl border border-slate-200 bg-white p-4">
+                <label for="permsTplSelect" class="text-xs font-semibold text-slate-600" data-i18n="permsTplNameLabel">Template Name</label>
+                <select id="permsTplSelect" class="mt-1.5 w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10"></select>
+                <p id="permsTplHistory" class="mt-2 text-xs leading-relaxed text-slate-400"></p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button type="button" id="permsTplCreate" class="inline-flex items-center gap-1.5 rounded-full bg-[#042F8D] px-3.5 py-2 text-xs font-bold text-white transition hover:bg-[#0b4dc2]">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                    <span data-i18n="permsTplCreate">Create Custom Template</span>
+                  </button>
+                  <button type="button" id="permsTplDelete" class="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-600 transition hover:border-red-400 hover:text-red-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    <span data-i18n="permsTplDelete">Delete</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Users currently assigned to this template (read-only) -->
+              <div class="rounded-xl border border-slate-200 bg-white p-4">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#042F8D]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <span data-i18n="permsTplAssignedTitle">Users Assigned to This Template</span>
+                  </span>
+                  <span id="permsTplAssignedCount" class="rounded-full bg-[#042F8D]/10 px-2.5 py-0.5 text-xs font-semibold text-[#042F8D]">0</span>
+                </div>
+                <div class="relative mt-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                  <input id="permsTplAssignedSearch" type="text" data-i18n-placeholder="permsTplSearchPh" placeholder="Search by name or username…" class="w-full rounded-lg border-[1.5px] border-[#dbe2f0] bg-white py-2 pl-8 pr-3 text-sm text-slate-800 focus:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                </div>
+                <div id="permsTplAssignedList" class="mt-2 max-h-40 space-y-1 overflow-auto rounded-lg border border-slate-200 p-2 text-sm"></div>
+              </div>
+            </div>
+
+            <!-- Apply template to selected users -->
+            <div class="mb-4 rounded-xl border border-slate-200 bg-white p-4">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <span class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-600">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#042F8D]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 6 9 17l-5-5"/></svg>
+                  <span data-i18n="permsTplApplyUsers">Apply Template to Selected Users</span>
+                </span>
+                <span id="permsTplSelectedCount" class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600" data-i18n="permsTplSelectedNone">0 selected</span>
+              </div>
+              <div class="relative mt-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <input id="permsTplUserSearch" type="text" data-i18n-placeholder="permsTplSearchPh" placeholder="Search by name or username…" class="w-full rounded-lg border-[1.5px] border-[#dbe2f0] bg-white py-2 pl-8 pr-3 text-sm text-slate-800 focus:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+              </div>
+              <div id="permsTplUserList" class="mt-2 max-h-44 space-y-1 overflow-auto rounded-lg border border-slate-200 p-2 text-sm"></div>
+              <div class="mt-2 flex items-center gap-2">
+                <button type="button" id="permsTplApply" class="inline-flex items-center gap-1.5 rounded-full bg-[#042F8D] px-3.5 py-2 text-xs font-bold text-white transition hover:bg-[#0b4dc2]">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                  <span data-i18n="permsTplApply">Apply to Selected</span>
+                </button>
+                <span id="permsTplApplyMsg" class="min-h-5 text-xs font-semibold"></span>
+              </div>
+            </div>
+
+            <div class="max-h-[calc(100vh-18rem)] overflow-auto rounded-xl border border-slate-200 bg-white">
+              <table class="w-full min-w-[980px] border-separate border-spacing-0 text-sm">
+                <thead class="sticky top-0 z-10">
+                  <tr class="bg-[#042F8D] text-left text-[11px] font-bold uppercase tracking-wider text-white">
+                    <th class="w-[200px] px-4 py-3 align-middle" data-i18n="permsColModule">Module</th>
+                    <th class="w-[56px] px-3 py-3 align-middle" data-i18n="permsColNo">No.</th>
+                    <th class="w-[230px] px-3 py-3 align-middle" data-i18n="permsColSection">Section</th>
+                    <th class="px-2 py-3 text-center align-middle" data-i18n="permsColView">View</th>
+                    <th class="px-2 py-3 text-center align-middle" data-i18n="permsColAdd">Add</th>
+                    <th class="px-2 py-3 text-center align-middle" data-i18n="permsColEdit">Edit</th>
+                    <th class="px-2 py-3 text-center align-middle" data-i18n="permsColDelete">Delete</th>
+                    <th class="px-2 py-3 text-center align-middle" data-i18n="permsColApprove">Approve</th>
+                    <th class="px-2 py-3 text-center align-middle" data-i18n="permsColPrint">Print</th>
+                    <th class="px-2 py-3 text-center align-middle" data-i18n="permsColExport">Export</th>
+                    <th class="w-[260px] px-4 py-3 align-middle" data-i18n="permsColRemark">Remark</th>
+                  </tr>
+                </thead>
+                <tbody id="permsTplGrid"></tbody>
+              </table>
+            </div>
+
+            <div class="mt-3 flex flex-wrap items-center justify-end gap-2">
+              <span id="permsTplStatusMsg" class="mr-1 min-h-5 text-sm font-semibold"></span>
+              <button type="button" id="permsTplClearAll" class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-600 transition hover:border-red-400 hover:text-red-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                <span data-i18n="permsClearAll">Clear All</span>
+              </button>
+              <button type="button" id="permsTplSave" class="inline-flex items-center gap-2 rounded-full bg-[#042F8D] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#0b4dc2]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+                <span data-i18n="permsTplSave">Save Template</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -932,76 +1204,152 @@
       </div>
     </div>
 
-    <div class="mx-auto max-w-7xl px-5 py-7 sm:px-6 lg:px-8">
-      <div class="mb-4 flex items-center justify-end gap-3">
-        <div id="userChip" class="hidden items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 shadow-sm">
-          <span class="flex h-7 w-7 items-center justify-center rounded-full bg-[#042F8D]/10 text-[#042F8D]">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
-          </span>
-          <span id="userChipName" class="text-sm font-semibold text-[#042F8D]">—</span>
-          <span id="userChipRole" class="hidden items-center gap-1 rounded-full bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white shadow-[0_4px_12px_rgba(4,47,141,0.28)]">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="h-3 w-3"><path d="M12 2 4 5v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V5l-8-3z"/></svg>
-            <span id="userChipRoleText">—</span>
-          </span>
-          <button type="button" id="logoutBtn"
-            class="ml-1 inline-flex items-center gap-1.5 rounded-full bg-[#042F8D] px-3 py-1.5 text-xs font-bold text-white transition hover:bg-[#0b4dc2] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/20">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3.5 w-3.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
-            <span data-i18n="logout">Log out</span>
-          </button>
-        </div>
-      </div>
+    <!-- ═══════════════════ HERO ═══════════════════ -->
+    <section class="relative isolate overflow-hidden">
+      <!-- Background photograph -->
+      <img src="./img/bgImage-lnd.jpeg" alt="Professional security officers in training" aria-hidden="true"
+           class="absolute inset-0 -z-10 h-full w-full object-cover object-center" />
+      <!-- Navy overlay — balanced: readable white text without over-darkening the photo -->
+      <div class="absolute inset-0 -z-10 bg-gradient-to-r from-[#02103a]/92 via-[#042F8D]/72 to-[#02103a]/40"></div>
+      <div class="absolute inset-0 -z-10 bg-gradient-to-t from-[#02103a]/55 via-transparent to-transparent"></div>
 
-      <section class="relative overflow-hidden grid gap-6 rounded-[28px] border border-slate-200 bg-white p-7 shadow-[0_20px_70px_rgba(4,47,141,0.16)] lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
-        <!-- Watermark -->
-        <img src="./img/security.svg" alt="" aria-hidden="true"
-             class="pointer-events-none select-none absolute inset-0 w-full h-full object-contain"
-             style="opacity:0.08; z-index:5;" /> 
-        <div style="position:relative;z-index:1;">
-          <div class="mb-3 inline-block rounded-full bg-[#042F8D]/10 px-3 py-2 text-[clamp(0.75rem,0.7rem+0.25vw,0.8rem)] font-semibold uppercase tracking-[0.14em] text-[#042F8D]" data-i18n="eyebrow">Professional security</div>
-          <h1 class="mb-3 text-4xl font-bold leading-tight sm:text-5xl" data-i18n="heroTitle">Join an exceptional training program to become a security officer.</h1>
-          <p class="mb-6 max-w-2xl text-base leading-7 text-slate-600" data-i18n="heroText">A structured path, serious guidance, and a simplified registration process to begin your journey with GSS.</p>
+      <div class="mx-auto grid w-full max-w-[1700px] gap-6 px-5 py-8 sm:px-6 md:py-10 lg:min-h-[calc(100vh-10rem)] lg:grid-cols-[1.5fr_0.9fr] lg:content-center lg:items-center lg:gap-10 lg:px-8 lg:py-12">
+        <!-- Left · headline + CTAs + stats -->
+        <div id="leftSideBody" class="text-left text-white">
+          <div class="mb-3 flex items-center gap-3">
+            <span class="h-px w-10 bg-[#3b82f6]"></span>
+            <span class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-200" data-i18n="eyebrow">Professional security</span>
+          </div>
+          <h1 class="mb-4 text-3xl font-extrabold leading-[1.08] drop-shadow-sm sm:text-4xl xl:text-5xl" data-i18n-html="heroTitle">Join an exceptional <span class="text-[#3b82f6]">training program</span> to become a security officer.</h1>
+          <p class="mb-5 max-w-xl text-sm leading-6 text-slate-200 sm:text-base sm:leading-7" data-i18n="heroText">A structured path, serious guidance, and a simplified registration process to begin your journey with GSS.</p>
+
           <div class="flex flex-wrap gap-3">
-            <button type="button" id="openFormBtn" data-role-any="Secretary,Admin" class="rounded-full bg-[#042F8D] px-4 py-3 font-bold text-white shadow-[0_10px_24px_rgba(4,47,141,0.2)]" data-i18n="openBtn">Fill the form</button>
-            <button class="rounded-full border border-slate-200 bg-white px-4 py-3 font-bold text-[#042F8D]" type="button" data-i18n="conditionsBtn">View terms</button>
+            <button type="button" id="openFormBtn" data-role-any="Secretary,Admin"
+              class="inline-flex items-center gap-2 rounded-full bg-[#0b4dc2] px-5 py-3 font-bold text-white shadow-[0_12px_30px_rgba(11,77,194,0.45)] transition hover:bg-[#0a44ad] focus:outline-none focus:ring-4 focus:ring-white/30">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              <span data-i18n="openBtn">Fill the form</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </button>
+            <button type="button" data-i18n="conditionsBtn"
+              class="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/5 px-5 py-3 font-bold text-white backdrop-blur-sm transition hover:bg-white/15 focus:outline-none focus:ring-4 focus:ring-white/20">View terms</button>
           </div>
-          <div class="mt-6 grid gap-4 md:grid-cols-3">
-            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <strong id="statTraineesTrained" class="mb-1 block text-xl font-bold text-[#042F8D]">+250</strong>
-              <span class="text-sm text-slate-600" data-i18n="stat1">trainees trained</span>
-            </div>
-            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <strong class="mb-1 block text-xl font-bold text-[#042F8D]">100%</strong>
-              <span class="text-sm text-slate-600" data-i18n="stat2">personalized support</span>
-            </div>
-            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <strong class="mb-1 block text-xl font-bold text-[#042F8D]">24/7</strong>
-              <span class="text-sm text-slate-600" data-i18n="stat3">administrative support</span>
-            </div>
-          </div>
-        </div>
 
-        <div class="rounded-[24px] border border-slate-200 bg-slate-50 p-5" style="position:relative;z-index:1;">
-          <!-- Brand logo -->
-          <div class="mb-5 flex flex-col items-center">
-            <div class="relative">
-              <span class="pointer-events-none absolute -inset-3 rounded-[30px]"></span>
-              <div class="relative rounded-[24px] p-4 transition-transform duration-300 hover:-translate-y-1">
-                <img src="./img/logo.png" alt="Guarde Security Service" class="mx-auto h-36 w-36 object-contain sm:h-44 sm:w-44">
+          <!-- Statistics -->
+          <div class="mt-6 grid gap-3 sm:grid-cols-3">
+            <div class="flex items-center gap-3 rounded-2xl bg-gradient-to-br from-[#2b7bf3] to-[#0b4dc2] p-3.5 shadow-[0_12px_30px_rgba(11,77,194,0.35)]">
+              <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20 text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1 2.5 3 6 3s6-2 6-3v-5"/></svg>
+              </span>
+              <div>
+                <strong id="statTraineesTrained" class="block text-2xl font-extrabold leading-none text-white">+250</strong>
+                <span class="text-xs text-white/85" data-i18n="stat1">trainees trained</span>
               </div>
             </div>
-            <p class="mt-4 text-center text-sm font-semibold uppercase tracking-[0.22em] text-[#042F8D]">Guarde Security Service</p>
-            <span class="mt-1 h-1 w-12 rounded-full bg-gradient-to-r from-[#042F8D] to-[#0b4dc2]"></span>
+            <div class="flex items-center gap-3 rounded-2xl bg-gradient-to-br from-[#2bb673] to-[#17935a] p-3.5 shadow-[0_12px_30px_rgba(23,147,90,0.35)]">
+              <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20 text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </span>
+              <div>
+                <strong class="block text-2xl font-extrabold leading-none text-white">100%</strong>
+                <span class="text-xs text-white/85" data-i18n="stat2">personalized support</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-3 rounded-2xl bg-gradient-to-br from-[#ff9f43] to-[#f08a1d] p-3.5 shadow-[0_12px_30px_rgba(240,138,29,0.35)]">
+              <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20 text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </span>
+              <div>
+                <strong class="block text-2xl font-extrabold leading-none text-white">24/7</strong>
+                <span class="text-xs text-white/85" data-i18n="stat3">administrative support</span>
+              </div>
+            </div>
           </div>
-          <h3 class="mb-3 text-lg font-semibold text-[#042F8D]" data-i18n="whyTitle">Why choose GSS ?</h3>
-          <ul class="space-y-3 text-slate-600">
-            <li class="flex items-center gap-2"><span class="text-[#042F8D]">✦</span><span data-i18n="benefit1">Recognized and professional training</span></li>
-            <li class="flex items-center gap-2"><span class="text-[#042F8D]">✦</span><span data-i18n="benefit2">Practical and theoretical modules</span></li>
-            <li class="flex items-center gap-2"><span class="text-[#042F8D]">✦</span><span data-i18n="benefit3">Quick registration process</span></li>
-            <li class="flex items-center gap-2"><span class="text-[#042F8D]">✦</span><span data-i18n="benefit4">Team available at every step</span></li>
-          </ul>
         </div>
-      </section>
-    </div>
+
+        <!-- Right · Why choose GSS card -->
+        <aside id="rightSideBody" class="w-full rounded-[22px] border border-white/15 bg-[#02153f]/85 p-5 text-white shadow-[0_24px_60px_rgba(0,0,0,0.45)] backdrop-blur-md sm:p-6 lg:ml-auto lg:max-w-sm">
+          <div class="flex flex-col items-center text-center">
+            <img src="./img/logo.png" alt="Guarde Security Service" class="h-16 w-16 object-contain" />
+            <p class="mt-2.5 text-sm font-bold uppercase tracking-[0.2em]">Guarde Security Service</p>
+            <span class="mt-2 h-1 w-12 rounded-full bg-[#3b82f6]"></span>
+          </div>
+          <h3 class="mt-4 text-lg font-bold" data-i18n="whyTitle">Why choose GSS?</h3>
+          <ul class="mt-3 space-y-2.5 text-sm text-slate-200">
+            <li class="flex items-center gap-3">
+              <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-[#3b82f6]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+              </span>
+              <span data-i18n="benefit1">Recognized and professional training</span>
+            </li>
+            <li class="flex items-center gap-3">
+              <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-[#3b82f6]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              </span>
+              <span data-i18n="benefit2">Practical and theoretical modules</span>
+            </li>
+            <li class="flex items-center gap-3">
+              <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-[#3b82f6]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              </span>
+              <span data-i18n="benefit3">Quick registration process</span>
+            </li>
+            <li class="flex items-center gap-3">
+              <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-[#3b82f6]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </span>
+              <span data-i18n="benefit4">Team available at every step</span>
+            </li>
+          </ul>
+          <div class="my-4 h-px bg-white/15"></div>
+          <p class="text-center text-sm italic leading-relaxed text-slate-300" style="font-family: Georgia, 'Times New Roman', serif;" data-i18n="heroQuote">Building Safer Communities Through Professional People</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ═══════════════════ CORPORATE VALUES BANNER ═══════════════════ -->
+    <section class="relative overflow-hidden bg-gradient-to-r from-[#02153f] via-[#042F8D] to-[#02153f] text-white">
+      <!-- Layered curved accents along the top edge -->
+      <svg class="pointer-events-none absolute inset-x-0 top-0 h-10 w-full text-[#0b4dc2]/60" viewBox="0 0 1600 40" preserveAspectRatio="none" aria-hidden="true"><path d="M0,40 C400,0 1200,0 1600,40" fill="none" stroke="currentColor" stroke-width="3"/></svg>
+      <svg class="pointer-events-none absolute inset-x-0 top-1.5 h-10 w-full text-[#2b7bf3]/40" viewBox="0 0 1600 40" preserveAspectRatio="none" aria-hidden="true"><path d="M0,40 C400,4 1200,4 1600,40" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+      <div class="mx-auto grid w-full max-w-[1700px] grid-cols-2 gap-x-6 gap-y-5 px-5 py-5 sm:px-6 md:py-6 lg:grid-cols-4 lg:divide-x lg:divide-white/15 lg:px-8">
+        <div class="flex items-center gap-3 lg:justify-center">
+          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          </span>
+          <div>
+            <p class="text-sm font-extrabold uppercase tracking-wide" data-i18n="valDiscipline">Discipline</p>
+            <p class="text-xs text-white/70" data-i18n="valDisciplineSub">Our Foundation</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 lg:justify-center">
+          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polygon points="12 8 13 11 16 11 13.5 13 14.5 16 12 14 9.5 16 10.5 13 8 11 11 11 12 8"/></svg>
+          </span>
+          <div>
+            <p class="text-sm font-extrabold uppercase tracking-wide" data-i18n="valProfessionalism">Professionalism</p>
+            <p class="text-xs text-white/70" data-i18n="valProfessionalismSub">Our Standard</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 lg:justify-center">
+          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </span>
+          <div>
+            <p class="text-sm font-extrabold uppercase tracking-wide" data-i18n="valIntegrity">Integrity</p>
+            <p class="text-xs text-white/70" data-i18n="valIntegritySub">Our Commitment</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 lg:justify-center">
+          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          </span>
+          <div>
+            <p class="text-sm font-extrabold uppercase tracking-wide" data-i18n="valSaferTomorrow">A Safer Tomorrow</p>
+            <p class="text-xs text-white/70" data-i18n="valSaferTomorrowSub">Our Goal</p>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <!-- ═══════════════════════ MODAL ═══════════════════════ -->
     <div id="formModal" class="fixed inset-0 z-[1000] hidden items-center justify-center bg-[rgba(1,7,16,0.7)] p-3 sm:p-5" aria-hidden="true">
@@ -1192,10 +1540,6 @@
                   <div class="flex flex-col gap-2">
                     <div class="flex items-center justify-between gap-2">
                       <label class="text-sm font-semibold text-slate-700" data-i18n="lbNiveauEtudes">Education Level</label>
-                      <button type="button" id="eduDictBtn" data-role-any="Admin" class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-[#042F8D] shadow-sm transition hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#042F8D]/20" data-dict-category="edu_lvl" data-dict-title-i18n="dictEduTitle" title="Dictionary Management" data-i18n-title="dictManage">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-                        <span data-i18n="dictManage">Dictionary Management</span>
-                      </button>
                     </div>
                     <div class="flex flex-wrap gap-2">
                       <select id="EducationLevel" name="EducationLevel" dbname="education_level" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
@@ -1672,10 +2016,6 @@
                     <div class="flex flex-col gap-2">
                       <div class="flex items-center justify-between gap-2">
                         <label for="att-TrainingTitle" class="text-sm font-semibold text-slate-700 after:content-['_*'] after:text-red-500 after:font-bold" data-i18n="attLbIntitule">Training Title</label>
-                        <button type="button" id="trainingTitleBtn" data-role-any="Admin" class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-[#042F8D] shadow-sm transition hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#042F8D]/20" data-dict-category="training_title" data-dict-title-i18n="dictTrainingTitle" title="Dictionary Management" data-i18n-title="dictManage">
-                          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-                          <span data-i18n="dictManage">Dictionary Management</span>
-                        </button>
                       </div>
                       <select id="att-TrainingTitle" name="att-TrainingTitle" required class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
                         <option value="" disabled selected data-i18n="optSelectTrainingTitle"></option>
@@ -1685,10 +2025,6 @@
                     <div class="flex flex-col gap-2">
                       <div class="flex items-center justify-between gap-2">
                         <label for="att-Trainer" class="text-sm font-semibold text-slate-700 after:content-['_*'] after:text-red-500 after:font-bold" data-i18n="presLbFormateur">Trainer</label>
-                        <button type="button" id="trainerBtn" data-role-any="Admin" class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-[#042F8D] shadow-sm transition hover:border-[#042F8D] hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#042F8D]/20" data-dict-category="trainer" data-dict-title-i18n="dictTrainerTitle" title="Dictionary Management" data-i18n-title="dictManage">
-                          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-                          <span data-i18n="dictManage">Dictionary Management</span>
-                        </button>
                       </div>
                       <select id="att-Trainer" name="att-Trainer" required class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
                         <option value="" disabled selected data-i18n="optSelectTrainer"></option>
@@ -1953,7 +2289,7 @@
                 <div id="eval-status" class="hidden rounded-2xl border px-4 py-3 text-sm font-semibold"></div>
 
                 <!-- Evaluation grid -->
-                <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
+                <fieldset id="evalGridFieldset" class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
                   <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
                     <span data-i18n="evalSecGrid">EVALUATION GRID</span>
@@ -2043,7 +2379,7 @@
                 </fieldset>
 
                 <!-- Final result -->
-                <fieldset class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
+                <fieldset id="evalResultFieldset" class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
                   <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                     <span data-i18n="evalSecResult">FINAL RESULT</span>
@@ -2325,6 +2661,7 @@
     <script src="./js/global.js"></script>
     <script src="./js/utils/translation.js"></script>
     <script src="./js/utils/commonUtils.js"></script>
+    <script src="./js/utils/modalMaximize.js"></script>
     
     <script src="./js/utils/locations.js"></script>
     <script src="./js/utils/validation.js"></script>
@@ -2467,6 +2804,41 @@
         } else {
           initDateTimePickers();
         }
+      })();
+    </script>
+
+    <!-- User profile dropdown toggle -->
+    <script>
+      (function () {
+        const btn = document.getElementById('userMenuBtn');
+        const menu = document.getElementById('userMenu');
+        if (!btn || !menu) return;
+
+        const close = () => {
+          menu.classList.add('hidden');
+          btn.setAttribute('aria-expanded', 'false');
+        };
+        const open = () => {
+          menu.classList.remove('hidden');
+          btn.setAttribute('aria-expanded', 'true');
+        };
+
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (menu.classList.contains('hidden')) open();
+          else close();
+        });
+
+        document.addEventListener('click', (e) => {
+          if (!menu.classList.contains('hidden') &&
+              !menu.contains(e.target) && !btn.contains(e.target)) {
+            close();
+          }
+        });
+
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') close();
+        });
       })();
     </script>
   </body>

@@ -28,6 +28,7 @@ ALTER TABLE login ADD COLUMN IF NOT EXISTS failed_attempts      int     NOT NULL
 ALTER TABLE login ADD COLUMN IF NOT EXISTS locked_until         timestamp;
 ALTER TABLE login ADD COLUMN IF NOT EXISTS last_login_at        timestamp;
 ALTER TABLE login ADD COLUMN IF NOT EXISTS role                 varchar(50) NOT NULL DEFAULT 'Candidate';
+ALTER TABLE login ADD COLUMN IF NOT EXISTS email                varchar(255);
 
 -- Case-insensitive uniqueness on username.
 CREATE UNIQUE INDEX IF NOT EXISTS login_username_lower_idx ON login (lower(username));
@@ -59,12 +60,14 @@ UPDATE login SET role = 'Admin' WHERE lower(username) = 'admin' AND coalesce(rol
 --   Returns jsonb: { ok, status, user? }  status ∈ 'ok' | 'exists' | 'weak' | 'invalid'
 --   p_must_change: flag the account to change its password on first login.
 -- ----------------------------------------------------------------
+DROP FUNCTION IF EXISTS auth_register(text, text, text, boolean, text);
 CREATE OR REPLACE FUNCTION auth_register(
   p_username     text,
   p_full_name    text,
   p_password     text,
   p_must_change  boolean DEFAULT false,
-  p_role         text    DEFAULT 'Candidate'
+  p_role         text    DEFAULT 'Candidate',
+  p_email        text    DEFAULT NULL
 ) RETURNS jsonb
 LANGUAGE plpgsql
 AS $$
@@ -82,11 +85,12 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'status', 'exists');
   END IF;
 
-  INSERT INTO login (username, full_name, password, created_by, created_at, must_change_password, role)
+  INSERT INTO login (username, full_name, password, email, created_by, created_at, must_change_password, role)
   VALUES (
     trim(p_username),
     coalesce(NULLIF(trim(coalesce(p_full_name, '')), ''), trim(p_username)),
     crypt(p_password, gen_salt('bf')),
+    NULLIF(trim(coalesce(p_email, '')), ''),
     trim(p_username),
     now(),
     coalesce(p_must_change, false),
@@ -101,6 +105,7 @@ BEGIN
       'user_id', v_user.login_id,
       'username', v_user.username,
       'full_name', v_user.full_name,
+      'email', v_user.email,
       'role', v_user.role
     )
   );

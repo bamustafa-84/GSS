@@ -21,6 +21,10 @@
     "pg": "^8.12.0"
   },
 
+  "optionalDependencies": {
+    "nodemailer": "^6.9.14"
+  },
+
   "devDependencies": {
     "pm2": "^7.0.3"
   }

@@ -7,7 +7,7 @@
 -- permissions panel (instructor courses).
 --
 -- Runs last (file prefix 95) so every table it references already
--- exists. Safe to re-run on every startup.
+-- exists. Safe to re-run on every startup. 
 -- ================================================================
 
 -- ── Storage ─────────────────────────────────────────────────────
@@ -26,10 +26,11 @@ CREATE TABLE IF NOT EXISTS user_permission (
 
 CREATE INDEX IF NOT EXISTS user_permission_login_idx ON user_permission (login_id);
 
--- ── Role default matrix ─────────────────────────────────────────
--- Mirrors the client-side defaults (system-management.js) so a user
--- without any stored rows still resolves sensible, role-based access.
--- Returns a jsonb map: { "1.1": ["view","add"], … }.
+-- ── Seed template (one-time) ────────────────────────────────────
+-- The pre-matrix role defaults, expressed with the current section IDs.
+-- This is NOT consulted for authorization: it only seeds user_permission
+-- once per login (see permissions_seed_missing). After seeding, the saved
+-- Permission Matrix (user_permission) is the single source of truth.
 CREATE OR REPLACE FUNCTION role_default_permissions(p_role text)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -37,9 +38,7 @@ IMMUTABLE
 AS $$
 DECLARE
   r     text   := lower(coalesce(p_role, ''));
-  secs  text[] := ARRAY['1.1','1.2','2.1','2.2','3.1','3.2','4.1','4.2','5.1','5.2',
-                        '6.1','6.2','6.3','6.4','7.1','7.2','7.3','7.4','8.1','8.2',
-                        '8.3','9.1','9.2','10.1','10.2','10.3','10.4','10.5','10.6','10.7'];
+  secs  text[] := ARRAY['1.1','1.2','2.1','3.1','4.1','5.1','6.1','7.1','7.2','8.1','9.1','10.1','10.2','10.3','10.4','10.5','10.6'];
   s     text;
   acts  text[];
   out   jsonb  := '{}'::jsonb;
@@ -48,52 +47,46 @@ BEGIN
     acts := ARRAY[]::text[];
 
     IF r = 'admin' THEN
-      acts := ARRAY['view','add','edit','delete','approve','print','export'];
+      acts := ARRAY['view','add','edit','delete','approve','print'];
 
     ELSIF r = 'instructor' THEN
       acts := CASE s
         WHEN '1.1'  THEN ARRAY['view','add','edit','print']
         WHEN '1.2'  THEN ARRAY['view','add','print']
         WHEN '2.1'  THEN ARRAY['view','add','edit','print']
-        WHEN '2.2'  THEN ARRAY['view','add','print']
         WHEN '3.1'  THEN ARRAY['view','add','edit','print']
-        WHEN '3.2'  THEN ARRAY['view','add','print']
         WHEN '4.1'  THEN ARRAY['view']
-        WHEN '4.2'  THEN ARRAY['view']
         WHEN '5.1'  THEN ARRAY['view','add','edit','delete','approve','print']
-        WHEN '5.2'  THEN ARRAY['view','print']
         WHEN '6.1'  THEN ARRAY['view']
-        WHEN '6.2'  THEN ARRAY['view','add','edit']
-        WHEN '6.3'  THEN ARRAY['view','add','edit']
-        WHEN '6.4'  THEN ARRAY['view']
         WHEN '7.1'  THEN ARRAY['view']
         WHEN '7.2'  THEN ARRAY['view','add','edit']
-        WHEN '7.3'  THEN ARRAY['view','add','edit']
-        WHEN '7.4'  THEN ARRAY['view','add']
-        WHEN '10.5' THEN ARRAY['view','edit']
-        WHEN '10.6' THEN ARRAY['view','add','edit','print']
+        WHEN '10.2' THEN ARRAY['view','add','edit','print']
         ELSE ARRAY[]::text[]
       END;
 
     ELSIF r = 'head of training' THEN
-      acts := ARRAY['view','print','export'];
-      IF s IN ('6.1','6.2','6.3','6.4','7.1','7.2','7.3','7.4') THEN
-        acts := acts || ARRAY['add','edit'];
-      END IF;
-      IF s IN ('6.4','9.2') THEN
-        acts := acts || ARRAY['approve'];
-      END IF;
+      acts := ARRAY['view','print'];
+      IF s IN ('6.1','7.1','7.2') THEN acts := acts || ARRAY['add','edit']; END IF;
+      IF s = '6.1' THEN acts := acts || ARRAY['approve']; END IF;
+      IF s IN ('10.3','10.5','10.6') THEN acts := ARRAY[]::text[]; END IF;
+      IF s = '10.4' THEN acts := ARRAY['view']; END IF;
 
     ELSIF r = 'secretary' THEN
-      IF s LIKE '1.%' OR s LIKE '2.%' OR s LIKE '3.%' THEN
+      IF s IN ('1.1','1.2','2.1','3.1') THEN
         acts := ARRAY['view','add','edit','print'];
-      ELSIF s IN ('10.1','10.6') THEN
+      ELSIF s IN ('10.1','10.2') THEN
         acts := ARRAY['view','print'];
+      ELSIF s IN ('10.3','10.6') THEN
+        acts := ARRAY[]::text[];
       ELSE
         acts := ARRAY['view'];
       END IF;
+
+    ELSIF r = 'candidate' THEN
+      IF s IN ('1.1','2.1','3.1','4.1') THEN acts := ARRAY['view','add','edit'];
+      ELSIF s IN ('5.1','6.1') THEN acts := ARRAY['view'];
+      END IF;
     END IF;
-    -- Candidate / unknown → no staff access (acts stays empty).
 
     IF array_length(acts, 1) > 0 THEN
       out := out || jsonb_build_object(s, to_jsonb(acts));
@@ -104,9 +97,40 @@ BEGIN
 END;
 $$;
 
+-- One-time seeding marker: a login is seeded at most once, so later
+-- revocations in the matrix are never undone by a restart.
+CREATE TABLE IF NOT EXISTS permission_seed (
+  login_id  bigint PRIMARY KEY REFERENCES login(login_id) ON DELETE CASCADE,
+  seeded_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE OR REPLACE FUNCTION permissions_seed_missing()
+RETURNS integer
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_n integer := 0;
+  l   record;
+BEGIN
+  FOR l IN
+    SELECT login_id, role FROM login
+    WHERE login_id NOT IN (SELECT login_id FROM permission_seed)
+  LOOP
+    IF NOT EXISTS (SELECT 1 FROM user_permission WHERE login_id = l.login_id) THEN
+      INSERT INTO user_permission (login_id, section_no, action, allowed, updated_by)
+      SELECT l.login_id, e.key, a.value, true, 'SEED'
+      FROM jsonb_each(role_default_permissions(l.role)) e,
+           jsonb_array_elements_text(e.value) a
+      ON CONFLICT DO NOTHING;
+    END IF;
+    INSERT INTO permission_seed (login_id) VALUES (l.login_id) ON CONFLICT DO NOTHING;
+    v_n := v_n + 1;
+  END LOOP;
+  RETURN v_n;
+END;
+$$;
 -- ── Read: permissions for the admin modal (by login_id) ─────────
--- Returns stored rows when present, otherwise the role defaults so the
--- grid pre-checks sensible boxes for users not yet customized.
+-- Returns the saved matrix rows only (no role-based fallback).
 CREATE OR REPLACE FUNCTION user_permissions_get(p_login_id bigint)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -131,9 +155,6 @@ BEGIN
   ) t;
 
   v_has := (v_map <> '{}'::jsonb);
-  IF NOT v_has THEN
-    v_map := role_default_permissions(v.role);
-  END IF;
 
   RETURN jsonb_build_object(
     'ok', true,
@@ -169,10 +190,6 @@ BEGIN
     WHERE login_id = v.login_id AND allowed
     GROUP BY section_no
   ) t;
-
-  IF v_map = '{}'::jsonb THEN
-    v_map := role_default_permissions(v.role);
-  END IF;
 
   RETURN jsonb_build_object(
     'ok', true,
@@ -221,35 +238,28 @@ END;
 $$;
 
 -- ── Enforcement: can this user perform (section, action)? ───────
--- Admins always pass; disabled accounts always fail. Falls back to the
--- role default matrix when the user has no stored rows.
+-- Resolves ONLY from the saved Permission Matrix (user_permission).
+-- Deny by default: unknown user, disabled account, missing row, or an
+-- action not explicitly granted. No role name grants anything here.
 CREATE OR REPLACE FUNCTION user_can(p_login_id bigint, p_section text, p_action text)
 RETURNS boolean
 LANGUAGE plpgsql
 STABLE
 AS $$
 DECLARE
-  v     login%ROWTYPE;
-  v_has boolean;
+  v login%ROWTYPE;
 BEGIN
   SELECT * INTO v FROM login WHERE login_id = p_login_id;
   IF NOT FOUND THEN RETURN false; END IF;
   IF NOT coalesce(v.is_active, true) THEN RETURN false; END IF;
-  IF lower(coalesce(v.role, '')) = 'admin' THEN RETURN true; END IF;
 
-  SELECT count(*) > 0 INTO v_has FROM user_permission WHERE login_id = v.login_id;
-  IF v_has THEN
-    RETURN EXISTS (
-      SELECT 1 FROM user_permission
-      WHERE login_id = v.login_id AND section_no = p_section
-        AND action = lower(p_action) AND allowed
-    );
-  END IF;
-
-  RETURN (role_default_permissions(v.role) -> p_section) ? lower(p_action);
+  RETURN EXISTS (
+    SELECT 1 FROM user_permission
+    WHERE login_id = v.login_id AND section_no = p_section
+      AND action = lower(p_action) AND allowed
+  );
 END;
 $$;
-
 -- Username-keyed convenience wrapper.
 CREATE OR REPLACE FUNCTION user_can(p_username text, p_section text, p_action text)
 RETURNS boolean
@@ -287,6 +297,25 @@ AS $$
   ) t;
 $$;
 
+-- ── Record-level rule: does this login own (teach) the training? ─
+-- Non-instructors are not restricted here (their section permissions
+-- decide); Instructors may only touch trainings where trainer = their name.
+CREATE OR REPLACE FUNCTION instructor_owns_training(p_login_id bigint, p_training_id bigint)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT CASE
+    WHEN lower(coalesce(l.role, '')) <> 'instructor' THEN true
+    ELSE EXISTS (
+      SELECT 1 FROM training tr
+      WHERE tr.training_id = p_training_id
+        AND lower(trim(tr.trainer)) = lower(trim(l.full_name))
+    )
+  END
+  FROM login l WHERE l.login_id = p_login_id;
+$$;
+
 -- ── Read: active instructors (for the Attendance trainer dropdown) ─
 CREATE OR REPLACE FUNCTION instructors_list()
 RETURNS jsonb
@@ -319,3 +348,36 @@ AS $$
     WHERE now() > tr."to"
   ));
 $$;
+
+-- ── One-time migration: System Features 10.3–10.6 ───────────────
+-- Grants the new sections to existing logins so their toolbar access is
+-- unchanged (Signatures/Exams: Admin; Pending to Reviews: Admin, Head of
+-- Training, Secretary; Applicants to Process: Admin, Secretary). Runs once;
+-- afterwards the matrix alone decides and revocations are never undone.
+CREATE TABLE IF NOT EXISTS permission_migration (
+  name       text PRIMARY KEY,
+  applied_at timestamptz NOT NULL DEFAULT now()
+);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM permission_migration WHERE name = 'system_features_10_3_to_10_6') THEN
+    INSERT INTO user_permission (login_id, section_no, action, allowed, updated_by)
+    SELECT l.login_id, s.sec, a.act, true, 'MIGRATION'
+    FROM login l
+    JOIN (VALUES
+      ('admin','10.3'),('admin','10.4'),('admin','10.5'),('admin','10.6'),
+      ('head of training','10.4'),
+      ('secretary','10.4'),('secretary','10.5')
+    ) AS s(role_name, sec) ON lower(coalesce(l.role,'')) = s.role_name
+    CROSS JOIN LATERAL (
+      SELECT unnest(CASE WHEN s.role_name = 'admin'
+                         THEN ARRAY['view','add','edit','delete','approve','print']
+                         ELSE ARRAY['view'] END) AS act
+    ) a
+    ON CONFLICT (login_id, section_no, action) DO NOTHING;
+    INSERT INTO permission_migration (name) VALUES ('system_features_10_3_to_10_6');
+  END IF;
+END $$;
+-- Seed the matrix once for logins that predate it (new users: see server).
+SELECT permissions_seed_missing();

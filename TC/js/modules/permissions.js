@@ -1,121 +1,50 @@
-// @ts-check
-/*
- * permissions.js — client-side Permission Matrix enforcement.
+﻿/*
+ * permissions.js — applies the saved Permission Matrix to the form panels.
  *
- * Applies a role → section access matrix over the applicant form panels.
- * Each panel section is identified by its <legend>/<h4> `data-i18n` key and
- * mapped to a matrix cell. For the current user's role a section is either:
- *   RW  → left fully editable
- *   R   → data controls locked (read-only); acknowledgment / navigation
- *         controls (which live outside the tagged sections) stay usable so a
- *         role can still complete its own workflow step
- *   NA  → section hidden entirely
- *
- * Admin is Read/Write everywhere and is never restricted. Candidate (and any
- * unknown role) is not governed by this staff matrix and is left untouched.
- *
- * The matrix "layers on top" of the existing workflow. Acknowledgment toggles
- * normally stay usable so a role can complete its own step; ACK_LOCK force-dims
- * specific ones per role (e.g. the Instructor's Commitment acknowledgment).
+ * No role names or role-specific rules live here. Each panel section maps to a
+ * matrix section ID (e.g. '1.2'); GSSPerms (global.js) resolves the signed-in
+ * user's effective permissions from the server and this file only reflects them:
+ *   no view            → section hidden
+ *   view, no add/edit  → data controls locked (read-only)
+ *   add or edit        → left editable (the server re-checks every request)
+ * Acknowledgment toggles follow the edit/add permission of their own tab.
  */
 (() => {
   'use strict';
 
-  /** Which panel + legend key maps to which matrix section. */
+  /** Panel → legend key → matrix section ID. */
   /** @type {Record<string, Record<string, string>>} */
   const SECTION_MAP = {
     'panel-registration': {
-      secPersonal: 'registration.personal',
-      secEducation: 'registration.education',
-      secHealth: 'registration.health',
-      secFees: 'registration.fees',
-      secDecl: 'registration.declaration',
-      secAdmin: 'registration.admin',
+      secPersonal: '1.1', secEducation: '1.1', secHealth: '1.1', secFees: '1.1', secDecl: '1.1',
+      secAdmin: '1.2',
     },
-    'panel-conditions': { secDecl: 'conditions.declaration' },
-    'panel-reglement': { secDecl: 'rules.declaration' },
-    'panel-engagement': { engSecIdentity: 'commitment.identity', secDecl: 'commitment.declaration' },
-    'panel-presences': {
-      presSecInfo: 'attendance.info',
-      presSecTable: 'attendance.history',
-      presSecSummary: 'attendance.history',
-    },
-    'panel-exam': {
-      examSecResult: 'exam.result',
-      examSecObs: 'exam.observations',
-      examSecValidation: 'exam.validation',
-    },
+    'panel-conditions': { secDecl: '2.1' },
+    'panel-reglement': { secDecl: '3.1' },
+    'panel-engagement': { engSecIdentity: '4.1', secDecl: '4.1' },
+    'panel-presences': { presSecInfo: '5.1', presSecTable: '5.1', presSecSummary: '5.1' },
+    'panel-exam': { examSecResult: '6.1', examSecObs: '6.1', examSecValidation: '6.1' },
     'panel-evaluation': {
-      evalSecGrid: 'evaluation.grid',
-      evalSecSummary: 'evaluation.summary',
-      evalSecResult: 'evaluation.result',
-      evalSecSig: 'evaluation.signatures',
+      evalSecGrid: '7.1', evalSecSummary: '7.1', evalSecResult: '7.2', evalSecSig: '7.2',
     },
     'panel-mensuration': {
-      measSecMens: 'measurement.mens',
-      measSecMedical: 'measurement.medical',
-      measSecUrgence: 'measurement.urgence',
-      measSecObs: 'measurement.obs',
+      measSecMens: '8.1', measSecMedical: '8.1', measSecUrgence: '8.1', measSecObs: '8.1',
     },
-    'panel-dossier': { dossierSec2: 'checklist.documents' },
+    'panel-dossier': { dossierSec2: '9.1' },
   };
 
-  // Access per section for the three governed roles (Admin is always RW).
-  // Values: 'RW' | 'R' | 'NA'. Order: [Head of Training, Instructor, Secretary].
-  /** @type {Record<string, ['RW'|'R'|'NA', 'RW'|'R'|'NA', 'RW'|'R'|'NA']>} */
-  const MATRIX = {
-    'registration.personal':    ['R',  'NA', 'RW'],
-    'registration.education':   ['R',  'NA', 'RW'],
-    'registration.health':      ['R',  'NA', 'RW'],
-    'registration.fees':        ['R',  'NA', 'RW'],
-    'registration.declaration': ['R',  'NA', 'RW'],
-    'registration.admin':       ['RW', 'NA', 'RW'],
-    'conditions.declaration':   ['R',  'NA', 'RW'],
-    'rules.declaration':        ['R',  'NA', 'RW'],
-    'commitment.identity':      ['R',  'R',  'RW'],
-    'commitment.declaration':   ['R',  'R',  'RW'],
-    'attendance.info':          ['RW', 'R',  'RW'],
-    'attendance.history':       ['RW', 'R',  'RW'],
-    'exam.result':              ['R',  'RW', 'RW'],
-    'exam.observations':        ['R',  'RW', 'RW'],
-    'exam.validation':          ['R',  'RW', 'RW'],
-    'evaluation.grid':          ['R',  'RW', 'RW'],
-    'evaluation.summary':       ['R',  'RW', 'RW'],
-    'evaluation.result':        ['RW', 'R',  'RW'],
-    'evaluation.signatures':    ['R',  'RW', 'RW'],
-    'measurement.mens':         ['R',  'R',  'RW'],
-    'measurement.medical':      ['R',  'R',  'RW'],
-    'measurement.urgence':      ['R',  'R',  'RW'],
-    'measurement.obs':          ['R',  'R',  'RW'],
-    'checklist.documents':      ['RW', 'R',  'RW'],
+  /** Acknowledgment toggle → matrix section governing it. */
+  /** @type {Record<string, string>} */
+  const ACK_SECTION = {
+    'ack-conditions': '2.1', 'ack-rules': '3.1', 'ack-engagement': '4.1',
+    'ack-presences': '5.1', 'ack-exam': '6.1', 'ack-mensuration': '8.1', 'ack-dossier': '9.1',
   };
 
-  // Workflow exceptions: a role keeps Read/Write on sections it owns, even if
-  // the matrix marks them read-only.
-  /** @type {Record<string, Set<string>>} */
-  const KEEP_WRITE = {};
-
-  // Acknowledgment toggles live outside the tagged sections (so a role can
-  // normally complete its own step); these are force-dimmed per role.
-  /** @type {Record<string, string[]>} */
-  const ACK_LOCK = {
-    'Head of Training': ['ack-conditions', 'ack-rules', 'ack-engagement', 'ack-exam', 'ack-mensuration'],
-    Instructor: ['ack-engagement', 'ack-mensuration', 'ack-presences'],
+  const perms = () => /** @type {any} */ (window).GSSPerms;
+  const governed = () => {
+    const p = perms();
+    return !!(p && p.loaded && typeof GSSSession !== 'undefined' && GSSSession.get());
   };
-
-  /** Column index into a MATRIX row for each governed role. */
-  const ROLE_INDEX = { 'Head of Training': 0, Instructor: 1, Secretary: 2 };
-
-  /** Read the current user's role from the session (best effort). */
-  const currentRole = () => {
-    try {
-      const sess = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
-      return sess && sess.role ? String(sess.role) : '';
-    } catch (_) {
-      return '';
-    }
-  };
-
   /** Lock a single form control, remembering whether it was already disabled. */
   const lockControl = (/** @type {any} */ el) => {
     if (el.dataset.permLock) return;
@@ -178,40 +107,33 @@
     return /** @type {HTMLElement|null} */ (label.closest('fieldset, section'));
   };
 
-  /** Apply the matrix for the current role. Safe to call multiple times. */
+  /** Apply the saved matrix for the signed-in user. Safe to call repeatedly. */
   const applyPermissions = () => {
     resetAll();
-    const role = currentRole();
-    // Admin is unrestricted; Candidate / unknown roles are not governed here.
-    if (!role || role === 'Admin') return;
-    const idx = ROLE_INDEX[/** @type {keyof typeof ROLE_INDEX} */ (role)];
-    if (idx === undefined) return;
-    const keep = KEEP_WRITE[role] || new Set();
+    if (!governed()) return;
+    const p = perms();
 
     Object.keys(SECTION_MAP).forEach((panelId) => {
       const panel = document.getElementById(panelId);
       if (!panel) return;
       const sections = SECTION_MAP[panelId];
       Object.keys(sections).forEach((legendKey) => {
-        const permKey = sections[legendKey];
-        const row = MATRIX[permKey];
-        if (!row) return;
-        let perm = row[idx];
-        if (keep.has(permKey)) perm = 'RW';
-        if (perm === 'RW') return;
+        const sec = sections[legendKey];
         const container = findSection(/** @type {HTMLElement} */ (panel), legendKey);
         if (!container) return;
-        if (perm === 'NA') {
+        if (!p.canSection(sec, 'view')) {
           container.classList.add('gss-perm-hidden');
           container.style.display = 'none';
-        } else if (perm === 'R') {
+        } else if (!p.canSection(sec, 'add') && !p.canSection(sec, 'edit')) {
           lockSection(container);
         }
       });
     });
 
-    // Dim acknowledgment toggles that live outside the tagged sections.
-    (ACK_LOCK[role] || []).forEach((id) => {
+    // Acknowledgment toggles sit outside the tagged sections.
+    Object.keys(ACK_SECTION).forEach((id) => {
+      const sec = ACK_SECTION[id];
+      if (p.canSection(sec, 'edit') || p.canSection(sec, 'add')) return;
       const el = document.getElementById(id);
       if (!el) return;
       const label = el.closest('label');
@@ -219,7 +141,6 @@
       if (box) {
         lockSection(box);
         box.style.opacity = '0.6';
-        // Block clicks even if another module later re-enables the checkbox.
         box.style.pointerEvents = 'none';
         box.dataset.permDim = '1';
       } else {
@@ -227,7 +148,6 @@
       }
     });
   };
-
   // Re-apply on language switches (the app re-renders labels, not structure,
   // but this keeps things consistent) and expose a manual hook.
   document.addEventListener('gss:language-changed', applyPermissions);
