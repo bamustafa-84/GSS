@@ -69,12 +69,7 @@
 
   btn.addEventListener('click', () => (isOpen() ? close() : open()));
   closeBtn?.addEventListener('click', close);
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) close();
-  });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && isOpen()) close();
-  });
+  // Overlay closes only via its explicit Close button (no backdrop/Escape).
 
   // ── Upload an image → data URL (fills the hidden pad input) ─────
   upload?.addEventListener('change', () => {

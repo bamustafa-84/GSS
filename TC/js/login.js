@@ -125,6 +125,11 @@
     const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
     if (!session || !session.username) return;
 
+    // A stored session without an API token cannot authorize protected calls
+    // (e.g. a legacy session saved before tokens existed). Force a fresh
+    // sign-in so the server issues a token instead of entering the app blind.
+    if (!session.token) { if (typeof GSSSession !== 'undefined') GSSSession.clear(); return; }
+
     // Optimistically hide the auth UI to avoid a flash of the login form.
     document.body.classList.add('gss-auto-login');
 
@@ -192,16 +197,19 @@
           changePwdStatus.textContent = dict.cpSuccess;
           // Sign in again with the new password to obtain an API token.
           try {
-            const relogin = await fetch(`\/api/login`, {
+            const relogin = await fetch(`${API_BASE}/api/login`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ username: pendingUsername, password: next }),
             }).then((r) => r.json());
             if (relogin && relogin.ok && relogin.token) {
               storeUser(Object.assign({}, relogin.user || { username: pendingUsername }, { token: relogin.token }));
+              window.setTimeout(enterApp, 800);
+              return;
             }
-          } catch (_) { /* user can sign in again manually */ }
-          window.setTimeout(enterApp, 800);
+          } catch (_) { /* fall through to manual sign-in */ }
+          // No token issued: keep the user on the sign-in screen to retry.
+          changePwdStatus.textContent = dict.cpSuccess;
           return;
         }
         changePwdStatus.textContent = data && data.status === 'weak' ? dict.cpErrShort : dict.cpErrCurrent;
@@ -317,6 +325,9 @@
       statusEl.classList.add('text-emerald-600');
       statusEl.textContent = dict.signingIn;
 
+      const loginBtn = /** @type {HTMLButtonElement | null} */ (form.querySelector('button[type="submit"]'));
+      const shimmer = /** @type {any} */ (window).GSSShimmer;
+      if (shimmer && loginBtn) shimmer.button(loginBtn, true);
       try {
         const res = await fetch(`${API_BASE}/api/login`, {
           method: 'POST',
@@ -326,16 +337,17 @@
         const data = await res.json().catch(() => ({}));
 
         if (data && data.ok) {
-          const user = (data.user && typeof data.user === 'object') ? Object.assign({}, data.user) : { username };
-          if (data.token) user.token = data.token;
-          storeUser(user);
-
-          // First-login / forced change: gather a new password before entering.
-          if (data.must_change_password) {
+          // First login / forced reset: the server withholds the API token
+          // until the password is changed. Route to the change-password modal
+          // (which re-logs in to obtain a token) instead of entering tokenless.
+          if (data.must_change_password || !data.token) {
             statusEl.textContent = '';
-            openChangePwd(user.username || username);
+            openChangePwd(username);
             return;
           }
+          const user = (data.user && typeof data.user === 'object') ? Object.assign({}, data.user) : { username };
+          user.token = data.token;
+          storeUser(user);
 
           statusEl.textContent = dict.loginSuccess;
           window.setTimeout(enterApp, 500);
@@ -353,6 +365,8 @@
         statusEl.classList.remove('text-emerald-600');
         statusEl.classList.add('text-red-600');
         statusEl.textContent = dict.errServer;
+      } finally {
+        if (shimmer && loginBtn) shimmer.button(loginBtn, false);
       }
     });
   }

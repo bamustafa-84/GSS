@@ -26,7 +26,7 @@
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] || c));
 
   // ── Permission columns ─────────────────────────────────────────
-  const COLS = ['view', 'add', 'edit', 'delete', 'approve', 'print', 'export'];
+  const COLS = ['view', 'add', 'edit', 'delete'];
 
   // Section colour themes (group cell + row tint).
   // One distinct tint per module (indexed by section number).
@@ -152,6 +152,10 @@
   /** @type {any[]} */ let templatesCache = [];
   /** @type {any} */ let currentTpl = null;
   /** @type {Set<number>} */ const applySelected = new Set();
+  // Monotonic request tokens: a slower/earlier fetch must never overwrite the
+  // grid for a newer selection (templates tab + per-user permissions tab).
+  let tplLoadSeq = 0;
+  let permLoadSeq = 0;
 
   // ── Password visibility toggles (Add-New-User form) ────────────
   document.querySelectorAll('[data-pw-toggle]').forEach((btn) => {
@@ -169,6 +173,17 @@
     const s = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
     return !!s && String(s.role || '').trim().toLowerCase() === 'admin';
   };
+  // Reveal the Admin-only entry point. This is the permission-management
+  // bootstrap (the tool that edits the matrix), so it stays role-gated here
+  // rather than via `data-perm`; the server mirrors it with requireAdmin.
+  const applyAdminVisibility = () => {
+    if (!sysWrap) return;
+    const on = isAdminRole();
+    sysWrap.classList.toggle('hidden', !on);
+    sysWrap.style.display = on ? 'inline-flex' : 'none';
+  };
+  applyAdminVisibility();
+  /** @type {any} */ (window).GSSSysMgmt = { applyAdminVisibility };
   const closeMenu = () => {
     sysMenu?.classList.add('hidden');
     sysBtn?.setAttribute('aria-expanded', 'false');
@@ -203,10 +218,7 @@
   };
   openDictConfigBtn?.addEventListener('click', () => { closeMenu(); if (isAdminRole()) openDictConfig(); });
   dictConfigClose?.addEventListener('click', closeDictConfig);
-  dictConfigOverlay?.addEventListener('click', (e) => { if (e.target === dictConfigOverlay) closeDictConfig(); });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && dictConfigOverlay && !dictConfigOverlay.classList.contains('hidden')) closeDictConfig();
-  });
+  // Overlay closes only via its explicit Close button (no backdrop/Escape).
   userViewPermsBtn?.addEventListener('click', () => {
     const uname = /** @type {HTMLInputElement | null} */ (document.getElementById('userUsername'));
     /** @type {any} */ (window).GSSAdmin?.closeUsers?.();
@@ -323,12 +335,14 @@
 
   // Load the user's saved permission set (the matrix is the only source).
   const loadStoredPerms = async (/** @type {any} */ u) => {
+    const seq = ++permLoadSeq;
     if (!u || u.login_id == null) { clearAll(); return; }
     try {
       const d = await fetch(`${API_BASE}/api/permissions?login_id=${encodeURIComponent(u.login_id)}`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
+      if (seq !== permLoadSeq) return; // a newer selection won the race
       if (d && d.ok) applyPermMap(d.permissions || {});
       else clearAll();
-    } catch (_) { clearAll(); }
+    } catch (_) { if (seq === permLoadSeq) clearAll(); }
   };
 
   const onUserChange = () => {
@@ -477,6 +491,7 @@
 
   const loadTemplate = async (/** @type {string|number} */ id) => {
     const tid = Number.parseInt(String(id), 10);
+    const seq = ++tplLoadSeq;
     if (!Number.isFinite(tid)) {
       currentTpl = null; applySelected.clear();
       renderAssignedList(); renderApplyList();
@@ -486,6 +501,8 @@
     if (permsTplUserList) permsTplUserList.innerHTML = listNote(t('permsTplLoading', 'Loading…'));
     try {
       const d = await fetch(`${API_BASE}/api/permission-templates?template_id=${encodeURIComponent(tid)}`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
+      // Ignore a stale response: the admin already picked another template.
+      if (seq !== tplLoadSeq) return;
       if (!d || !d.ok) {
         currentTpl = null; applySelected.clear();
         renderAssignedList(); renderApplyList();
@@ -510,6 +527,7 @@
       renderApplyList();
       setTplMsg('', true);
     } catch (_) {
+      if (seq !== tplLoadSeq) return; // stale failure: keep the newer selection
       currentTpl = null; applySelected.clear();
       renderAssignedList(); renderApplyList();
     }
@@ -716,10 +734,7 @@
     if (cb.checked) applySelected.add(id); else applySelected.delete(id);
     updateSelectedCount();
   });
-  permsOverlay?.addEventListener('click', (e) => { if (e.target === permsOverlay) closePerms(); });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && permsOverlay && !permsOverlay.classList.contains('hidden')) closePerms();
-  });
+  // Overlay closes only via its explicit Close button (no backdrop/Escape).
 
   /** @type {any} */ (window).GSSSystemMgmt = {
     openPerms,

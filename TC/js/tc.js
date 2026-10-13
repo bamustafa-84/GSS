@@ -32,12 +32,42 @@
     badge.classList.add('inline-flex');
   };
   /** @type {any} */ (window).GSSChip = { applyRoleBadge };
+  // Render the header avatar from the session: show the uploaded picture when
+  // one exists (streamed + browser-cached via /api/me/avatar), otherwise keep
+  // the default SVG. onerror falls back to the SVG if the image is missing.
+  const applyAvatar = () => {
+    const img = /** @type {HTMLImageElement | null} */ (document.getElementById('userChipAvatarImg'));
+    const wrap = document.getElementById('userChipAvatar');
+    const zoom = document.getElementById('userChipAvatarZoom');
+    const zoomImg = /** @type {HTMLImageElement | null} */ (document.getElementById('userChipAvatarZoomImg'));
+    if (!img || !wrap) return;
+    const svg = wrap.querySelector('svg');
+    const cur = (typeof GSSSession !== 'undefined' ? GSSSession.get() : null) || {};
+    const showSvg = () => {
+      img.classList.add('hidden'); img.removeAttribute('src'); svg?.classList.remove('hidden');
+      // No picture → disable the hover zoom so it never shows an empty card.
+      zoom?.classList.remove('peer-hover:block');
+      if (zoomImg) zoomImg.removeAttribute('src');
+    };
+    if (!cur.has_avatar || !cur.username) { showSvg(); return; }
+    const url = `${API_BASE}/api/me/avatar?username=${encodeURIComponent(String(cur.username))}&v=${encodeURIComponent(String(cur.avatar_ver || 0))}`;
+    img.onerror = showSvg;
+    img.onload = () => {
+      img.classList.remove('hidden'); svg?.classList.add('hidden');
+      // Reuse the same cached URL for the hover preview and enable the zoom.
+      if (zoomImg) zoomImg.src = url;
+      zoom?.classList.add('peer-hover:block');
+    };
+    img.src = url;
+  };
+  /** @type {any} */ (window).GSSChip.applyAvatar = applyAvatar;
   const applyChip = () => {
     const chip = document.getElementById('userChip');
     const name = document.getElementById('userChipName');
     if (name) name.textContent = session.full_name || session.username || 'User';
     if (chip) { chip.classList.remove('hidden'); chip.classList.add('flex'); }
     applyRoleBadge(session.role);
+    applyAvatar();
     const btn = document.getElementById('logoutBtn');
     if (btn) {
       btn.addEventListener('click', () => {
@@ -172,24 +202,58 @@ const applyInstructorStepGates = () => {
   });
 };
 
-/** Dim + disable every tab that is not yet unlocked. */
+/** Localized "Access denied" label for permission-denied tabs. */
+const accessDeniedLabel = () => {
+  try {
+    const lang = document.documentElement.lang || 'en';
+    const dict = /** @type {any} */ (typeof translations !== 'undefined' ? translations : null);
+    if (dict && dict[lang] && dict[lang].accessDenied) return dict[lang].accessDenied;
+  } catch (_) { /* noop */ }
+  return 'Access denied';
+};
+
+/** Dim + disable every tab that is not yet unlocked or is permission-denied. */
 const updateTabLocks = () => {
   TAB_ORDER.forEach((name) => {
     const btn = document.getElementById(`tab-btn-${name}`);
     if (!btn) return;
-    const locked = !isTabUnlocked(name);
-    btn.classList.toggle('opacity-40', locked);
-    btn.classList.toggle('cursor-not-allowed', locked);
-    btn.classList.toggle('pointer-events-none', locked);
-    btn.setAttribute('aria-disabled', String(locked));
+    // Permission-denied (module with no view/add/edit/delete) vs. the sequential
+    // workflow lock. Denied tabs keep pointer events so their tooltip shows.
+    const denied = btn.dataset.permDenied === '1';
+    const seqLocked = !isTabUnlocked(name);
+    const dim = denied || seqLocked;
+    btn.classList.toggle('opacity-40', dim);
+    btn.classList.toggle('cursor-not-allowed', dim);
+    btn.classList.toggle('pointer-events-none', seqLocked && !denied);
+    btn.setAttribute('aria-disabled', String(dim));
+    if (denied) {
+      btn.setAttribute('title', accessDeniedLabel());
+    } else if (btn.getAttribute('title') === accessDeniedLabel()) {
+      btn.removeAttribute('title');
+    }
   });
   applyInstructorStepGates();
+};
+
+/** Whether a tab can actually be opened right now: sequentially unlocked,
+ *  not permission-denied, and viewable per RBAC. Mirrors switchTab's guards. */
+/** @param {string} name @returns {boolean} */
+const isTabOpenable = (name) => {
+  if (!isTabUnlocked(name)) return false;
+  const btn = document.getElementById(`tab-btn-${name}`);
+  if (btn && btn.dataset.permDenied === '1') return false;
+  const perms = /** @type {any} */ (window).GSSPerms;
+  if (perms && perms.loaded && typeof perms.canViewTab === 'function' && !perms.canViewTab(name)) return false;
+  return true;
 };
 
 /** @param {string} tabName */
 const switchTab = (tabName) => {
   // Enforce the sequential workflow: locked tabs cannot be opened.
   if (!isTabUnlocked(tabName)) return;
+  // Permission-denied module (no view/add/edit/delete): never openable.
+  const denyBtn = document.getElementById(`tab-btn-${tabName}`);
+  if (denyBtn && denyBtn.dataset.permDenied === '1') return;
 
   // RBAC: a tab the user may not view can never be opened (nav, deep link, programmatic).
   const perms = /** @type {any} */ (window).GSSPerms;
@@ -317,6 +381,7 @@ updateTabLocks();
 // locked/unlocked independently of the sequential flow, then refresh the UI.
 /** @type {any} */ (window).GSSTabs = {
   switchTab: (/** @type {string} */ tab) => switchTab(tab),
+  refreshLocks: () => updateTabLocks(),
   setForcedLock: (/** @type {string} */ tab, /** @type {boolean} */ locked) => {
     if (locked) forcedLockedTabs.add(tab);
     else forcedLockedTabs.delete(tab);
@@ -326,6 +391,16 @@ updateTabLocks();
     if (unlocked) forcedUnlockedTabs.add(tab);
     else forcedUnlockedTabs.delete(tab);
     updateTabLocks();
+  },
+  // Open the first openable tab after `name` (skips locked / permission-denied
+  // tabs). Returns true when a tab was opened.
+  advanceAfter: (/** @type {string} */ name) => {
+    const idx = TAB_ORDER.indexOf(name);
+    if (idx < 0) return false;
+    for (let i = idx + 1; i < TAB_ORDER.length; i++) {
+      if (isTabOpenable(TAB_ORDER[i])) { switchTab(TAB_ORDER[i]); return true; }
+    }
+    return false;
   },
 };
 //#endregion
@@ -355,6 +430,7 @@ async function initializeApp() {
         await Promise.all([
             initInscriptionForm(),
             initSignaturePads(),
+            initCandidatePhoto(),
             
             initApplicantForm()
         ]);

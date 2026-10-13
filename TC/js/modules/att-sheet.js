@@ -7,9 +7,8 @@
  * A standalone, Tailwind-only modal that lets an Instructor (or Admin)
  * tick daily attendance for the participants of each training they run.
  *
- *   • Role-gated trigger       — the #attSheetBtn button is only shown to
- *                                Admin / Instructor / Secretary / Head of
- *                                Training via admin.js `data-role-any`.
+ *   • Matrix-gated trigger     — the #attSheetBtn button is shown via the
+ *                                Permissions matrix (section 10.2, data-perm).
  *   • Training-title tabs      — one tab per title the instructor teaches, so
  *                                an instructor with several trainings switches
  *                                between their sheets without leaving the modal.
@@ -62,13 +61,14 @@
   /** @type {Record<string, { from: string, to: string, dateFrom: string, dateTo: string, trainer: string }>} title code → default times + date range */
   let trainingMeta = {};
 
-  // Instructor, Admin and Secretary may edit (tick / clear / save). Head of
-  // Training can open the sheet but sees it strictly read-only.
-  const currentRole = () => {
-    const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
-    return session && session.role ? String(session.role) : '';
+  // Edit rights come from the Permissions matrix (section 10.2 Attendance
+  // Sheet): anyone granted add/edit may tick / clear / save; view-only users
+  // (e.g. Head of Training by default) open the sheet strictly read-only.
+  const canEdit = () => {
+    const gp = /** @type {any} */ (window).GSSPerms;
+    if (!gp || typeof gp.can !== 'function') return true; // no engine → server enforces
+    return gp.can('10.2', 'edit') || gp.can('10.2', 'add');
   };
-  const canEdit = () => ['Instructor', 'Admin', 'Secretary'].includes(currentRole());
 
   // ── i18n helper ────────────────────────────────────────────────
   const t = (/** @type {string} */ key, /** @type {string} */ fallback) => {
@@ -80,6 +80,16 @@
     return fallback;
   };
   const lang = () => (document.documentElement.lang === 'fr' ? 'fr' : 'en');
+
+  // Reveal the illustrated empty-state card, swapping only its heading + subtitle.
+  const showEmpty = (/** @type {string} */ titleKey, /** @type {string} */ titleFallback, /** @type {string} */ subKey, /** @type {string} */ subFallback) => {
+    if (!emptyEl) return;
+    const titleEl = emptyEl.querySelector('#attSheetEmptyTitle');
+    const subEl = emptyEl.querySelector('#attSheetEmptySub');
+    if (titleEl) { titleEl.setAttribute('data-i18n', titleKey); titleEl.textContent = t(titleKey, titleFallback); }
+    if (subEl) { subEl.setAttribute('data-i18n', subKey); subEl.textContent = t(subKey, subFallback); }
+    emptyEl.classList.remove('hidden');
+  };
 
   // ── Date helpers ───────────────────────────────────────────────
   const pad = (/** @type {number} */ n) => String(n).padStart(2, '0');
@@ -428,11 +438,14 @@
 
   /** Base colour classes for a month pill by its course state. */
   const monthStateClasses = (/** @type {'active'|'completed'|'none'} */ state) => {
+    // All pills share the same grey border; hover lifts to a lighter blue gradient.
+    const base = 'bg-white ring-1 ring-[#042F8D]/10';
     switch (state) {
-      case 'active': return 'bg-orange-100 text-orange-700 ring-1 ring-orange-300 hover:bg-orange-200';
-      case 'completed': return 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-300 hover:bg-emerald-200';
-      // 'none' months are dimmed and disabled (Part 4).
-      default: return 'bg-slate-50 text-slate-300 ring-1 ring-slate-200 cursor-not-allowed opacity-60';
+      case 'active':
+      case 'completed':
+        return `${base} text-[#042F8D] hover:bg-gradient-to-b hover:from-[#5b93f5] hover:to-[#3f74e3] hover:text-white hover:ring-0`;
+      // 'none' months carry no course but stay clickable (show the empty state).
+      default: return `${base} text-[#042F8D]/80 hover:bg-gradient-to-b hover:from-[#5b93f5] hover:to-[#3f74e3] hover:text-white hover:ring-0`;
     }
   };
 
@@ -463,17 +476,28 @@
 
     if (!rangePills) return;
     rangePills.innerHTML = '';
+    const now = new Date();
     for (let m = 0; m < 12; m++) {
       const state = monthState(selectedYear, m);
-      const disabled = state === 'none';
       const selected = m === selectedMonth;
+      // Months without a course are dimmed + disabled, except the current
+      // calendar month (always reachable) and the selected one.
+      const isCurrentMonth = selectedYear === now.getFullYear() && m === now.getMonth();
+      const disabled = state === 'none' && !selected && !isCurrentMonth;
       const pill = document.createElement('button');
       pill.type = 'button';
       pill.dataset.month = String(m);
       pill.disabled = disabled;
-      pill.className = `rounded-lg px-2 py-1 text-[11px] font-semibold transition ${monthStateClasses(state)} ${selected ? 'outline outline-2 outline-offset-1 outline-[#042F8D]' : ''}`;
+      // Selected month = solid blue pill; others are white, colour-ringed by state.
+      pill.className = selected
+        ? 'rounded-xl px-2.5 py-2 text-[11px] font-bold uppercase tracking-wide shadow-[0_6px_16px_rgba(27,79,212,0.35)] transition bg-gradient-to-b from-[#2f74f0] to-[#1c54d6] text-white'
+        : disabled
+          ? 'rounded-xl px-2.5 py-2 text-[11px] font-bold uppercase tracking-wide shadow-sm transition bg-white ring-1 ring-[#042F8D]/10 text-[#042F8D]/70 cursor-default opacity-40'
+          : `rounded-xl px-2.5 py-2 text-[11px] font-bold uppercase tracking-wide shadow-sm transition ${monthStateClasses(state)}`;
       pill.textContent = (monthNames[lang()][m] || '').slice(0, 3);
-      pill.title = `${monthNames[lang()][m]} ${selectedYear}`;
+      pill.title = disabled
+        ? t('attSheetNoCourseTip', 'No scheduled courses')
+        : `${monthNames[lang()][m]} ${selectedYear}`;
       if (!disabled) {
         pill.addEventListener('click', () => {
           if (m === selectedMonth) return;
@@ -511,7 +535,7 @@
       } else if (done) {
         btn.className = 'rounded-full border border-emerald-300 bg-emerald-50 px-3.5 py-1.5 text-xs font-semibold text-emerald-700 transition hover:border-emerald-500 hover:bg-emerald-100';
       } else {
-        btn.className = 'rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-[#042F8D] hover:text-[#042F8D]';
+        btn.className = 'rounded-full border border-[#042F8D]/20 bg-white px-3.5 py-1.5 text-xs font-semibold text-[#042F8D]/70 shadow-sm transition hover:border-[#042F8D] hover:bg-[#eaf4fb] hover:text-[#042F8D]';
       }
       btn.textContent = (done ? '✓ ' : '') + (title.label || title.code);
       if (done) btn.title = t('attSheetCompleted', 'Completed course');
@@ -538,23 +562,28 @@
     return status;
   };
 
-  /** Visual classes for a cell button by status (present = tick). */
+  /** Icon colour for a cell by status; every cell renders the same faint box. */
   const cellClasses = (/** @type {string} */ status) => {
+    const box = 'border border-[#042F8D]/15 hover:border-[#042F8D]/40';
     switch (status) {
-      case 'AH': return 'bg-emerald-50 text-emerald-700 ring-emerald-300';
-      case 'AR': return 'bg-amber-50 text-amber-700 ring-amber-300';
-      case 'ABS': return 'bg-red-50 text-red-600 ring-red-300';
-      case 'EX': return 'bg-slate-100 text-slate-500 ring-slate-300';
-      default: return 'bg-white text-slate-300 ring-slate-200';
+      case 'AH': return `text-[#042F8D] ${box}`;
+      case 'AR': return `text-emerald-500 ${box}`;
+      case 'ABS': return `text-red-500 ${box}`;
+      case 'EX': return `text-slate-400 ${box}`;
+      default: return `text-transparent ${box}`;
     }
   };
 
-  /** Glyph shown inside a cell button. Present statuses show a tick; the
-   *  status meaning is conveyed by colour and explained in the legend below. */
+  /** SVG icon shown inside a cell: check (on time), clock (late), cross
+   *  (absent) or dash (excluded). Colour is applied via `cellClasses`. */
   const cellGlyph = (/** @type {string} */ status) => {
+    const svg = (/** @type {string} */ body, /** @type {number} */ w = 3) =>
+      `<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
     switch (status) {
-      case 'AH': return '✓';
-      case 'AR': return '✓';
+      case 'AH': return svg('<path d="M20 6 9 17l-5-5"/>');
+      case 'AR': return svg('<circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/>', 2.5);
+      case 'ABS': return svg('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>');
+      case 'EX': return svg('<line x1="6" y1="12" x2="18" y2="12"/>');
       default: return '';
     }
   };
@@ -565,7 +594,7 @@
     const day = btn.dataset.day || '';
     const cell = records[key] && records[key][day];
     const status = cell ? cell.status : '';
-    btn.textContent = cellGlyph(status);
+    btn.innerHTML = cellGlyph(status);
     const inRange = isDayInTrainingRange(Number(day));
     // Excluded candidates: every cell except the EX cell itself is locked.
     const locked = isExcluded(key) && status !== 'EX';
@@ -575,7 +604,7 @@
       : locked
         ? 'cursor-not-allowed opacity-40'
         : (canEdit() ? 'cursor-pointer hover:scale-110' : 'cursor-default opacity-95');
-    btn.className = `mx-auto flex h-6 w-6 items-center justify-center rounded-md text-xs font-bold ring-1 transition ${cellClasses(status)} ${stateClass}`;
+    btn.className = `mx-auto flex h-6 w-6 items-center justify-center rounded-md transition ${cellClasses(status)} ${stateClass}`;
     btn.disabled = !editable;
     btn.setAttribute('aria-label', `${btn.dataset.name || ''} · ${day}${status ? ' · ' + status : ''}`);
     if (locked) btn.title = t('attSheetExcludedLock', 'Candidate excluded — attendance locked');
@@ -636,8 +665,7 @@
       if (tableWrap) tableWrap.classList.add('hidden');
       if (instructorBar) { instructorBar.classList.add('hidden'); instructorBar.classList.remove('flex'); }
       if (emptyEl) {
-        emptyEl.textContent = t('attSheetNoCoursesMonth', 'No courses scheduled for this month.');
-        emptyEl.classList.remove('hidden');
+        showEmpty('attSheetNoCoursesMonth', 'No courses scheduled for this month.', 'attSheetNoCoursesMonthSub', 'Pick another month, or check back once a course is scheduled.');
       }
       return;
     }
@@ -659,22 +687,23 @@
 
     // Header: Name + one column per day (with a select-all checkbox per day).
     theadRow.innerHTML =
-      `<th class="sticky left-0 z-10 whitespace-nowrap rounded-tl-2xl border-b-2 border-slate-200 bg-slate-100 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">${t('attSheetColName', 'Name')}</th>`;
+      `<th class="sticky left-0 z-20 whitespace-nowrap rounded-tl-2xl border-b-2 border-[#042F8D] bg-gradient-to-b from-[#0b4dc2] to-[#042F8D] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">${t('attSheetColName', 'Name')}</th>`;
     for (let d = 1; d <= total; d++) {
       const weekday = new Date(year, month, d).getDay();
-      const isWeekend = weekday === 0 || weekday === 6;
       const th = document.createElement('th');
-      th.className = `w-10 min-w-10 border-b-2 border-slate-200 px-1 py-2 text-center text-[11px] font-semibold ${isWeekend ? 'bg-[#042F8D]/10 text-[#042F8D]' : 'bg-slate-100 text-slate-600'}`;
+      // Days 1–30: navy gradient header with white text.
+      th.className = 'w-10 min-w-10 border-b-2 border-[#042F8D] bg-gradient-to-b from-[#0b4dc2] to-[#042F8D] px-1 py-2 text-center text-[11px] font-semibold text-white';
 
       const label = document.createElement('div');
-      label.innerHTML = `${d}<span class="mt-0.5 block text-[9px] font-normal ${isWeekend ? 'text-[#042F8D]/60' : 'text-slate-400'}">${li[weekday]}</span>`;
+      // Day-of-week sits on a sky-blue chip with navy text.
+      label.innerHTML = `${d}<span class="mx-auto mt-0.5 block w-fit rounded-sm text-white px-1 text-[9px] font-semibold text-[#042F8D]">${li[weekday]}</span>`;
       th.appendChild(label);
 
-      // Part 4: per-day select/deselect all students.
+      // Part 4: per-day select/deselect all students (navy checkbox, white tick — Permissions panel style).
       const all = document.createElement('input');
       all.type = 'checkbox';
       all.dataset.dayAll = String(d);
-      all.className = 'mt-1 h-3.5 w-3.5 rounded border-slate-300 accent-[#0a6b3c]';
+      all.className = 'mt-1 h-3.5 w-3.5 cursor-pointer rounded border-slate-300 bg-white accent-[#042F8D] transition-transform hover:scale-110';
       all.title = t('attSheetSelectAllDay', 'Select/deselect all students for this day');
       all.setAttribute('aria-label', `${t('attSheetSelectAllDay', 'Select all')} · ${d}`);
       if (!editable || !isDayInTrainingRange(d)) all.disabled = true;
@@ -696,9 +725,9 @@
     participants.forEach((p) => {
       const key = p.id || ('n:' + p.name);
       const tr = document.createElement('tr');
-      tr.className = 'hover:bg-slate-50/60';
+      tr.className = 'transition-colors hover:bg-[#EAF4FB]';
       const nameTd = document.createElement('td');
-      nameTd.className = 'sticky left-0 z-10 whitespace-nowrap border-r border-slate-100 bg-white px-4 py-2 text-left font-medium text-slate-800';
+      nameTd.className = 'sticky left-0 z-10 whitespace-nowrap border-r border-[#042F8D]/10 bg-white px-4 py-2 text-left font-semibold text-[#042F8D]';
       nameTd.textContent = p.name;
       tr.appendChild(nameTd);
 
@@ -706,18 +735,22 @@
         const td = document.createElement('td');
         const weekday = new Date(year, month, d).getDay();
         const isWeekend = weekday === 0 || weekday === 6;
-        td.className = `px-1 py-1.5 text-center ${isWeekend ? 'bg-[#042F8D]/[0.05]' : ''}`;
+        // No cell background — just a faint box per cell (see cellClasses).
+        td.className = 'px-1 py-1.5 text-center';
 
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.dataset.key = key;
-        btn.dataset.cand = p.id;
-        btn.dataset.name = p.name;
-        btn.dataset.day = String(d);
-        paintCell(btn);
-        if (editable && isDayInTrainingRange(d)) btn.addEventListener('click', () => openCellEditor(key, p.id, p.name, d));
-        else btn.disabled = true;
-        td.appendChild(btn);
+        // Weekends (Sat/Sun) get no attendance cell.
+        if (!isWeekend) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.dataset.key = key;
+          btn.dataset.cand = p.id;
+          btn.dataset.name = p.name;
+          btn.dataset.day = String(d);
+          paintCell(btn);
+          if (editable && isDayInTrainingRange(d)) btn.addEventListener('click', () => openCellEditor(key, p.id, p.name, d));
+          else btn.disabled = true;
+          td.appendChild(btn);
+        }
         tr.appendChild(td);
       }
       tbody.appendChild(tr);
@@ -905,8 +938,7 @@
 
     if (!hasTitles) {
       if (emptyEl) {
-        emptyEl.textContent = t('attSheetNoTitles', 'No training titles are assigned to you yet.');
-        emptyEl.classList.remove('hidden');
+        showEmpty('attSheetNoTitles', 'No training titles are assigned to you yet.', 'attSheetNoTitlesSub', 'Once training titles are assigned, they will appear here for attendance tracking.');
       }
       if (tableWrap) tableWrap.classList.add('hidden');
       tabsWrap.innerHTML = '';

@@ -338,6 +338,15 @@
   window.addEventListener('hashchange', handlePreviewHash);
   handlePreviewHash();
 
+  // Taking an exam is intrinsic to the Candidate role (there is no matrix
+  // section for "sit an exam"), so this entry point is shown only to
+  // candidates. All other exam features are governed by the Permission Matrix.
+  const isCandidate = () => {
+    const s = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
+    return !!s && String(s.role || '').trim().toLowerCase() === 'candidate';
+  };
+  if (isCandidate()) { openBtn.classList.remove('hidden'); openBtn.style.display = 'inline-flex'; }
+
   openBtn.addEventListener('click', open);
   closeBtn?.addEventListener('click', close);
   submitBtn?.addEventListener('click', submit);

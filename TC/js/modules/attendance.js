@@ -402,12 +402,22 @@ function markPresencesDone(ack) {
   // Lock the panel.
   setPresencesReadonly(true);
 
-  // Advance to the next panel in the flow.
+  // Move focus off the checkbox before any panel/overlay is hidden so no
+  // focused element is left inside an aria-hidden ancestor (a11y requirement).
+  try { if (ack && typeof ack.blur === 'function') ack.blur(); } catch (_) { /* noop */ }
+
+  // Advance to the next panel the user may actually open (skips locked /
+  // permission-denied tabs such as Exam for roles without exam access).
   try {
-    const order = (typeof TAB_ORDER !== 'undefined' && Array.isArray(TAB_ORDER)) ? TAB_ORDER : null;
-    if (order && typeof switchTab === 'function') {
-      const next = order[order.indexOf('presences') + 1];
-      if (next) switchTab(next);
+    const tabs = /** @type {any} */ (window).GSSTabs;
+    if (tabs && typeof tabs.advanceAfter === 'function') {
+      tabs.advanceAfter('presences');
+    } else {
+      const order = (typeof TAB_ORDER !== 'undefined' && Array.isArray(TAB_ORDER)) ? TAB_ORDER : null;
+      if (order && typeof switchTab === 'function') {
+        const next = order[order.indexOf('presences') + 1];
+        if (next) switchTab(next);
+      }
     }
   } catch (_) { /* noop */ }
 }

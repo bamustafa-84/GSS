@@ -323,8 +323,22 @@ const DATE_COLS = new Set(['registration_date', 'date_of_birth', 'applicant_date
       const b = document.getElementById(id);
       if (b) b.classList.toggle('hidden', ro);
     });
+    // Candidate photo controls live outside #inscriptionForm, so lock them here.
+    ['CandidatePhotoBtn', 'CandidatePhotoRemove'].forEach((id) => {
+      const b = /** @type {HTMLButtonElement | null} */ (document.getElementById(id));
+      if (!b) return;
+      b.disabled = ro;
+      b.classList.toggle('cursor-not-allowed', ro);
+      b.classList.toggle('opacity-80', ro);
+      b.tabIndex = ro ? -1 : 0;
+    });
     const p = padParts(REG_SIG_ID);
     if (p) p.canvas.style.pointerEvents = ro ? 'none' : '';
+    // Re-assert the Permission Matrix: enabling the form must not unlock a
+    // view-only section (e.g. 1.2 "For Administration Use Only").
+    if (!ro) {
+      try { /** @type {any} */ (window).GSSPermissions?.apply?.(); } catch (_) { /* noop */ }
+    }
   };
 
   /** Mark the Registration panel completed: green tab, read-only, unlock next. */
@@ -412,6 +426,11 @@ const DATE_COLS = new Set(['registration_date', 'date_of_birth', 'applicant_date
       if (ack) { ack.checked = false; ack.disabled = false; }
     });
     try { if (/** @type {any} */ (window).GSSTabs) /** @type {any} */ (window).GSSTabs.setForcedLock('conditions', false); } catch (_) { /* noop */ }
+    // Clear any forced unlocks left by a previously loaded applicant so a brand
+    // -new form only exposes Registration + Checklist (Dossier stays unlocked).
+    ['presences', 'exam', 'evaluation', 'mensuration'].forEach((tab) => {
+      try { if (/** @type {any} */ (window).GSSTabs) /** @type {any} */ (window).GSSTabs.setForcedUnlock(tab, false); } catch (_) { /* noop */ }
+    });
     try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
 
     // Clear the Dossier checklist + certification for a brand-new applicant.
@@ -496,7 +515,7 @@ const initApplicantForm = () => {
       });
     });
 
-    // Exam panel ack: restricted to Instructor / Head of Training / Admin.
+    // Exam panel ack: governed by the Permissions matrix (section 6.1 add/edit).
     // When ticked, the instructor signature is auto-populated from the
     // signatures table by matching the current user's full_name.
     const examAck = byId('ack-exam');
@@ -620,6 +639,9 @@ const initApplicantForm = () => {
       evalAck.addEventListener('change', async () => {
         if (!evalAck.checked) return;
 
+        // Final Result (7.2) view is required to sign the acknowledgement.
+        if (!canViewFinalResult()) { evalAck.checked = false; return; }
+
         // Stamp the ticking user's own signature on every acknowledgement.
         try {
           const sig = await currentUserSignature();
@@ -708,13 +730,34 @@ const initApplicantForm = () => {
     // Establish the initial read-only checklist + ack lock state.
     try { syncDossierChecklist(); } catch (_) { /* noop */ }
 
-    // ack-dossier: certifies the whole file. Restricted to Admin / Secretary /
-    // Head of Training, only allowed once every checklist item is present, and
-    // confirmed + persisted before it is committed.
+    // ack-dossier: certifies the whole file. Governed by the Permissions matrix
+    // (section 9.1 add/edit), only allowed once every checklist item is present,
+    // and confirmed + persisted before it is committed.
     const dossierAck = byId('ack-dossier');
     if (dossierAck) {
       dossierAck.addEventListener('change', async () => {
-        if (!dossierAck.checked) return;
+        // Un-certify (Delete, 9.1): unchecking an already-certified file.
+        if (!dossierAck.checked) {
+          if (dossierAck.dataset.committed !== 'true') return;
+          if (!canDeleteDossier()) {
+            dossierAck.checked = true;
+            window.alert(t('dossierAckNoDelete', 'You are not authorised to remove this certification.'));
+            return;
+          }
+          if (!window.confirm(t('dossierAckUndoConfirm',
+            'Remove the certification from this Individual Candidate File? This will be saved.'))) {
+            dossierAck.checked = true;
+            return;
+          }
+          delete dossierAck.dataset.committed;
+          dossierAck.disabled = false;
+          setGreenTab('dossier', false, DOT_ALL['dossier']);
+          setDossierOptionalLocked(false);
+          try { if (typeof updateTabLocks === 'function') updateTabLocks(); } catch (_) { /* noop */ }
+          await saveAcceptance({ ack_dossier: false });
+          updateDossierAckState();
+          return;
+        }
         if (dossierAck.dataset.committed === 'true') return;
 
         if (!canAckDossier()) {
@@ -1238,11 +1281,17 @@ const getCurrentRole = () => {
   return session && session.role ? String(session.role) : '';
 };
 
-/** True for the three roles allowed to acknowledge / sign the Exam panel. */
-const canAckExam = () => {
-  const role = getCurrentRole();
-  return role === 'Admin' || role === 'Instructor';
+/** Matrix-driven check: may the current user write (add/edit) a section?
+    Falls back to allow when the permission engine is absent (server still
+    enforces) so the Permissions panel is the single source of truth. */
+const canWriteSection = (/** @type {string} */ section) => {
+  const gp = /** @type {any} */ (window).GSSPerms;
+  if (!gp || typeof gp.can !== 'function') return true;
+  return gp.can(section, 'edit') || gp.can(section, 'add');
 };
+
+/** May the current user acknowledge / sign the Exam panel (section 6.1)? */
+const canAckExam = () => canWriteSection('6.1');
 
 /** Populate the Exam panel decision / observations fields from the record.
     These controls live outside the registration form, so applyDbValues does
@@ -1479,14 +1528,17 @@ const DOSSIER_OPTIONAL = /** @type {{ name: string, col: string }[]} */ ([
   { name: 'doss-doc-1-7', col: 'doss_medical_certificate' },  // Medical certificate
 ]);
 
-/** Lock (read-only) or unlock the optional Dossier document checkboxes. */
+/** Lock (read-only) or unlock the optional Dossier document checkboxes.
+    Always locked for users without Add/Edit on the CheckList (9.1), so View-only
+    users can never modify them regardless of the certification state. */
 const setDossierOptionalLocked = (/** @type {boolean} */ locked) => {
+  const effectiveLocked = locked || !canWriteSection('9.1');
   DOSSIER_OPTIONAL.forEach(({ name }) => {
     const cb = dossByName(name);
     if (!cb) return;
-    cb.disabled = locked;
-    cb.classList.toggle('cursor-not-allowed', locked);
-    cb.classList.toggle('opacity-80', locked);
+    cb.disabled = effectiveLocked;
+    cb.classList.toggle('cursor-not-allowed', effectiveLocked);
+    cb.classList.toggle('opacity-80', effectiveLocked);
   });
 };
 
@@ -1502,10 +1554,16 @@ const loadDossierOptional = (/** @type {Record<string, any> | null | undefined} 
 const allDossierChecked = () =>
   DOSSIER_CHECKS.every(({ name }) => { const cb = dossByName(name); return !!(cb && cb.checked); });
 
-/** Roles allowed to certify (tick ack-dossier) the candidate file. */
-const canAckDossier = () => {
-  const role = getCurrentRole();
-  return role === 'Admin' || role === 'Secretary' || role === 'Head of Training';
+/** May the current user certify (tick ack-dossier) the candidate file (9.1)?
+    Add or Edit on the CheckList module both grant certification (write). */
+const canAckDossier = () => canWriteSection('9.1');
+
+/** May the current user remove (un-certify) a completed candidate file? (9.1 delete)
+    Permissive until the saved matrix has loaded; the server re-checks every save. */
+const canDeleteDossier = () => {
+  const gp = /** @type {any} */ (window).GSSPerms;
+  if (!gp || typeof gp.can !== 'function') return true;
+  return gp.can('9.1', 'delete');
 };
 
 /** Set an explanatory tooltip on ack-dossier (shown on hover) and its label. */
@@ -1517,13 +1575,17 @@ const setDossierAckReason = (/** @type {string} */ reason) => {
   if (label) { if (reason) label.setAttribute('title', reason); else label.removeAttribute('title'); }
 };
 
-/** Enable/disable ack-dossier from the current role + checklist completeness. */
+/** Enable/disable ack-dossier from the current permissions + checklist completeness. */
 const updateDossierAckState = () => {
   const ack = byId('ack-dossier');
   if (!ack) return;
   if (ack.dataset.committed === 'true') {
-    ack.disabled = true;
-    setDossierAckReason(t('dossierAckDone', 'This candidate file has already been certified.'));
+    // Certified: only a user with Delete on the CheckList (9.1) may un-certify.
+    const canUndo = canDeleteDossier();
+    ack.disabled = !canUndo;
+    setDossierAckReason(canUndo
+      ? t('dossierAckUndo', 'This file is certified. Uncheck to remove the certification.')
+      : t('dossierAckDone', 'This candidate file has already been certified.'));
     return;
   }
   const roleOk = canAckDossier();
@@ -1686,6 +1748,12 @@ const setEvalStatus = (/** @type {string} */ html, /** @type {string} */ cls) =>
 const isEvalTrainerRole = () => ['Admin', 'Instructor', 'Secretary'].includes(getCurrentRole());
 // Final Result + Stage-2 finalise: the roles with Read/Write on the Final Result.
 const isEvalAdminRole = () => ['Admin', 'Secretary', 'Head of Training'].includes(getCurrentRole());
+// Final Result (section 7.2) must be viewable for the acknowledgement sign-off
+// to be available. Permissive until the saved matrix has loaded.
+const canViewFinalResult = () => {
+  const gp = /** @type {any} */ (window).GSSPerms;
+  return (gp && gp.loaded) ? gp.canSection('7.2', 'view') : true;
+};
 
 /** True once every grade cell (auto + manual) has a value. */
 const evalGradesFilled = () =>
@@ -1747,6 +1815,8 @@ const applyEvaluationState = () => {
   const ack = byId('ack-evaluation');
   const isTrainer = isEvalTrainerRole();
   const isAdmin = isEvalAdminRole();
+  // Without Final Result (7.2) view, the acknowledgement sign-off is unavailable.
+  const canFinal = canViewFinalResult();
 
   if (evalAdminAck) {
     setEvalFullReadonly();
@@ -1762,7 +1832,7 @@ const applyEvaluationState = () => {
     // Stage 1 — Instructor fills + signs.
     setEvalGradesEditable(isTrainer);
     setEvalFinalEditable(false);
-    if (ack) { ack.checked = false; ack.disabled = !isTrainer; }
+    if (ack) { ack.checked = false; ack.disabled = !isTrainer || !canFinal; }
     setEvalStatus(
       isTrainer
         ? '① ' + t('evalStInstructor', 'Please complete the grades and check the acknowledgement to sign as Instructor.')
@@ -1772,7 +1842,7 @@ const applyEvaluationState = () => {
     // Stage 2 — Admin sets the Final Result + signs.
     setEvalGradesEditable(false);
     setEvalFinalEditable(isAdmin);
-    if (ack) { ack.checked = false; ack.disabled = !isAdmin; }
+    if (ack) { ack.checked = false; ack.disabled = !isAdmin || !canFinal; }
     setEvalStatus(
       isAdmin
         ? '② ' + t('evalStAdmin', 'The Instructor has signed. Set the Final Result and check the acknowledgement to finalise.')
@@ -1977,6 +2047,26 @@ const load = async (/** @type {Record<string, any> | null | undefined} */ record
       applyDbValues(form, record);
     }
 
+    // Repaint the candidate photo preview from the applied value (applyDbValues
+    // sets the hidden input silently, firing no events). The photo control sits
+    // OUTSIDE #inscriptionForm and search payloads omit candidate_photo, so set
+    // the hidden input directly — using the record when present, otherwise
+    // fetching the full record so an existing photo survives an edit.
+    try {
+      const photoHidden = /** @type {HTMLInputElement | null} */ (document.getElementById('CandidatePhotoData'));
+      if (photoHidden) {
+        if (typeof record.candidate_photo === 'string') {
+          photoHidden.value = record.candidate_photo || '';
+        } else if (currentId != null) {
+          const resp = await fetch(`${API_BASE}/api/applicants?id=${encodeURIComponent(String(currentId))}`, { headers: { Accept: 'application/json' } });
+          const data = await resp.json().catch(() => null);
+          const full = data && data.applicant;
+          photoHidden.value = (full && typeof full.candidate_photo === 'string') ? full.candidate_photo : '';
+        }
+      }
+      /** @type {any} */ (window).GSSRegPhoto?.sync?.();
+    } catch (_) { /* noop */ }
+
     // Refresh the Education Level combo so the stored value (applied above) is
     // reflected in the searchable dropdown's visible label.
     try {
@@ -2074,7 +2164,13 @@ const load = async (/** @type {Record<string, any> | null | undefined} */ record
     try {
       const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
       const role = session && session.role ? String(session.role) : '';
-      const canReview = role === 'Admin' || role === 'Head of Training' || role === 'Secretary';
+      // The Permission Matrix (section 1.2) overrides the role: a view-only
+      // "For Administration Use Only" user can never edit the Interview Result.
+      const gp = /** @type {any} */ (window).GSSPerms;
+      const canEditAdmin = (gp && gp.loaded)
+        ? (gp.canSection('1.2', 'edit') || gp.canSection('1.2', 'add'))
+        : true;
+      const canReview = canEditAdmin && (role === 'Admin' || role === 'Head of Training' || role === 'Secretary');
       const isPending = String(record.interview_result || 'Pending').toLowerCase() === 'pending';
       const regForm = /** @type {HTMLFormElement | null} */ (document.getElementById('inscriptionForm'));
       if (regForm) delete regForm.dataset.reviewOnly;

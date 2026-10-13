@@ -251,7 +251,28 @@ const initInscriptionForm = () => {
         return;
       }
     } else if (gssV && typeof gssV.validatePanel === 'function') {
-      if (!gssV.validatePanel('registration')) return;
+      // Collect every missing required field (highlighting each), then add the
+      // mandatory candidate photo — which lives outside the form — and show ONE
+      // combined message. Nothing is sent to the server when anything is missing.
+      /** @type {string[]} */
+      const missing = (typeof gssV.listMissing === 'function')
+        ? gssV.listMissing('registration')
+        : (gssV.validatePanel('registration') ? [] : [m.required]);
+
+      const photo = /** @type {any} */ (window).GSSRegPhoto;
+      if (photo && typeof photo.hasPhoto === 'function' && !photo.hasPhoto()) {
+        photo.showError(m.photoRequired);
+        if (typeof photo.highlight === 'function') photo.highlight(true);
+        missing.push(m.photoLabel);
+      }
+
+      if (missing.length) {
+        status.textContent = (typeof gssV.buildMissingMessage === 'function')
+          ? gssV.buildMissingMessage(missing)
+          : m.required;
+        status.className = 'min-h-6 text-sm font-semibold text-red-600';
+        return;
+      }
     } else {
       // Fallback minimal check when the validation engine is unavailable.
       const requiredFields = ['FullName', 'Phone1'];
@@ -259,7 +280,13 @@ const initInscriptionForm = () => {
         const f = field(name);
         return !f || f.value.trim() === '';
       });
-      if (missing.length) {
+      const photo = /** @type {any} */ (window).GSSRegPhoto;
+      const photoMissing = photo && typeof photo.hasPhoto === 'function' && !photo.hasPhoto();
+      if (photoMissing) {
+        photo.showError(m.photoRequired);
+        if (typeof photo.highlight === 'function') photo.highlight(true);
+      }
+      if (missing.length || photoMissing) {
         missing.forEach((name) => setError(field(name), true));
         status.textContent = m.required;
         status.className = 'min-h-6 text-sm font-semibold text-red-600';
@@ -321,6 +348,9 @@ const initInscriptionForm = () => {
     }
 
     // Persist the applicant, then mark the Registration panel completed.
+    const submitBtn = /** @type {HTMLButtonElement | null} */ (form.querySelector('button[type="submit"]'));
+    const shimmer = /** @type {any} */ (window).GSSShimmer;
+    if (shimmer && submitBtn) shimmer.button(submitBtn, true);
     try {
       let row;
       if (reviewOnly) {
@@ -336,14 +366,40 @@ const initInscriptionForm = () => {
         };
       } else {
         row = await collectDbValues(form);
+        // The candidate photo control sits OUTSIDE #inscriptionForm, so
+        // collectDbValues can't reach it — merge its value in explicitly.
+        const photoHidden = /** @type {HTMLInputElement | null} */ (document.getElementById('CandidatePhotoData'));
+        if (photoHidden) row.candidate_photo = photoHidden.value || null;
       }
-      const res = await fetch(`${API_BASE}/api/applicants`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(row),
-      });
+      let res;
+      try {
+        res = await fetch(`${API_BASE}/api/applicants`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(row),
+        });
+      } catch (netErr) {
+        // Connection refused / offline / CORS — never reached the server.
+        console.error('Applicant submission network error:', netErr);
+        status.textContent = m.errNetwork;
+        status.className = 'min-h-6 text-sm font-semibold text-red-600';
+        return;
+      }
       const payload = await res.json().catch(() => ({}));
-      if (!res.ok || !payload.ok) throw new Error(payload.error || 'Save failed');
+      if (!res.ok || !payload.ok) {
+        // Preserve full diagnostics for developers…
+        console.error('Applicant submission failed:', res.status, payload);
+        // …while showing the user a clear, category-specific message.
+        let message;
+        if (res.status === 401) message = m.errForbidden;
+        else if (res.status === 403) message = m.errForbidden;
+        else if (res.status === 400) message = payload.error || m.errGeneric;
+        else if (res.status >= 500) message = m.errServer;
+        else message = payload.error || m.errGeneric;
+        status.textContent = message;
+        status.className = 'min-h-6 text-sm font-semibold text-red-600';
+        return;
+      }
       status.textContent = m.submitted;
       status.className = 'min-h-6 text-sm font-semibold text-emerald-600';
       const linker = /** @type {any} */ (window).GSSApplicant;
@@ -363,8 +419,11 @@ const initInscriptionForm = () => {
         }, 1400);
       }
     } catch (err) {
-      status.textContent = err instanceof Error ? err.message : 'Save failed';
+      console.error('Unexpected error submitting applicant:', err);
+      status.textContent = m.errGeneric;
       status.className = 'min-h-6 text-sm font-semibold text-red-600';
+    } finally {
+      if (shimmer && submitBtn) shimmer.button(submitBtn, false);
     }
   });
 
@@ -591,4 +650,97 @@ const applyDbValues = (form, row) => {
     
     //input.dispatchEvent(new Event('change', { bubbles: true }));
   });
+};
+
+// ── Candidate photo upload (image only · max 1 MB · stored in DB) ──
+// The <input type="file"> only captures/validates the picture; the base64
+// data URL it produces is written to the hidden [dbname="candidate_photo"]
+// control so it rides the standard collectDbValues/applyDbValues pipeline.
+const CANDIDATE_PHOTO_MAX_BYTES = 1024 * 1024; // 1 MB
+
+const initCandidatePhoto = () => {
+  const fileInput = /** @type {HTMLInputElement | null} */ (document.getElementById('CandidatePhotoFile'));
+  const hidden = /** @type {HTMLInputElement | null} */ (document.getElementById('CandidatePhotoData'));
+  const btn = document.getElementById('CandidatePhotoBtn');
+  const preview = /** @type {HTMLImageElement | null} */ (document.getElementById('CandidatePhotoPreview'));
+  const placeholder = document.getElementById('CandidatePhotoPlaceholder');
+  const removeBtn = document.getElementById('CandidatePhotoRemove');
+  const errorEl = document.getElementById('CandidatePhotoError');
+  if (!fileInput || !hidden || !btn || !preview || !placeholder) return;
+
+  const t = () => REGISTRATION_MESSAGES[/** @type {keyof typeof REGISTRATION_MESSAGES} */ (document.documentElement.lang)] || REGISTRATION_MESSAGES.en;
+
+  const showError = (/** @type {string} */ msg) => {
+    if (!errorEl) return;
+    errorEl.textContent = msg || '';
+    errorEl.classList.toggle('hidden', !msg);
+  };
+
+  // Ring the photo control red (or clear it) so a missing photo is visible.
+  const RING_CLASSES = ['ring-2', 'ring-red-400', 'ring-offset-2', 'rounded-lg'];
+  const highlight = (/** @type {boolean} */ on) => {
+    RING_CLASSES.forEach((cls) => btn.classList.toggle(cls, on));
+  };
+
+  // Reflect the hidden input's current value in the preview (used on load/edit).
+  const sync = () => {
+    const value = hidden.value || '';
+    const isImage = /^data:image\//i.test(value);
+    preview.src = isImage ? value : '';
+    preview.classList.toggle('hidden', !isImage);
+    placeholder.classList.toggle('hidden', isImage);
+    removeBtn?.classList.toggle('hidden', !isImage);
+  };
+
+  const setPhoto = (/** @type {string} */ dataUrl) => {
+    hidden.value = dataUrl || '';
+    sync();
+  };
+
+  btn.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', () => {
+    showError('');
+    highlight(false);
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+    if (!/^image\//i.test(file.type)) {
+      showError(t().photoType);
+      fileInput.value = '';
+      return;
+    }
+    if (file.size > CANDIDATE_PHOTO_MAX_BYTES) {
+      showError(t().photoTooBig);
+      fileInput.value = '';
+      return;
+    }
+    readFileAsDataUrl(file).then((url) => setPhoto(url)).catch(() => showError(t().photoType));
+  });
+
+  removeBtn?.addEventListener('click', () => {
+    setPhoto('');
+    fileInput.value = '';
+    showError('');
+  });
+
+  const parentForm = hidden.closest('form');
+  if (parentForm) {
+    parentForm.addEventListener('reset', () => setTimeout(() => {
+      setPhoto('');
+      fileInput.value = '';
+      showError('');
+    }, 0));
+  }
+
+  // Loader hook: applyDbValues sets the hidden value silently, so the loader
+  // calls this to repaint the preview after a record is applied.
+  /** @type {any} */ (window).GSSRegPhoto = {
+    sync,
+    hasPhoto: () => /^data:image\//i.test(hidden.value || ''),
+    showError,
+    highlight,
+    focus: () => { try { /** @type {HTMLElement} */ (btn).focus(); } catch (_) { /* noop */ } },
+  };
+
+  sync();
 };

@@ -3,12 +3,14 @@
  * GSS · Admin & role features
  * ------------------------------------------------------------------
  * Loaded on tc.html. Responsibilities:
- *   • Role gating   — show/hide elements marked `data-role-any` based on the
- *                     signed-in user's role (from GSSSession).
  *   • Notifications — pending-interview bell + secretary work-queue bell; both
  *                     open the applicant grid pre-filtered (via window.GSSGrid).
  *   • Manage Users  — admin-only modal to list / create / edit accounts and
  *                     enable/disable them and change roles.
+ *
+ * Feature access gating is NOT done here: every button/panel is governed by the
+ * Permission Matrix via `data-perm` + GSSPerms (see js/global.js). The only
+ * role still read below is for the admin-bootstrap user-management UI itself.
  */
 (() => {
   'use strict';
@@ -26,19 +28,9 @@
   };
 
   // ── Role gating ────────────────────────────────────────────────
-  const showEl = (/** @type {HTMLElement} */ el, /** @type {boolean} */ on) => {
-    const disp = el.dataset.roleDisplay || (el.tagName === 'FIELDSET' ? 'block' : 'inline-flex');
-    if (on) { el.classList.remove('hidden'); el.style.display = disp; }
-    else { el.classList.add('hidden'); el.style.display = 'none'; }
-  };
-
-  const applyRoleGating = () => {
-    document.querySelectorAll('[data-role-any]').forEach((el) => {
-      const allowed = (/** @type {HTMLElement} */ (el).dataset.roleAny || '')
-        .split(',').map((r) => r.trim().toLowerCase()).filter(Boolean);
-      showEl(/** @type {HTMLElement} */ (el), allowed.includes(role.toLowerCase()));
-    });
-  };
+  // Removed: feature visibility is now driven entirely by the Permission
+  // Matrix (`data-perm` + GSSPerms in js/global.js). The `role` value above is
+  // retained only for the admin-bootstrap Manage Users UI below.
 
   // ── Notifications (pending interviews + secretary queue) ───────
   const setBadge = (/** @type {string} */ id, /** @type {number} */ n) => {
@@ -74,6 +66,13 @@
     if (bellBadge) {
       bellBadge.textContent = total > 99 ? '99+' : String(total);
       bellBadge.classList.toggle('hidden', !(total > 0));
+    }
+    // Tint the bell light-red while any pending/secretary item needs action.
+    const notifBell = document.getElementById('notifBell');
+    if (notifBell) {
+      const needsAction = total > 0;
+      notifBell.classList.toggle('text-red-400', needsAction);
+      notifBell.classList.toggle('text-[#042F8D]', !needsAction);
     }
     const empty = document.getElementById('notifEmpty');
     if (empty) empty.classList.toggle('hidden', !anyVis || total > 0);
@@ -188,9 +187,44 @@
   const userConfirmPwField = document.getElementById('userConfirmPwField');
   const userPasswordReq = document.getElementById('userPasswordReq');
   const userPasswordLabel = document.getElementById('userPasswordLabel');
+  const userPhotoInput = /** @type {HTMLInputElement | null} */ (document.getElementById('userPhotoInput'));
+  const userPhotoImg = /** @type {HTMLImageElement | null} */ (document.getElementById('userPhotoImg'));
+  const userPhotoPlaceholder = document.getElementById('userPhotoPlaceholder');
+  const userPhotoRemove = document.getElementById('userPhotoRemove');
+  const userPhotoErr = document.getElementById('userPhotoErr');
 
   /** @type {any[]} */ let usersCache = [];
   /** @type {any} */ let editingUser = null;
+  // Pending profile-image state for the open form:
+  //   dataUrl  — a newly chosen image (base64 data URL) to upload, or null.
+  //   cleared  — true when the user removed an existing avatar.
+  /** @type {{ dataUrl: string | null, cleared: boolean }} */
+  let userPhotoState = { dataUrl: null, cleared: false };
+
+  const AVATAR_ALLOWED = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+  const AVATAR_MAX_BYTES = 1024 * 1024; // 1 MB
+
+  /** Show the chosen/existing avatar in the form preview (or the placeholder). */
+  const setPhotoPreview = (/** @type {string | null} */ src) => {
+    if (userPhotoImg) {
+      if (src) { userPhotoImg.src = src; userPhotoImg.classList.remove('hidden'); }
+      else { userPhotoImg.removeAttribute('src'); userPhotoImg.classList.add('hidden'); }
+    }
+    userPhotoPlaceholder?.classList.toggle('hidden', !!src);
+    userPhotoRemove?.classList.toggle('hidden', !src);
+  };
+
+  /** Build a cache-bustable avatar stream URL for a username. */
+  const avatarUrl = (/** @type {string} */ username, /** @type {any} */ ver) =>
+    `${API_BASE}/api/me/avatar?username=${encodeURIComponent(String(username || ''))}&v=${encodeURIComponent(String(ver || 0))}`;
+
+  /** Read a File into a base64 data URL. */
+  const fileToDataUrl = (/** @type {File} */ file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('read_failed'));
+    reader.readAsDataURL(file);
+  });
 
   const setUsersStatus = (/** @type {string} */ msg, /** @type {boolean} */ ok) => {
     if (!usersStatus) return;
@@ -233,6 +267,9 @@
     editingUser = null;
     userForm?.classList.add('hidden');
     if (userForm) userForm.reset();
+    userPhotoState = { dataUrl: null, cleared: false };
+    setPhotoPreview(null);
+    if (userPhotoErr) userPhotoErr.classList.add('hidden');
     userCoursesSection?.classList.add('hidden');
     usersListView?.classList.remove('hidden');
     // Header search + Add belong to the listing view only.
@@ -273,7 +310,13 @@
     if (userStatus) userStatus.value = (user ? user.is_active !== false : true) ? 'enabled' : 'disabled';
     if (userEmail) userEmail.value = user ? String(user.email || '') : '';
     if (userEmailErr) userEmailErr.classList.add('hidden');
-    if (userNotifyEmail) userNotifyEmail.checked = false;
+    // Restore the saved "notify by email" preference (default off for new users).
+    if (userNotifyEmail) userNotifyEmail.checked = !!(user && user.notify_email);
+    // Reset the profile-image picker, then show the existing avatar (if any).
+    userPhotoState = { dataUrl: null, cleared: false };
+    if (userPhotoInput) userPhotoInput.value = '';
+    if (userPhotoErr) userPhotoErr.classList.add('hidden');
+    setPhotoPreview(user && user.has_avatar ? avatarUrl(user.username, user.avatar_ver) : null);
     // Credentials section shows for both create and edit, but the labelling and
     // required-ness differ: on edit the password is optional ("Change Password").
     if (userCredsSection) userCredsSection.style.display = '';
@@ -324,14 +367,18 @@
       const tr = document.createElement('tr');
       tr.className = 'hover:bg-[#042F8D]/5';
       const active = u.is_active !== false;
+      const locked = u.is_locked === true;
       const statusPill = active
         ? `<span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">${t('usersEnabled', 'Enabled')}</span>`
         : `<span class="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">${t('usersDisabled', 'Disabled')}</span>`;
+      const lockPill = locked
+        ? ` <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">${t('usersLocked', 'Locked')}</span>`
+        : '';
       tr.innerHTML =
         `<td class="px-3 py-2 align-middle font-semibold text-slate-800">${esc(u.username)}</td>` +
         `<td class="px-3 py-2 align-middle text-slate-700">${esc(u.full_name || '')}</td>` +
         `<td class="px-3 py-2 align-middle text-slate-700">${esc(roleLabel(u.role))}</td>` +
-        `<td class="px-3 py-2 align-middle">${statusPill}</td>`;
+        `<td class="px-3 py-2 align-middle">${statusPill}${lockPill}</td>`;
 
       const actions = document.createElement('td');
       actions.className = 'px-3 py-2 align-middle';
@@ -363,6 +410,14 @@
 
       wrap.appendChild(editBtn);
       wrap.appendChild(permsBtn);
+      if (locked) {
+        const unlockBtn = document.createElement('button');
+        unlockBtn.type = 'button';
+        unlockBtn.className = 'inline-flex h-8 items-center gap-1 rounded-lg border border-amber-200 px-2.5 text-xs font-semibold text-amber-600 transition hover:border-amber-500 hover:bg-amber-50';
+        unlockBtn.textContent = t('usersUnlock', 'Unlock');
+        unlockBtn.addEventListener('click', () => updateUser({ login_id: u.login_id, unlock: true }, true));
+        wrap.appendChild(unlockBtn);
+      }
       wrap.appendChild(toggleBtn);
       actions.appendChild(wrap);
       tr.appendChild(actions);
@@ -408,10 +463,24 @@
         const msg = data.status === 'exists' ? t('usersErrExists', 'That username is already taken.')
           : data.status === 'invalid_email' ? t('usersEmailInvalid', 'Please enter a valid email address.')
           : data.status === 'weak' ? t('usersErrPw', 'Password must be at least 8 characters.')
+          : (data.status === 'invalid_image' || data.status === 'invalid_image_type') ? t('usersPhotoBadType', 'Please choose a PNG, JPG, WEBP or GIF image.')
+          : data.status === 'image_too_large' ? t('usersPhotoTooBig', 'Image is too large (max 1 MB).')
           : t('usersErrSave', 'Could not save the user.');
         if (fromRow) setUsersStatus(msg, false); else setFormStatus(msg, false);
         return false;
       }
+      // If the admin edited their own account's avatar, refresh the header chip.
+      try {
+        const savedUser = data.user || {};
+        const sess = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
+        const savedName = String(savedUser.username || payload.username || '').toLowerCase();
+        if (sess && savedName && String(sess.username || '').toLowerCase() === savedName) {
+          if (typeof GSSSession !== 'undefined' && GSSSession.update) {
+            GSSSession.update({ has_avatar: !!savedUser.has_avatar, avatar_ver: savedUser.avatar_ver });
+          }
+          /** @type {any} */ (window).GSSChip?.applyAvatar?.();
+        }
+      } catch (_) { /* noop */ }
       // Surface the email-notification outcome without blocking the save result.
       const note = data.notification;
       let okMsg = t('usersSavedOk', 'User saved.');
@@ -454,8 +523,10 @@
         if (password && password.length < 8) { setFormStatus(t('usersErrPw', 'Password must be at least 8 characters.'), false); return; }
         const mustChange = !!(userMustChange && userMustChange.checked);
         /** @type {Record<string, any>} */
-        const payload = { login_id: id, username, full_name: fullName, role: roleVal, is_active: isActive, email: emailVal, must_change_password: mustChange, notify, lang };
+        const payload = { login_id: id, username, full_name: fullName, role: roleVal, is_active: isActive, email: emailVal, must_change_password: mustChange, notify, notify_email: notify, lang };
         if (password) payload.password = password;
+        if (userPhotoState.dataUrl) payload.profile_image = userPhotoState.dataUrl;
+        else if (userPhotoState.cleared) payload.clear_profile_image = true;
         await updateUser(payload, false);
       } else {
         const password = userPassword ? userPassword.value : '';
@@ -463,7 +534,10 @@
         if (password.length < 8) { setFormStatus(t('usersErrPw', 'Password must be at least 8 characters.'), false); return; }
         if (password !== confirm) { setFormStatus(t('usersErrPwMatch', 'Passwords do not match.'), false); return; }
         const mustChange = !userMustChange || userMustChange.checked;
-        await updateUser({ username, full_name: fullName, role: roleVal, password, mustChange, email: emailVal, notify, lang }, false);
+        /** @type {Record<string, any>} */
+        const payload = { username, full_name: fullName, role: roleVal, password, mustChange, email: emailVal, notify, notify_email: notify, lang };
+        if (userPhotoState.dataUrl) payload.profile_image = userPhotoState.dataUrl;
+        await updateUser(payload, false);
       }
     });
   }
@@ -476,10 +550,43 @@
   userRole?.addEventListener('change', syncCoursesSection);
   userEmail?.addEventListener('input', () => { userEmailErr?.classList.add('hidden'); syncNotifyField(); });
   userCancel?.addEventListener('click', hideForm);
-  usersOverlay?.addEventListener('click', (e) => { if (e.target === usersOverlay) closeUsers(); });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && usersOverlay && !usersOverlay.classList.contains('hidden')) closeUsers();
+
+  // Profile-image picker: validate type/size, preview, and stage for upload.
+  userPhotoInput?.addEventListener('change', async () => {
+    const file = userPhotoInput.files && userPhotoInput.files[0];
+    const showPhotoErr = (/** @type {string} */ msg) => {
+      if (userPhotoErr) { userPhotoErr.textContent = msg; userPhotoErr.classList.remove('hidden'); }
+    };
+    if (userPhotoErr) userPhotoErr.classList.add('hidden');
+    if (!file) return;
+    if (!AVATAR_ALLOWED.includes(file.type)) {
+      userPhotoInput.value = '';
+      showPhotoErr(t('usersPhotoBadType', 'Please choose a PNG, JPG, WEBP or GIF image.'));
+      return;
+    }
+    if (file.size > AVATAR_MAX_BYTES) {
+      userPhotoInput.value = '';
+      showPhotoErr(t('usersPhotoTooBig', 'Image is too large (max 1 MB).'));
+      return;
+    }
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      userPhotoState = { dataUrl, cleared: false };
+      setPhotoPreview(dataUrl);
+    } catch (_) {
+      userPhotoInput.value = '';
+      showPhotoErr(t('usersPhotoReadErr', 'Could not read the selected image.'));
+    }
   });
+
+  // Remove the avatar: clear the preview and stage a removal on save.
+  userPhotoRemove?.addEventListener('click', () => {
+    if (userPhotoInput) userPhotoInput.value = '';
+    userPhotoState = { dataUrl: null, cleared: true };
+    if (userPhotoErr) userPhotoErr.classList.add('hidden');
+    setPhotoPreview(null);
+  });
+  // Overlay closes only via its explicit Close button (no backdrop/Escape).
 
   // ── Init ───────────────────────────────────────────────────────
   // Reconcile a possibly-stale session role with the live value in the DB so
@@ -489,18 +596,27 @@
     if (!s || !s.username) return;
     try {
       const d = await fetch(`${API_BASE}/api/me?username=${encodeURIComponent(s.username)}`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
-      if (d && d.ok && d.role && d.role !== role) {
-        role = String(d.role);
-        if (typeof GSSSession !== 'undefined' && GSSSession.update) GSSSession.update({ role: role, full_name: d.full_name });
-        applyRoleGating();
-        refreshCounts();
-        try { /** @type {any} */ (window).GSSChip?.applyRoleBadge(role); } catch (_) { /* noop */ }
+      if (d && d.ok) {
+        // Keep the header avatar in sync with the live account (shows an image
+        // uploaded from another session on the very next page load).
+        if (d.has_avatar !== s.has_avatar || d.avatar_ver !== s.avatar_ver) {
+          if (typeof GSSSession !== 'undefined' && GSSSession.update) {
+            GSSSession.update({ has_avatar: !!d.has_avatar, avatar_ver: d.avatar_ver });
+          }
+          try { /** @type {any} */ (window).GSSChip?.applyAvatar?.(); } catch (_) { /* noop */ }
+        }
+        if (d.role && d.role !== role) {
+          role = String(d.role);
+          if (typeof GSSSession !== 'undefined' && GSSSession.update) GSSSession.update({ role: role, full_name: d.full_name });
+          refreshCounts();
+          try { /** @type {any} */ (window).GSSSysMgmt?.applyAdminVisibility?.(); } catch (_) { /* noop */ }
+          try { /** @type {any} */ (window).GSSChip?.applyRoleBadge(role); } catch (_) { /* noop */ }
+        }
       }
     } catch (_) { /* server may be down */ }
   };
 
   const init = () => {
-    applyRoleGating();
     wireNotifications();
     refreshCounts();
     refreshRoleFromServer();

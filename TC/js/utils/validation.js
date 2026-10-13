@@ -202,6 +202,63 @@
     return allValid;
   };
 
+  // ── Human-readable label for a field key (localised) ──────────
+  const labelFor = (/** @type {string} */ key) => {
+    const m = t();
+    const labels = /** @type {Record<string, string>} */ (m.labels || {});
+    return labels[key] || key;
+  };
+
+  // Collect the localised labels of every *active* required field that is
+  // currently empty/invalid, highlighting each one and scrolling to the first.
+  // Unlike validatePanel(), this does NOT overwrite the status line — callers
+  // build their own combined message so photos (outside the form) can join in.
+  const listMissing = (/** @type {string} */ panelKey) => {
+    const rule = panelRules[panelKey];
+    if (!rule) return [];
+    const form = /** @type {HTMLFormElement | null} */ (document.getElementById(rule.formId));
+    if (!form) return [];
+
+    /** @type {string[]} */
+    const missing = [];
+    /** @type {any} */
+    let firstInvalid = null;
+
+    rule.fields.forEach((field) => {
+      const result = evaluateField(form, field);
+      setError(result.highlight, !result.valid);
+      if (!result.valid) {
+        missing.push(labelFor(field.key));
+        if (!firstInvalid) firstInvalid = result.highlight || result.control;
+      }
+    });
+
+    if (firstInvalid) {
+      if (window.GSSCollapsible && firstInvalid.closest) {
+        window.GSSCollapsible.expand(firstInvalid.closest('fieldset'));
+      }
+      if (typeof firstInvalid.scrollIntoView === 'function') {
+        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    return missing;
+  };
+
+  // Build "Please complete the following required fields: A, B, and C." from a
+  // list of localised labels, using an Oxford-style "and" for the last item.
+  const buildMissingMessage = (/** @type {string[]} */ labels) => {
+    const m = t();
+    if (!labels || !labels.length) return '';
+    let list;
+    if (labels.length === 1) {
+      list = labels[0];
+    } else {
+      list = labels.slice(0, -1).join(', ') + ' ' + m.listAnd + ' ' + labels[labels.length - 1];
+    }
+    return m.missingIntro + list + '.';
+  };
+
   // ── Clear a field's error once the user provides a value ──────
   const clearFieldError = (/** @type {HTMLFormElement} */ form, /** @type {string} */ panelKey, /** @type {any} */ target) => {
     const rule = panelRules[panelKey];
@@ -316,6 +373,8 @@
   window.GSSValidation = {
     rules: panelRules,
     validatePanel,
+    listMissing,
+    buildMissingMessage,
     registerPanel(/** @type {string} */ key, /** @type {GSSPanelRule} */ rule) {
       panelRules[key] = rule;
     },

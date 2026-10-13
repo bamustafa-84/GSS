@@ -84,8 +84,7 @@
   };
 
   closeBtn?.addEventListener('click', close);
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isOpen()) close(); });
+  // Overlay closes only via its explicit Close button (no backdrop/Escape).
 
   // Wire every "Dictionary Management" trigger button.
   document.querySelectorAll('[data-dict-category]').forEach((el) => {

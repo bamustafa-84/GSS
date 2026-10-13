@@ -445,6 +445,15 @@
    * notification bells to show only Pending / Secretary-queue applicants). */
   let externalRowFilter = null;
 
+  /** @type {boolean} While true, renderDataGrid keeps the loading chrome (the
+   * toolbar skeleton) on screen so a multi-step load — e.g. a notification bell
+   * that pages in every group before filtering — reveals the grid only once,
+   * fully loaded, instead of flickering between partial states. */
+  let gridChromeHold = false;
+  /** @type {HTMLElement | null} Persistent full-body skeleton shown during a
+   * held multi-step load (see {@link gridChromeHold}). */
+  let gridHoldVeil = null;
+
   /** @type {{ key: string, dir: number }} Current grid sort (dir: 1 asc, -1 desc). */
   let gridSort = { key: '', dir: 1 };
 
@@ -1189,8 +1198,17 @@
       return;
     }
 
-    gridBody.innerHTML =
-      '<div class="p-8 text-center text-sm text-slate-400">' + gridI18n('psGridLoading', 'Loading…') + '</div>';
+    const shimmer = /** @type {any} */ (window).GSSShimmer;
+    const gridToolbar = document.getElementById('psGridToolbar');
+    // Show coordinated toolbar + grid skeletons immediately, before any fetch.
+    if (shimmer && typeof shimmer.toolbarSkeleton === 'function') shimmer.toolbarSkeleton(gridToolbar, true);
+    if (shimmer && typeof shimmer.tableSkeleton === 'function') {
+      shimmer.tableSkeleton(gridBody, { rows: 9, cols: 7 });
+    } else {
+      gridBody.innerHTML =
+        '<div class="p-8 text-center text-sm text-slate-400">' + gridI18n('psGridLoading', 'Loading…') + '</div>';
+    }
+    try {
     gridGrandTotal = 0;
     // The applicant grid uses hybrid grouped pagination: its rows are loaded
     // lazily per training group (see the render tail), so we do NOT eagerly pull
@@ -1210,6 +1228,7 @@
     const cols = columnsForTable(table, serverColumns);
     const editTab = panelForTable(table);
     gridBody.innerHTML = '';
+    if (shimmer && typeof shimmer.clear === 'function') shimmer.clear(gridBody);
 
     const tableEl = document.createElement('table');
     tableEl.className = 'w-full border-collapse text-sm';
@@ -1217,14 +1236,10 @@
     const thead = document.createElement('thead');
     thead.className = 'sticky top-0 z-10';
 
-    // Admins can hard-delete a candidate directly from the applicant grid.
-    const currentRole = (() => {
-      try {
-        const s = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
-        return s && s.role ? String(s.role) : '';
-      } catch (_) { return ''; }
-    })();
-    const canDelete = nestable && currentRole === 'Admin';
+    // Hard-delete follows the Permissions matrix (Registration delete, 1.1);
+    // no role fallback. Admin-only by default, extensible via the matrix.
+    const gp = /** @type {any} */ (window).GSSPerms;
+    const canDelete = nestable && !!(gp && typeof gp.canSection === 'function' && gp.canSection('1.1', 'delete'));
     // A trailing Print column is shown on the applicant grid for every role
     // except Instructor; the button itself only appears on passed exams.
     const showPrintCol = nestable && !isInstructor();
@@ -1454,7 +1469,47 @@
       // Fetch lightweight group summaries (header + count), render a collapsible
       // header per training, and page each group's candidate rows lazily on
       // expand. The DOM stays small no matter how many candidates exist.
-      const { groups: groupSummaries, unassigned } = await fetchGridGroups();
+      // Shimmer the real header labels (keeping the <th> so its sort handler
+      // and column widths survive) and show in-table skeleton rows beneath,
+      // all while the group summaries load.
+      const skelColSpan = titleRow.children.length;
+      // Varied widths read as real data while columns stay aligned to the header.
+      const headW = ['w-16', 'w-24', 'w-20', 'w-28', 'w-14', 'w-24', 'w-20'];
+      const skelCellW = ['w-3/4', 'w-1/2', 'w-2/3', 'w-4/5', 'w-2/5', 'w-3/5', 'w-1/2'];
+      /** @type {{ el: HTMLElement, html: string }[]} */
+      const headRestore = [];
+      Array.prototype.forEach.call(titleRow.children, (/** @type {HTMLElement} */ th, /** @type {number} */ idx) => {
+        headRestore.push({ el: th, html: th.innerHTML });
+        const bar = document.createElement('div');
+        bar.className = 'gss-skel gss-skel--on-navy h-3 ' + (idx === 0 ? 'w-4' : headW[idx % headW.length]);
+        th.innerHTML = '';
+        th.appendChild(bar);
+      });
+      /** @type {HTMLTableRowElement[]} */
+      const skelRows = [];
+      for (let i = 0; i < 8; i++) {
+        const sr = document.createElement('tr');
+        sr.dataset.skeletonRow = '1';
+        sr.className = 'border-t border-slate-100';
+        for (let c = 0; c < skelColSpan; c++) {
+          const td = document.createElement('td');
+          td.className = 'px-3 py-2.5 align-middle';
+          const bar = document.createElement('div');
+          bar.className = 'gss-skel h-3.5 ' + (c === 0 ? 'w-5' : skelCellW[(i + c) % skelCellW.length]);
+          td.appendChild(bar);
+          sr.appendChild(td);
+        }
+        tbody.appendChild(sr);
+        skelRows.push(sr);
+      }
+      let groupData;
+      try {
+        groupData = await fetchGridGroups();
+      } finally {
+        skelRows.forEach((r) => r.remove());
+        headRestore.forEach(({ el, html }) => { el.innerHTML = html; });
+      }
+      const { groups: groupSummaries, unassigned } = groupData;
       if (renderToken !== gridRenderToken) return;
       const UNASSIGNED = '__none__';
       const PAGE_SIZE = 100;
@@ -1582,7 +1637,7 @@
           busy = false;
           syncMore();
           if (gridSort.key) applyGridSort();
-          if (hasActiveGridFilter()) applyColumnFilters();
+          if (hasActiveGridFilter() || externalRowFilter) applyColumnFilters();
           updateGridCount();
         };
 
@@ -1693,6 +1748,15 @@
     }
     if (gridCourseFilter || gridTrainerFilter || gridYearFilter) applyColumnFilters();
     updateGridCount();
+    } finally {
+      // Only the latest render clears the chrome, so a superseded render can
+      // never remove a skeleton the newest one still needs (no flicker). When a
+      // multi-step load holds the chrome, its caller clears it at the very end.
+      if (shimmer && typeof shimmer.toolbarSkeleton === 'function'
+        && renderToken === gridRenderToken && !gridChromeHold) {
+        shimmer.toolbarSkeleton(gridToolbar, false);
+      }
+    }
   };
 
   /** Update the ▲/▼/↕ arrow on every sortable header. */
@@ -1937,7 +2001,7 @@
     if (gridLoadAllVisible) await gridLoadAllVisible();
     // Re-apply the active filters so freshly paged-in rows that don't match are
     // marked hidden and therefore excluded from the export.
-    if (hasActiveGridFilter()) applyColumnFilters();
+    if (hasActiveGridFilter() || externalRowFilter) applyColumnFilters();
     collapseAllDetails();
     const headerRow = gridBody.querySelector('thead tr:first-child');
     const bodyRows = gridBody.querySelectorAll('#psGridRows tr[data-row], #psGridRows tr[data-group-header]');
@@ -2217,6 +2281,10 @@
       query[input.dataset.col || ''] = input.value.trim().toLowerCase();
     });
     const hasColFilter = Object.keys(query).some((k) => query[k]);
+    // An external predicate (toolbar notification bells) reveals matching rows
+    // across every group — like a text filter — so groups with no match collapse
+    // away instead of leaving the whole grouped grid on screen.
+    const revealAcrossGroups = hasColFilter || !!externalRowFilter;
 
     const rows = gridBody.querySelectorAll('#psGridRows tr[data-row]');
     let shown = 0;
@@ -2235,8 +2303,8 @@
         || (tr.dataset.groupYear || '').split(',').indexOf(gridYearFilter) !== -1;
       const contentMatch = colMatch && extMatch && courseMatch && trainerMatch && yearMatch;
       let match;
-      if (hasColFilter) {
-        // Text filter: reveal matching rows under their group regardless of the
+      if (revealAcrossGroups) {
+        // Active filter: reveal matching rows under their group regardless of the
         // group's collapsed state, and remember which groups matched.
         match = contentMatch;
         if (match && tr.dataset.group != null) matchedGroups.add(tr.dataset.group);
@@ -2266,7 +2334,7 @@
       if (visible && gridYearFilter) {
         visible = (header.dataset.groupYear || '').split(',').indexOf(gridYearFilter) !== -1;
       }
-      if (visible && hasColFilter) {
+      if (visible && revealAcrossGroups) {
         visible = matchedGroups.has(key);
         if (visible) {
           header.dataset.expanded = 'true';
@@ -2450,18 +2518,19 @@
   };
   const closeGrid = () => {
     if (!gridOverlay) return;
+    // Move focus out first so no focused descendant (e.g. the Close button) is
+    // left inside the aria-hidden overlay (accessibility requirement).
+    try {
+      const active = document.activeElement;
+      if (active && gridOverlay.contains(active)) /** @type {HTMLElement} */ (active).blur();
+    } catch (_) { /* noop */ }
     gridOverlay.classList.add('hidden');
     gridOverlay.setAttribute('aria-hidden', 'true');
   };
 
   gridBtn?.addEventListener('click', () => (gridIsOpen() ? closeGrid() : openGrid()));
   gridClose?.addEventListener('click', closeGrid);
-  gridOverlay?.addEventListener('click', (e) => {
-    if (e.target === gridOverlay) closeGrid();
-  });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && gridIsOpen()) closeGrid();
-  });
+  // Overlay closes only via its explicit Close button (no backdrop/Escape).
   //#endregion
 
 
@@ -2493,6 +2562,38 @@
     await renderDataGrid();
   };
 
+  /**
+   * Cover the grid body with a persistent skeleton while a multi-step load runs
+   * (render → page-in every group → filter), so the grid builds underneath and
+   * is revealed only once, fully loaded — no row-by-row "jumping". Keeps the
+   * toolbar skeleton too. The overlay must be measured while the dialog is
+   * visible, so callers show the grid before turning this on.
+   * @param {boolean} on
+   */
+  const holdGridLoading = (on) => {
+    const dialog = gridOverlay && gridOverlay.querySelector('[role="dialog"]');
+    const shimmer = /** @type {any} */ (window).GSSShimmer;
+    const toolbar = document.getElementById('psGridToolbar');
+    if (on) {
+      if (!dialog || gridHoldVeil) return;
+      /** @type {HTMLElement} */ (dialog).classList.add('relative');
+      const titleBar = /** @type {HTMLElement} */ (dialog.children[0]);
+      const top = (titleBar ? titleBar.offsetHeight : 0) + (toolbar ? toolbar.offsetHeight : 0);
+      const veil = document.createElement('div');
+      veil.dataset.gssGridHold = '1';
+      veil.setAttribute('aria-hidden', 'true');
+      veil.className = 'absolute inset-x-0 bottom-0 z-[70] overflow-hidden bg-slate-50 p-4';
+      veil.style.top = top + 'px';
+      dialog.appendChild(veil);
+      if (shimmer && typeof shimmer.tableSkeleton === 'function') shimmer.tableSkeleton(veil, { rows: 9, cols: 7 });
+      if (shimmer && typeof shimmer.toolbarSkeleton === 'function') shimmer.toolbarSkeleton(toolbar, true);
+      gridHoldVeil = veil;
+    } else {
+      if (gridHoldVeil) { gridHoldVeil.remove(); gridHoldVeil = null; }
+      if (shimmer && typeof shimmer.toolbarSkeleton === 'function') shimmer.toolbarSkeleton(toolbar, false);
+    }
+  };
+
   /** @type {any} */ (window).GSSGrid = {
     async filterByColumn(/** @type {string} */ tab, /** @type {string} */ colKey, /** @type {string} */ value) {
       externalRowFilter = null;
@@ -2503,8 +2604,27 @@
     },
     async filterByPredicate(/** @type {string} */ tab, /** @type {(r: Record<string, any>) => boolean} */ predicate) {
       externalRowFilter = typeof predicate === 'function' ? predicate : null;
-      await openGridFiltered(tab || 'registration');
-      applyColumnFilters();
+      // Reveal the grid shell first so the hold overlay can measure its offsets,
+      // then keep a single skeleton on screen until every group is paged in and
+      // the predicate is applied — the grid appears once, fully loaded.
+      if (gridOverlay) {
+        gridTab = tab || 'registration';
+        gridOverlay.classList.remove('hidden');
+        gridOverlay.setAttribute('aria-hidden', 'false');
+      }
+      gridChromeHold = true;
+      holdGridLoading(true);
+      try {
+        clearTableCache();
+        await renderDataGrid();
+        // Grouped grids page rows in lazily; load every group first so the
+        // predicate spans the whole dataset, not just the rows already loaded.
+        if (externalRowFilter && gridLoadAllGroups) await gridLoadAllGroups();
+        applyColumnFilters();
+      } finally {
+        gridChromeHold = false;
+        holdGridLoading(false);
+      }
     },
   };
 })();

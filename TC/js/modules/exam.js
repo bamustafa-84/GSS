@@ -825,7 +825,7 @@
   };
 
   const publish = async () => {
-    if (!GSSPerms.canSection('10.6', 'approve')) return;
+    if (!GSSPerms.canSection('10.6', 'edit')) return;
     if (!examConfig.training_id) { setStatus(t('examSelectFirst', 'Please select a training course first.'), false); return; }
     if (!validExamDate()) { setStatus(t('examNeedDate', 'Enter a valid exam date before publishing.'), false); return; }
     if (!examConfig.questions.length) { setStatus(t('examErrEmpty', 'Add at least one question before publishing.'), false); return; }
