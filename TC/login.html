@@ -307,55 +307,6 @@
       </div>
     </div>
 
-    <!-- ═══════════════════════ Change password modal ═══════════════════════ -->
-    <div id="changePwdModal" class="fixed inset-0 z-[1000] hidden items-center justify-center bg-[rgba(1,7,16,0.7)] p-4 backdrop-blur-sm" aria-hidden="true">
-      <div class="relative w-full max-w-md overflow-hidden rounded-[24px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.4)]" role="dialog" aria-modal="true" aria-labelledby="changePwdTitle">
-
-        <!-- Header -->
-        <div class="relative overflow-hidden bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-6 py-5 text-white">
-          <span class="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/25 to-transparent blur-md animate-shine"></span>
-          <h2 id="changePwdTitle" class="relative text-lg font-bold" data-i18n="cpTitle">Change your password</h2>
-          <p class="relative mt-1 text-sm text-blue-100" data-i18n="cpSubtitle">For your security, please set a new password to continue.</p>
-        </div>
-
-        <!-- Form -->
-        <form id="changePwdForm" class="space-y-4 p-6" novalidate>
-          <!-- Current password -->
-          <div class="space-y-1.5">
-            <label for="cpCurrent" class="text-sm font-semibold text-slate-700" data-i18n="cpCurrentLabel">Current password</label>
-            <input id="cpCurrent" name="current" type="password" autocomplete="current-password" required
-              placeholder="••••••••"
-              class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-          </div>
-
-          <!-- New password -->
-          <div class="space-y-1.5">
-            <label for="cpNew" class="text-sm font-semibold text-slate-700" data-i18n="cpNewLabel">New password</label>
-            <input id="cpNew" name="newPassword" type="password" autocomplete="new-password" required minlength="8"
-              placeholder="At least 8 characters" data-i18n-placeholder="cpNewPh"
-              class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-          </div>
-
-          <!-- Confirm new password -->
-          <div class="space-y-1.5">
-            <label for="cpConfirm" class="text-sm font-semibold text-slate-700" data-i18n="cpConfirmLabel">Confirm new password</label>
-            <input id="cpConfirm" name="confirm" type="password" autocomplete="new-password" required minlength="8"
-              placeholder="Re-enter your new password" data-i18n-placeholder="cpConfirmPh"
-              class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
-          </div>
-
-          <!-- Submit -->
-          <button type="submit"
-            class="group relative w-full overflow-hidden rounded-full bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-4 py-3 text-sm font-bold text-white shadow-[0_14px_30px_rgba(4,47,141,0.34)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_44px_rgba(4,47,141,0.44)] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/25">
-            <span class="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-white/25 transition-transform duration-700 group-hover:translate-x-[420%]"></span>
-            <span class="relative" data-i18n="cpSubmit">Update password</span>
-          </button>
-
-          <p id="changePwdStatus" class="min-h-5 text-center text-sm font-semibold text-red-600" aria-live="polite"></p>
-        </form>
-      </div>
-    </div>
-
     <!-- ═══════════════════════ Forgot password modal ═══════════════════════ -->
     <div id="forgotModal" class="fixed inset-0 z-[1000] hidden items-center justify-center bg-[rgba(1,7,16,0.7)] p-4 backdrop-blur-sm" aria-hidden="true">
       <div class="relative w-full max-w-md overflow-hidden rounded-[24px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.4)]" role="dialog" aria-modal="true" aria-labelledby="forgotTitle">
@@ -404,7 +355,50 @@
       </div>
     </div>
 
+    <!-- ═══════════════════════ Change password modal (forced first login) ═══════════════════════ -->
+    <div id="changePwdModal" class="fixed inset-0 z-[1000] hidden items-center justify-center bg-[rgba(1,7,16,0.7)] p-4 backdrop-blur-sm" aria-hidden="true">
+      <div class="relative w-full max-w-md overflow-hidden rounded-[24px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.4)]" role="dialog" aria-modal="true" aria-labelledby="changePwdTitle">
+
+        <!-- Header -->
+        <div class="relative overflow-hidden bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-6 py-5 text-white">
+          <span class="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/25 to-transparent blur-md animate-shine"></span>
+          <h2 id="changePwdTitle" class="relative text-lg font-bold" data-i18n="cpTitle">Change your password</h2>
+          <p class="relative mt-1 text-sm text-blue-100" data-i18n="cpSubtitle">For your security, please set a new password to continue.</p>
+        </div>
+
+        <!-- Form -->
+        <form id="changePwdForm" class="space-y-4 p-6" novalidate>
+          <div class="space-y-1.5">
+            <label for="cpCurrent" class="text-sm font-semibold text-slate-700" data-i18n="cpCurrentLabel">Current password</label>
+            <input id="cpCurrent" name="currentPassword" type="password" autocomplete="current-password" required
+              class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+          </div>
+          <div class="space-y-1.5">
+            <label for="cpNew" class="text-sm font-semibold text-slate-700" data-i18n="cpNewLabel">New password</label>
+            <input id="cpNew" name="newPassword" type="password" autocomplete="new-password" required
+              class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+          </div>
+          <div class="space-y-1.5">
+            <label for="cpConfirm" class="text-sm font-semibold text-slate-700" data-i18n="cpConfirmLabel">Confirm new password</label>
+            <input id="cpConfirm" name="confirmPassword" type="password" autocomplete="new-password" required
+              class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+          </div>
+
+          <!-- Submit -->
+          <button type="submit" id="cpSubmitBtn"
+            class="group relative w-full overflow-hidden rounded-full bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-4 py-3 text-sm font-bold text-white shadow-[0_14px_30px_rgba(4,47,141,0.34)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_44px_rgba(4,47,141,0.44)] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/25">
+            <span class="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-white/25 transition-transform duration-700 group-hover:translate-x-[420%]"></span>
+            <span class="relative" data-i18n="cpSubmit">Update password</span>
+          </button>
+
+          <p id="changePwdStatus" class="min-h-5 text-center text-sm font-semibold text-red-600" aria-live="polite"></p>
+        </form>
+      </div>
+    </div>
+
     <script src="./js/global.js"></script>
+    <script src="./js/utils/shimmer.js"></script>
+    <script src="./js/permissions-engine.js"></script>
     <script src="./js/utils/translation.js"></script>
     <script src="./js/login.js"></script>
   </body>

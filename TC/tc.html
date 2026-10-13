@@ -38,7 +38,12 @@
           /* Let the intl-tel-input wrapper fill the field width like the other inputs. */
       .iti { width: 100%; }
 
-      /* ── Split date + time picker (24-hour format) ── */
+      /* Keep every registration fieldset the exact same width (neutralise the
+         browser default fieldset min-inline-size:min-content so wide content
+         never stretches a single fieldset past the others). */
+      #inscriptionForm > fieldset { width: 100%; min-width: 0; box-sizing: border-box; }
+
+      /* ── Split date + time picker ── */
       .datetime-picker input[type="date"] {
         border-radius: 0.75rem 0 0 0.75rem;
         border-right: none;
@@ -50,22 +55,14 @@
         position: relative;
         z-index: 1;
       }
-      /* Force time input to show 24-hour format (hide AM/PM) */
       input[type="time"]::-webkit-calendar-picker-indicator {
         cursor: pointer;
       }
-      input[type="time"]::-webkit-datetime-edit-ampm-field {
-        display: none;
-      }
-      input[type="time"] {
-        -moz-appearance: textfield;
-        appearance: textfield;
-      }
     </style>
   </head>
-  <body class="min-h-screen bg-white text-[#042F8D] font-sans">
+  <body class="h-screen overflow-hidden flex flex-col bg-white text-[#042F8D] font-sans">
     <!-- ═══════════════════ TOP PANEL SEARCH BAR ═══════════════════ -->
-    <div class="sticky top-0 z-[60] border-b border-slate-200 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70">
+    <div class="shrink-0 sticky top-0 z-[60] border-b border-slate-200 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70">
       <div class="mx-auto flex w-full max-w-[1700px] items-center gap-3 px-5 py-3 sm:px-6 lg:px-8">
 
         <!-- ── Brand ── -->
@@ -111,7 +108,7 @@
           </button>
 
           <!-- Users (Manage Users dropdown) -->
-          <div id="sysMgmtWrap" data-role-any="Admin" data-role-display="inline-flex" class="relative hidden shrink-0 items-center">
+          <div id="sysMgmtWrap" class="relative hidden shrink-0 items-center">
             <button type="button" id="sysMgmtBtn" title="Users" aria-haspopup="menu" aria-expanded="false"
               class="flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-semibold text-[#042F8D] transition-colors hover:text-[#0b4dc2] focus:outline-none">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -148,8 +145,8 @@
           </div>
 
           <!-- Attendance -->
-          <button type="button" id="attSheetBtn" data-role-any="Admin,Instructor,Secretary,Head of Training" data-role-display="inline-flex" title="Monthly attendance sheet"
-            class="hidden shrink-0 items-center gap-2 px-3 py-2 text-sm font-semibold text-[#042F8D] transition-colors hover:text-[#0b4dc2] focus:outline-none">
+          <button type="button" id="attSheetBtn" data-perm="10.2:view" title="Monthly attendance sheet"
+            class="hidden shrink-0 inline-flex items-center gap-2 px-3 py-2 text-sm font-semibold text-[#042F8D] transition-colors hover:text-[#0b4dc2] focus:outline-none">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
             <span class="hidden sm:inline" data-i18n="attSheetBtn">Attendance</span>
           </button>
@@ -161,8 +158,8 @@
             <span class="hidden sm:inline" data-i18n="examBtn">Exams</span>
           </button>
 
-          <!-- Reports (Admin / Head of Training) -->
-          <div id="reportsMenu" data-role-any="Admin,Head of Training" data-role-display="block" class="relative hidden">
+          <!-- Reports (gated by Reports permission 10.1) -->
+          <div id="reportsMenu" data-perm="10.1:view" class="relative hidden">
             <button type="button" id="reportsBtn" title="Reports" aria-haspopup="menu" aria-expanded="false" aria-controls="reportsDropdown"
               class="flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-semibold text-[#042F8D] transition-colors hover:text-[#0b4dc2] focus:outline-none">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
@@ -191,7 +188,7 @@
           </div>
 
           <!-- Take exam (Candidate) -->
-          <button type="button" id="examTakeBtn" data-role-any="Candidate" data-role-display="inline-flex" title="Take your exam"
+          <button type="button" id="examTakeBtn" title="Take your exam"
             class="hidden shrink-0 items-center gap-2 px-3 py-2 text-sm font-semibold text-[#042F8D] transition-colors hover:text-[#0b4dc2] focus:outline-none">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>
             <span class="hidden sm:inline" data-i18n="examTakeBtn">Take exam</span>
@@ -246,8 +243,13 @@
           <div id="userChip" class="relative hidden shrink-0 items-center">
             <button type="button" id="userMenuBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="userMenu"
               class="flex items-center gap-2 rounded-full py-1 pl-1 pr-1.5 transition-colors hover:bg-[#042F8D]/5 focus:outline-none focus:ring-2 focus:ring-[#042F8D]/20">
-              <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#042F8D] text-white">
+              <span id="userChipAvatar" class="peer relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#042F8D] text-white">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+                <img id="userChipAvatarImg" alt="" class="absolute inset-0 hidden h-full w-full object-cover" />
+              </span>
+              <!-- Enlarged avatar preview on hover (only when an image exists; toggled from tc.js) -->
+              <span id="userChipAvatarZoom" class="pointer-events-none absolute left-0 top-full z-[95] mt-2 hidden overflow-hidden rounded-2xl border-4 border-white bg-[#042F8D] shadow-[0_24px_60px_rgba(4,47,141,0.35)] peer-hover:block">
+                <img id="userChipAvatarZoomImg" alt="" class="block h-44 w-44 object-cover" />
               </span>
               <span class="hidden flex-col items-start text-left leading-tight sm:flex">
                 <span id="userChipName" class="text-sm font-bold text-[#042F8D]">User</span>
@@ -280,7 +282,7 @@
         </div>
 
         <!-- ── Toolbar ── -->
-        <div class="flex shrink-0 flex-wrap items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-5">
+        <div id="psGridToolbar" class="flex shrink-0 flex-wrap items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-5">
 
           <!-- ── Column filter / customization ── -->
           <div id="gridCols" class="relative">
@@ -581,45 +583,72 @@
         </header>
 
         <!-- Month picker: all 12 months of the selected year, colour-coded by course state. -->
-        <div id="attSheetRangeBar" class="flex shrink-0 flex-col gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-600">
-          <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <span class="font-semibold text-slate-600" data-i18n="attSheetPickMonth">Select a month:</span>
-            <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-orange-300 ring-1 ring-orange-400"></span> <span data-i18n="attSheetLegendActive">Active</span></span>
-            <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-emerald-300 ring-1 ring-emerald-400"></span> <span data-i18n="attSheetLegendDone">Completed</span></span>
-            <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-slate-200 ring-1 ring-slate-300"></span> <span data-i18n="attSheetLegendNone">No course</span></span>
+        <div id="attSheetRangeBar" class="shrink-0 border-b border-[#042F8D]/10 bg-white">
+          <div class="flex flex-col gap-2.5 px-4 pt-3 pb-3">
+            <span class="text-sm font-bold text-[#042F8D]" data-i18n="attSheetPickMonth">Select a month</span>
+            <div id="attSheetRangePills" class="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-12"></div>
           </div>
-          <div id="attSheetRangePills" class="grid grid-cols-4 gap-1.5 sm:grid-cols-6 lg:grid-cols-12"></div>
         </div>
 
         <!-- Training-title tabs (one per title the instructor teaches) -->
-        <div id="attSheetTabs" class="flex shrink-0 flex-wrap gap-1.5 border-b border-slate-200 bg-slate-50 px-4 py-2.5" role="tablist" aria-label="Training titles"></div>
+        <div id="attSheetTabs" class="flex shrink-0 flex-wrap gap-1.5 border-b border-[#042F8D]/10 bg-[#f2f8fd] px-4 py-2.5" role="tablist" aria-label="Training titles"></div>
 
         <!-- Instructor assigned to the selected training -->
-        <div id="attSheetInstructorBar" class="hidden shrink-0 items-center gap-1.5 border-b border-slate-200 bg-white px-4 py-2 text-xs text-slate-600">
+        <div id="attSheetInstructorBar" class="hidden shrink-0 items-center gap-1.5 border-b border-[#042F8D]/10 bg-[#eaf4fb] px-4 py-2 text-xs text-[#042F8D]/70">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-[#042F8D]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           <span data-i18n="attSheetInstructor">Instructor</span>:
-          <strong id="attSheetInstructorName" class="font-semibold text-slate-800"></strong>
+          <strong id="attSheetInstructorName" class="font-semibold text-[#042F8D]"></strong>
         </div>
 
-        <div class="flex-1 overflow-auto bg-slate-50 p-4 sm:p-5">
-          <div id="attSheetEmpty" class="hidden rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-sm text-slate-400" data-i18n="attSheetNoTitles">No training titles are assigned to you yet.</div>
-          <div id="attSheetTableWrap" class="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div class="flex-1 overflow-auto bg-[#eef5fc] p-4 sm:p-5">
+          <div id="attSheetEmpty" class="hidden rounded-2xl border border-dashed border-[#042F8D]/25 bg-white px-6 py-14 text-center">
+            <svg class="mx-auto mb-5 h-24 w-24" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M26 66a15 15 0 0 1 1.7-29.9 21 21 0 0 1 40.6-3.5A14 14 0 0 1 71 66H26z" fill="#A2D8F0" opacity="0.3"/>
+              <rect x="30" y="26" width="34" height="44" rx="5" fill="#ffffff" stroke="#042F8D" stroke-opacity="0.4" stroke-width="2.5"/>
+              <circle cx="37.5" cy="39" r="1.8" fill="#042F8D"/>
+              <line x1="42" y1="39" x2="57" y2="39" stroke="#042F8D" stroke-width="2.5" stroke-linecap="round"/>
+              <circle cx="37.5" cy="47.5" r="1.8" fill="#042F8D" opacity="0.5"/>
+              <line x1="42" y1="47.5" x2="57" y2="47.5" stroke="#042F8D" stroke-opacity="0.5" stroke-width="2.5" stroke-linecap="round"/>
+              <circle cx="37.5" cy="56" r="1.8" fill="#042F8D" opacity="0.5"/>
+              <line x1="42" y1="56" x2="52" y2="56" stroke="#042F8D" stroke-opacity="0.5" stroke-width="2.5" stroke-linecap="round"/>
+              <circle cx="63" cy="63" r="13.5" fill="#0b4dc2"/>
+              <rect x="56.5" y="58" width="13" height="11.5" rx="2" fill="#ffffff"/>
+              <line x1="56.5" y1="62" x2="69.5" y2="62" stroke="#0b4dc2" stroke-width="1.6"/>
+              <line x1="60" y1="55.8" x2="60" y2="59" stroke="#ffffff" stroke-width="1.9" stroke-linecap="round"/>
+              <line x1="66" y1="55.8" x2="66" y2="59" stroke="#ffffff" stroke-width="1.9" stroke-linecap="round"/>
+            </svg>
+            <p id="attSheetEmptyTitle" class="text-lg font-bold text-[#042F8D]" data-i18n="attSheetNoTitles">No training titles are assigned to you yet.</p>
+            <p id="attSheetEmptySub" class="mt-1.5 text-sm text-[#042F8D]/50" data-i18n="attSheetNoTitlesSub">Once training titles are assigned, they will appear here for attendance tracking.</p>
+          </div>
+          <div id="attSheetTableWrap" class="overflow-x-auto rounded-2xl border border-[#042F8D]/15 bg-white shadow-[0_12px_32px_rgba(4,47,141,0.12)]">
             <table id="attSheetTable" class="min-w-[700px] w-full border-collapse text-sm">
               <thead>
                 <tr>
-                  <th class="sticky left-0 z-10 whitespace-nowrap rounded-tl-2xl border-b-2 border-slate-200 bg-slate-100 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600" data-i18n="attSheetColName">Name</th>
+                  <th class="sticky left-0 z-20 whitespace-nowrap rounded-tl-2xl border-b-2 border-[#042F8D] bg-gradient-to-b from-[#0b4dc2] to-[#042F8D] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white" data-i18n="attSheetColName">Candidate Name</th>
                 </tr>
               </thead>
-              <tbody id="attSheetBody" class="divide-y divide-slate-100"></tbody>
+              <tbody id="attSheetBody" class="divide-y divide-[#042F8D]/10"></tbody>
             </table>
           </div>
           <!-- Status legend (below the sheet, in place of per-cell status codes) -->
-          <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500">
-            <span class="font-semibold uppercase tracking-wide text-slate-600" data-i18n="attSheetLegendTitle">Status</span>
-            <span class="inline-flex items-center gap-1.5"><span class="flex h-4 w-4 items-center justify-center rounded-md bg-emerald-50 text-[10px] font-bold text-emerald-700 ring-1 ring-emerald-300">✓</span> <span data-i18n="attSheetLegendAH">On time (AH)</span></span>
-            <span class="inline-flex items-center gap-1.5"><span class="flex h-4 w-4 items-center justify-center rounded-md bg-amber-50 text-[10px] font-bold text-amber-700 ring-1 ring-amber-300">✓</span> <span data-i18n="attSheetLegendAR">Late (AR)</span></span>
-            <span class="inline-flex items-center gap-1.5"><span class="h-4 w-4 rounded-md bg-red-50 ring-1 ring-red-300"></span> <span data-i18n="attSheetLegendABS">Absent (ABS)</span></span>
-            <span class="inline-flex items-center gap-1.5"><span class="h-4 w-4 rounded-md bg-slate-100 ring-1 ring-slate-300"></span> <span data-i18n="attSheetLegendEX">Excluded (EX)</span></span>
+          <div class="mt-3 flex flex-wrap items-center gap-2">
+            <span class="mr-1 text-sm font-bold uppercase tracking-wide text-[#042F8D]" data-i18n="attSheetLegendTitle">Status</span>
+            <span class="inline-flex items-center gap-2 rounded-full bg-[#eef5fc] px-3 py-1.5">
+              <span class="flex h-5 w-5 items-center justify-center text-[#042F8D]"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+              <span class="text-sm font-medium text-[#042F8D]" data-i18n="attSheetLegendAH">On time (AH)</span>
+            </span>
+            <span class="inline-flex items-center gap-2 rounded-full bg-[#eef5fc] px-3 py-1.5">
+              <span class="flex h-5 w-5 items-center justify-center text-emerald-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg></span>
+              <span class="text-sm font-medium text-[#042F8D]" data-i18n="attSheetLegendAR">Late (AR)</span>
+            </span>
+            <span class="inline-flex items-center gap-2 rounded-full bg-[#eef5fc] px-3 py-1.5">
+              <span class="flex h-5 w-5 items-center justify-center text-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span>
+              <span class="text-sm font-medium text-[#042F8D]" data-i18n="attSheetLegendABS">Absent (ABS)</span>
+            </span>
+            <span class="inline-flex items-center gap-2 rounded-full bg-[#eef5fc] px-3 py-1.5">
+              <span class="flex h-5 w-5 items-center justify-center text-slate-400"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="12" x2="18" y2="12"/></svg></span>
+              <span class="text-sm font-medium text-[#042F8D]" data-i18n="attSheetLegendEX">Excluded (EX)</span>
+            </span>
           </div>
         </div>
 
@@ -643,10 +672,10 @@
           </div>
         </header>
         <div class="flex flex-col gap-4 p-5">
-          <p id="attCellMeta" class="text-sm font-semibold text-slate-500"></p>
+          <p id="attCellMeta" class="text-sm font-semibold text-[#042F8D]/70"></p>
 
           <div class="flex flex-col gap-1.5">
-            <label for="attCellStatus" class="text-sm font-semibold text-slate-700" data-i18n="attCellStatus">Status</label>
+            <label for="attCellStatus" class="text-sm font-semibold text-[#042F8D]" data-i18n="attCellStatus">Status</label>
             <select id="attCellStatus" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
               <option value="AH" data-i18n="attCellStatusAH">AH – On Time</option>
               <option value="AR" data-i18n="attCellStatusAR">AR – Late</option>
@@ -657,17 +686,17 @@
 
           <div class="grid gap-4 sm:grid-cols-2">
             <div class="flex flex-col gap-1.5">
-              <label for="attCellArrival" class="text-sm font-semibold text-slate-700" data-i18n="attCellArrival">Arrival Time</label>
+              <label for="attCellArrival" class="text-sm font-semibold text-[#042F8D]" data-i18n="attCellArrival">Arrival Time</label>
               <input id="attCellArrival" type="time" step="60" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
             </div>
             <div class="flex flex-col gap-1.5">
-              <label for="attCellDeparture" class="text-sm font-semibold text-slate-700" data-i18n="attCellDeparture">Departure Time</label>
+              <label for="attCellDeparture" class="text-sm font-semibold text-[#042F8D]" data-i18n="attCellDeparture">Departure Time</label>
               <input id="attCellDeparture" type="time" step="60" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
             </div>
           </div>
 
           <div class="flex flex-col gap-1.5">
-            <label for="attCellObs" class="text-sm font-semibold text-slate-700" data-i18n="attCellObservation">Observation</label>
+            <label for="attCellObs" class="text-sm font-semibold text-[#042F8D]" data-i18n="attCellObservation">Observation</label>
             <textarea id="attCellObs" rows="3" class="w-full resize-y rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10"></textarea>
           </div>
         </div>
@@ -901,12 +930,35 @@
                   <input id="userEmail" type="email" autocomplete="off" inputmode="email" placeholder="name@example.com" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
                   <p id="userEmailErr" class="hidden text-xs font-semibold text-red-500" data-i18n="usersEmailInvalid">Please enter a valid email address.</p>
                 </div>
+                <!-- Optional profile picture -->
+                <div class="flex flex-col gap-1.5 sm:col-span-2">
+                  <label class="text-xs font-semibold text-slate-600"><span data-i18n="usersPhoto">Profile picture</span></label>
+                  <div class="flex items-center gap-4">
+                    <span id="userPhotoPreview" class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-[#042F8D] text-white">
+                      <svg id="userPhotoPlaceholder" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-8 w-8"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+                      <img id="userPhotoImg" alt="" class="hidden h-full w-full object-cover" />
+                    </span>
+                    <div class="flex flex-col gap-1.5">
+                      <div class="flex flex-wrap items-center gap-2">
+                        <label for="userPhotoInput" class="cursor-pointer rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-xs font-semibold text-[#042F8D] transition-colors hover:bg-[#042F8D]/5">
+                          <span data-i18n="usersPhotoChoose">Choose image</span>
+                        </label>
+                        <button type="button" id="userPhotoRemove" class="hidden rounded-xl border-[1.5px] border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-50">
+                          <span data-i18n="usersPhotoRemove">Remove</span>
+                        </button>
+                        <input id="userPhotoInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" />
+                      </div>
+                      <p class="text-[11px] text-slate-400" data-i18n="usersPhotoHint">PNG, JPG, WEBP or GIF · up to 1 MB</p>
+                      <p id="userPhotoErr" class="hidden text-xs font-semibold text-red-500"></p>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <label id="userNotifyField" class="mt-4 hidden cursor-pointer items-center gap-2 text-sm text-slate-700">
+              <!-- <label id="userNotifyField" class="mt-4 hidden flex cursor-pointer items-center gap-2 text-sm text-slate-700">
                 <input type="checkbox" id="userNotifyEmail" class="h-4 w-4 rounded accent-[#042F8D]" />
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#042F8D]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>
                 <span data-i18n="usersNotifyEmail">Notify by Email</span>
-              </label>
+              </label> -->
             </div>
 
             <!-- ── 2. Login Credentials ── -->
@@ -1011,35 +1063,10 @@
           </button>
         </header>
 
-        <!-- Toolbar: user selector + role/status + user card -->
+        <!-- Toolbar: tabs -->
         <div class="border-b border-slate-200 bg-white px-5 py-4">
-          <div class="grid gap-4 lg:grid-cols-[1.1fr_0.7fr_0.7fr_1.2fr]">
-            <div class="flex flex-col gap-1.5">
-              <label for="permsUserSelect" class="text-xs font-semibold text-slate-600"><span data-i18n="permsSelectUser">Select User</span> <span class="text-red-500">*</span></label>
-              <select id="permsUserSelect" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10"></select>
-            </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold text-slate-600" data-i18n="usersRole">Role</label>
-              <div id="permsRole" class="flex h-[42px] items-center rounded-xl border-[1.5px] border-slate-100 bg-slate-50 px-3 text-sm font-medium text-slate-500">—</div>
-            </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold text-slate-600" data-i18n="usersStatusCol">Status</label>
-              <div id="permsStatus" class="flex h-[42px] items-center rounded-xl border-[1.5px] border-slate-100 bg-slate-50 px-3 text-sm font-medium text-slate-500">—</div>
-            </div>
-            <div class="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2">
-              <span class="flex h-10 w-10 items-center justify-center rounded-full bg-[#042F8D]/10 text-[#042F8D]">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
-              </span>
-              <div class="min-w-0">
-                <p id="permsCardName" class="truncate text-sm font-bold text-slate-800">—</p>
-                <p id="permsCardUser" class="truncate text-xs text-slate-500"></p>
-                <p id="permsCardRole" class="truncate text-xs text-slate-500"></p>
-              </div>
-            </div>
-          </div>
-
           <!-- Tabs -->
-          <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="inline-flex rounded-xl bg-slate-100 p-1" role="tablist">
               <button type="button" class="perms-tab rounded-lg px-4 py-2 text-sm font-semibold transition" data-perms-tab="permissions" aria-selected="true">
                 <span class="inline-flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg><span data-i18n="permsTabPermissions">Permissions</span></span>
@@ -1056,6 +1083,31 @@
         <div class="flex-1 overflow-auto p-4">
           <!-- Permissions tab -->
           <div data-perms-panel="permissions">
+            <!-- User selector + role/status + user card (permissions only) -->
+            <div class="mb-4 grid gap-4 lg:grid-cols-[1.1fr_0.7fr_0.7fr_1.2fr]">
+              <div class="flex flex-col gap-1.5">
+                <label for="permsUserSelect" class="text-xs font-semibold text-slate-600"><span data-i18n="permsSelectUser">Select User</span> <span class="text-red-500">*</span></label>
+                <select id="permsUserSelect" class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10"></select>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-semibold text-slate-600" data-i18n="usersRole">Role</label>
+                <div id="permsRole" class="flex h-[42px] items-center rounded-xl border-[1.5px] border-slate-100 bg-slate-50 px-3 text-sm font-medium text-slate-500">—</div>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-semibold text-slate-600" data-i18n="usersStatusCol">Status</label>
+                <div id="permsStatus" class="flex h-[42px] items-center rounded-xl border-[1.5px] border-slate-100 bg-slate-50 px-3 text-sm font-medium text-slate-500">—</div>
+              </div>
+              <div class="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2">
+                <span class="flex h-10 w-10 items-center justify-center rounded-full bg-[#042F8D]/10 text-[#042F8D]">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+                </span>
+                <div class="min-w-0">
+                  <p id="permsCardName" class="truncate text-sm font-bold text-slate-800">—</p>
+                  <p id="permsCardUser" class="truncate text-xs text-slate-500"></p>
+                  <p id="permsCardRole" class="truncate text-xs text-slate-500"></p>
+                </div>
+              </div>
+            </div>
             <div class="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3">
               <span class="text-xs font-semibold text-slate-600" data-i18n="permsApplyTplLabel">Apply a permission template to this user:</span>
               <select id="permsUserTplSelect" class="min-w-[220px] rounded-lg border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2 text-sm text-slate-800 focus:border-[#042F8D] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10"></select>
@@ -1072,9 +1124,6 @@
                     <th class="px-2 py-3 text-center align-middle" data-i18n="permsColAdd">Add</th>
                     <th class="px-2 py-3 text-center align-middle" data-i18n="permsColEdit">Edit</th>
                     <th class="px-2 py-3 text-center align-middle" data-i18n="permsColDelete">Delete</th>
-                    <th class="px-2 py-3 text-center align-middle" data-i18n="permsColApprove">Approve</th>
-                    <th class="px-2 py-3 text-center align-middle" data-i18n="permsColPrint">Print</th>
-                    <th class="px-2 py-3 text-center align-middle" data-i18n="permsColExport">Export</th>
                     <th class="w-[260px] px-4 py-3 align-middle" data-i18n="permsColRemark">Remark</th>
                   </tr>
                 </thead>
@@ -1154,9 +1203,6 @@
                     <th class="px-2 py-3 text-center align-middle" data-i18n="permsColAdd">Add</th>
                     <th class="px-2 py-3 text-center align-middle" data-i18n="permsColEdit">Edit</th>
                     <th class="px-2 py-3 text-center align-middle" data-i18n="permsColDelete">Delete</th>
-                    <th class="px-2 py-3 text-center align-middle" data-i18n="permsColApprove">Approve</th>
-                    <th class="px-2 py-3 text-center align-middle" data-i18n="permsColPrint">Print</th>
-                    <th class="px-2 py-3 text-center align-middle" data-i18n="permsColExport">Export</th>
                     <th class="w-[260px] px-4 py-3 align-middle" data-i18n="permsColRemark">Remark</th>
                   </tr>
                 </thead>
@@ -1205,7 +1251,7 @@
     </div>
 
     <!-- ═══════════════════ HERO ═══════════════════ -->
-    <section class="relative isolate overflow-hidden">
+    <section class="relative isolate overflow-hidden flex-1 min-h-0 flex items-center">
       <!-- Background photograph -->
       <img src="./img/bgImage-lnd.jpeg" alt="Professional security officers in training" aria-hidden="true"
            class="absolute inset-0 -z-10 h-full w-full object-cover object-center" />
@@ -1213,7 +1259,7 @@
       <div class="absolute inset-0 -z-10 bg-gradient-to-r from-[#02103a]/92 via-[#042F8D]/72 to-[#02103a]/40"></div>
       <div class="absolute inset-0 -z-10 bg-gradient-to-t from-[#02103a]/55 via-transparent to-transparent"></div>
 
-      <div class="mx-auto grid w-full max-w-[1700px] gap-6 px-5 py-8 sm:px-6 md:py-10 lg:min-h-[calc(100vh-10rem)] lg:grid-cols-[1.5fr_0.9fr] lg:content-center lg:items-center lg:gap-10 lg:px-8 lg:py-12">
+      <div class="mx-auto grid w-full max-w-[1700px] gap-6 px-5 py-6 sm:px-6 md:py-6 lg:grid-cols-[1.5fr_0.9fr] lg:content-center lg:items-center lg:gap-10 lg:px-8 lg:py-8">
         <!-- Left · headline + CTAs + stats -->
         <div id="leftSideBody" class="text-left text-white">
           <div class="mb-3 flex items-center gap-3">
@@ -1224,14 +1270,12 @@
           <p class="mb-5 max-w-xl text-sm leading-6 text-slate-200 sm:text-base sm:leading-7" data-i18n="heroText">A structured path, serious guidance, and a simplified registration process to begin your journey with GSS.</p>
 
           <div class="flex flex-wrap gap-3">
-            <button type="button" id="openFormBtn" data-role-any="Secretary,Admin"
-              class="inline-flex items-center gap-2 rounded-full bg-[#0b4dc2] px-5 py-3 font-bold text-white shadow-[0_12px_30px_rgba(11,77,194,0.45)] transition hover:bg-[#0a44ad] focus:outline-none focus:ring-4 focus:ring-white/30">
+            <button type="button" id="openFormBtn" data-perm="1.1:add"
+              class="hidden inline-flex items-center gap-2 rounded-full bg-[#0b4dc2] px-5 py-3 font-bold text-white shadow-[0_12px_30px_rgba(11,77,194,0.45)] transition hover:bg-[#0a44ad] focus:outline-none focus:ring-4 focus:ring-white/30">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
               <span data-i18n="openBtn">Fill the form</span>
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
             </button>
-            <button type="button" data-i18n="conditionsBtn"
-              class="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/5 px-5 py-3 font-bold text-white backdrop-blur-sm transition hover:bg-white/15 focus:outline-none focus:ring-4 focus:ring-white/20">View terms</button>
           </div>
 
           <!-- Statistics -->
@@ -1267,7 +1311,7 @@
         </div>
 
         <!-- Right · Why choose GSS card -->
-        <aside id="rightSideBody" class="w-full rounded-[22px] border border-white/15 bg-[#02153f]/85 p-5 text-white shadow-[0_24px_60px_rgba(0,0,0,0.45)] backdrop-blur-md sm:p-6 lg:ml-auto lg:max-w-sm">
+        <aside id="rightSideBody" class="w-full rounded-[22px] border border-white/15 bg-[#02153f]/85 p-5 text-white shadow-[0_24px_60px_rgba(0,0,0,0.45)] backdrop-blur-md sm:p-6 lg:ml-auto lg:max-w-[21rem]">
           <div class="flex flex-col items-center text-center">
             <img src="./img/logo.png" alt="Guarde Security Service" class="h-16 w-16 object-contain" />
             <p class="mt-2.5 text-sm font-bold uppercase tracking-[0.2em]">Guarde Security Service</p>
@@ -1307,7 +1351,7 @@
     </section>
 
     <!-- ═══════════════════ CORPORATE VALUES BANNER ═══════════════════ -->
-    <section class="relative overflow-hidden bg-gradient-to-r from-[#02153f] via-[#042F8D] to-[#02153f] text-white">
+    <section class="shrink-0 relative overflow-hidden bg-gradient-to-r from-[#02153f] via-[#042F8D] to-[#02153f] text-white">
       <!-- Layered curved accents along the top edge -->
       <svg class="pointer-events-none absolute inset-x-0 top-0 h-10 w-full text-[#0b4dc2]/60" viewBox="0 0 1600 40" preserveAspectRatio="none" aria-hidden="true"><path d="M0,40 C400,0 1200,0 1600,40" fill="none" stroke="currentColor" stroke-width="3"/></svg>
       <svg class="pointer-events-none absolute inset-x-0 top-1.5 h-10 w-full text-[#2b7bf3]/40" viewBox="0 0 1600 40" preserveAspectRatio="none" aria-hidden="true"><path d="M0,40 C400,4 1200,4 1600,40" fill="none" stroke="currentColor" stroke-width="2"/></svg>
@@ -1437,7 +1481,22 @@
                 <h3 class="mt-2 text-3xl font-bold text-[#042F8D]" data-i18n="formTitle">GSS Application</h3>
                 <p class="mt-2 max-w-2xl text-sm leading-7 text-slate-600" data-i18n="formDesc">Fill out this form carefully to complete your registration and prepare your training journey.</p>
               </div>
-              <div class="inline-flex items-center gap-1.5 rounded-full bg-[#042F8D] px-3 py-1 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(4,47,141,0.25)]" data-i18n="formBadge">Secure</div>
+              <!-- Candidate photo upload (image only · max 1 MB · stored in DB) -->
+              <div class="flex shrink-0 flex-col items-center gap-1.5">
+                <input id="CandidatePhotoData" name="CandidatePhoto" dbname="candidate_photo" type="hidden" />
+                <input id="CandidatePhotoFile" type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" aria-hidden="true" tabindex="-1" />
+                <button type="button" id="CandidatePhotoBtn" title="Candidate photo" aria-label="Candidate photo"
+                  class="group relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-[#042F8D]/40 bg-[#f7f9fe] text-[#042F8D] transition hover:border-[#042F8D] hover:bg-[#042F8D]/[0.04] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+                  <img id="CandidatePhotoPreview" alt="Candidate photo" class="absolute inset-0 hidden h-full w-full object-cover" />
+                  <span id="CandidatePhotoPlaceholder" class="flex flex-col items-center gap-1 px-2 text-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    <span class="text-[11px] font-semibold leading-tight" data-i18n="photoUpload">Add photo</span>
+                  </span>
+                </button>
+                <button type="button" id="CandidatePhotoRemove" class="hidden text-xs font-semibold text-red-600 hover:underline" data-i18n="photoRemove">Remove</button>
+                <p id="CandidatePhotoHint" class="text-[11px] text-slate-400" data-i18n="photoHint">JPG/PNG · max 1 MB</p>
+                <p id="CandidatePhotoError" class="hidden text-[11px] font-semibold text-red-600" aria-live="polite"></p>
+              </div>
             </div>
 
             <form id="inscriptionForm" novalidate class="space-y-6">
@@ -1675,7 +1734,7 @@
                 </div>
               </fieldset>
 
-              <fieldset id="adminFieldset" data-role-any="Admin,Head of Training,Secretary" class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
+              <fieldset id="adminFieldset" class="rounded-[20px] border-2 border-[#042F8D]/20 bg-gradient-to-b from-white to-[#f7f9fe] p-4 transition hover:border-[#042F8D] hover:shadow-[0_14px_36px_rgba(4,47,141,0.10)] sm:p-5">
                 <legend class="flex items-center gap-2 rounded-lg border border-transparent bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_18px_rgba(4,47,141,0.25)]">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                   <span data-i18n="secAdmin">FOR ADMINISTRATION USE ONLY</span>
@@ -2659,6 +2718,8 @@
     </div><!-- /formModal -->
 
     <script src="./js/global.js"></script>
+    <script src="./js/utils/shimmer.js"></script>
+    <script src="./js/permissions-engine.js"></script>
     <script src="./js/utils/translation.js"></script>
     <script src="./js/utils/commonUtils.js"></script>
     <script src="./js/utils/modalMaximize.js"></script>
@@ -2784,18 +2845,6 @@
 
             dateEl.addEventListener('change', () => syncHidden(pair));
             timeEl.addEventListener('change', () => syncHidden(pair));
-
-            // Enforce 24-hour format on blur.
-            timeEl.addEventListener('blur', function () {
-              const parts = (this.value || '').split(':');
-              if (parts.length !== 2) return;
-              let hours = parseInt(parts[0], 10);
-              const minutes = parts[1];
-              if (isNaN(hours) || hours < 0 || hours > 23) hours = 0;
-              const formatted = `${pad(hours)}:${minutes}`;
-              if (this.value !== formatted) this.value = formatted;
-              syncHidden(pair);
-            });
           });
         };
 
