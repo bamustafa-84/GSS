@@ -83,9 +83,14 @@ const ACK_SECTIONS = {
   ack_mensuration: '8.1',
   ack_dossier: '9.1',
 };
+// Final Result (section 7.2) columns, set by the Admin at stage 2.
+// NOTE: eval_instructor_ack is deliberately NOT here — it is the Instructor's
+// sign-off on the grid (section 7.1, evalSecGrid), saved at stage 1 by a role
+// that may have 7.1-edit but not 7.2-edit. It falls through to the generic
+// `eval_` → 7.1 rule below so the stage-1 acknowledgement actually persists.
 const FINAL_RESULT_COLUMNS = new Set([
   'eval_final_decision', 'eval_observations', 'eval_trainer_signature_id',
-  'eval_admin_ack', 'eval_instructor_ack',
+  'eval_admin_ack',
 ]);
 // System/audit columns are never classified (no permission required).
 const IGNORED_COLUMNS = new Set([

@@ -74,8 +74,11 @@ BEGIN
     ELSIF r = 'secretary' THEN
       IF s IN ('1.1','1.2','2.1','3.1') THEN
         acts := ARRAY['view','add','edit','print'];
-      ELSIF s IN ('10.1','10.2') THEN
+      ELSIF s = '10.1' THEN
         acts := ARRAY['view','print'];
+      ELSIF s = '10.2' THEN
+        -- Secretary records attendance for assigned courses (sheet editing).
+        acts := ARRAY['view','add','edit','print'];
       ELSIF s IN ('10.3','10.6') THEN
         acts := ARRAY[]::text[];
       ELSE
@@ -377,6 +380,24 @@ BEGIN
     ) a
     ON CONFLICT (login_id, section_no, action) DO NOTHING;
     INSERT INTO permission_migration (name) VALUES ('system_features_10_3_to_10_6');
+  END IF;
+END $$;
+
+-- ── One-time migration: Secretary attendance-sheet editing (10.2) ──
+-- The attendance sheet now derives its edit rights from the matrix (section
+-- 10.2) instead of a hardcoded role list. Secretaries previously had implicit
+-- edit access, so grant existing Secretary logins add/edit on 10.2 to keep
+-- their behaviour unchanged. Runs once; later matrix edits are authoritative.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM permission_migration WHERE name = 'secretary_attendance_edit_10_2') THEN
+    INSERT INTO user_permission (login_id, section_no, action, allowed, updated_by)
+    SELECT l.login_id, '10.2', a.act, true, 'MIGRATION'
+    FROM login l
+    CROSS JOIN (VALUES ('add'), ('edit')) AS a(act)
+    WHERE lower(coalesce(l.role,'')) = 'secretary'
+    ON CONFLICT (login_id, section_no, action) DO NOTHING;
+    INSERT INTO permission_migration (name) VALUES ('secretary_attendance_edit_10_2');
   END IF;
 END $$;
 -- Seed the matrix once for logins that predate it (new users: see server).

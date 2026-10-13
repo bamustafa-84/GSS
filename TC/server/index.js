@@ -290,7 +290,9 @@ const readJsonBody = (req) =>
     let raw = '';
     req.on('data', (chunk) => {
       raw += chunk;
-      if (raw.length > 1e6) reject(new Error('Payload too large')); // ~1 MB guard
+      // ~4 MB guard: large enough for a 1 MB candidate photo (base64 ≈ 1.37 MB)
+      // plus the signature data URL and the rest of the form, yet still bounded.
+      if (raw.length > 4 * 1024 * 1024) reject(new Error('Payload too large'));
     });
     req.on('end', () => {
       if (!raw) return resolve({});
@@ -370,6 +372,33 @@ const dataUrlToBuffer = (raw) => {
     : Buffer.from(decodeURIComponent(payload), 'utf8');
 
   return buffer.length ? { buffer, contentType } : null;
+};
+
+/** Profile-image upload constraints (mirrors the client-side validation). */
+const AVATAR_ALLOWED_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
+const AVATAR_MAX_BYTES = 1.5 * 1024 * 1024; // decoded image ceiling (~1.5 MB)
+
+/**
+ * Validate and normalise a profile image on a user-management payload.
+ * Converts a `profile_image` data URL into the hex string + MIME type the
+ * `login_user_update` procedure expects, enforcing allowed types and a size
+ * cap. A truthy `clear_profile_image` flag is passed through untouched (it
+ * removes the avatar). Absent/blank values leave the avatar unchanged.
+ * @param {Record<string, any>} body
+ * @returns {{ ok: true } | { ok: false, status: string }}
+ */
+const prepareProfileImage = (body) => {
+  if (!body || typeof body !== 'object') return { ok: true };
+  if (body.clear_profile_image) { delete body.profile_image; delete body.profile_image_type; return { ok: true }; }
+  const raw = body.profile_image;
+  if (raw == null || raw === '') { delete body.profile_image; delete body.profile_image_type; return { ok: true }; }
+  const image = dataUrlToBuffer(typeof raw === 'string' ? raw : '');
+  if (!image) return { ok: false, status: 'invalid_image' };
+  if (!AVATAR_ALLOWED_TYPES.has(String(image.contentType).toLowerCase())) return { ok: false, status: 'invalid_image_type' };
+  if (image.buffer.length > AVATAR_MAX_BYTES) return { ok: false, status: 'image_too_large' };
+  body.profile_image = image.buffer.toString('hex');
+  body.profile_image_type = image.contentType.slice(0, 100);
+  return { ok: true };
 };
 
 /**
@@ -610,15 +639,36 @@ const createApplicant = async (res, body, actor) => {
     row.applicant_name = row.full_name;
   }
 
+  // Determine insert vs update up-front so photo rules can depend on it.
+  const idRaw = body && (body.candidate_no || body.CandidateNo);
+  const id = Number.parseInt(String(idRaw), 10);
+  const isUpdate = Number.isFinite(id);
+
+  // The candidate photo is mandatory when registering a NEW applicant. On
+  // update the stored photo is preserved when the client doesn't resend it.
+  if (!isUpdate && (typeof row.candidate_photo !== 'string' || row.candidate_photo.trim() === '')) {
+    sendJson(res, 400, { error: 'A candidate photo is required to register an applicant.' });
+    return;
+  }
+
+  // Validate the candidate photo when provided: must be an image data URL ≤ 1 MB.
+  if (typeof row.candidate_photo === 'string' && row.candidate_photo !== '') {
+    const match = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i.exec(row.candidate_photo.trim());
+    if (!match) {
+      sendJson(res, 400, { error: 'The candidate photo must be a valid image.' });
+      return;
+    }
+    const bytes = Buffer.from(match[2], 'base64');
+    if (bytes.length === 0 || bytes.length > 1024 * 1024) {
+      sendJson(res, 400, { error: 'The candidate photo must not exceed 1 MB.' });
+      return;
+    }
+  }
+
   if (Object.keys(row).length === 0) {
     sendJson(res, 400, { error: 'No applicant data provided.' });
     return;
   }
-
-  // Update when a candidate number is supplied, otherwise insert.
-  const idRaw = body && (body.candidate_no || body.CandidateNo);
-  const id = Number.parseInt(String(idRaw), 10);
-  const isUpdate = Number.isFinite(id);
 
   // Stamp audit fields from the acting user (client-supplied values are never
   // trusted for these). created_by is set only on insert; updated_by always.
@@ -799,10 +849,46 @@ const server = http.createServer(async (req, res) => {
 
     if (method === 'POST' && url === '/api/applicants') {
       const body = await readJsonBody(req);
+      // Authentication is mandatory for any save.
+      const actor = rbac.verifyToken(rbac.bearerOf(req));
+      if (!actor) { sendJson(res, 401, { ok: false, status: 'unauthenticated' }); return; }
+
       const idRaw = body && (body.candidate_no || body.CandidateNo);
       const isUpdate = Number.isFinite(Number.parseInt(String(idRaw), 10));
-      const needs = rbac.requirementsForSave(Object.keys(body || {}).filter((k) => body[k] !== '' && body[k] != null), isUpdate);
-      if (!(await authorize(req, res, needs, {}))) return;
+      const action = isUpdate ? 'edit' : 'add';
+
+      // Classify each posted column by module section, then keep only the
+      // sections the actor may write. Columns in sections the actor lacks
+      // permission on are DROPPED from the payload (never applied) rather than
+      // rejecting the whole request — so a registration clerk can create a
+      // Pending applicant even though the "For Administration Use Only" fields
+      // (interview_result default 'Pending', remarks) map to section 1.2 which
+      // they cannot write. This fixes the spurious 403 without weakening
+      // security: unauthorized values are silently ignored, and a clear 403 is
+      // still returned when the actor may not write to ANY touched section.
+      const postedCols = Object.keys(body || {}).filter((k) => body[k] !== '' && body[k] != null);
+      const sectionsNeeded = new Set();
+      for (const col of postedCols) {
+        const s = rbac.sectionForColumn(col);
+        if (s) sectionsNeeded.add(s);
+      }
+      const deniedSections = new Set();
+      let allowedCount = 0;
+      for (const s of sectionsNeeded) {
+        if (await actorCan(req, s, action)) allowedCount += 1;
+        else deniedSections.add(s);
+      }
+      if (sectionsNeeded.size > 0 && allowedCount === 0) {
+        const first = [...deniedSections].sort()[0];
+        sendJson(res, 403, { ok: false, status: 'forbidden', section: first, action });
+        return;
+      }
+      if (deniedSections.size > 0) {
+        for (const col of postedCols) {
+          const s = rbac.sectionForColumn(col);
+          if (s && deniedSections.has(s)) delete body[col];
+        }
+      }
       await createApplicant(res, body, actorOf(req));
       return;
     }
@@ -1026,6 +1112,28 @@ const server = http.createServer(async (req, res) => {
 
     // ── Current user's live role/status (self-heals stale sessions) ──
     if (method === 'GET' && url.startsWith('/api/me')) {
+      // Profile picture stream (checked before the generic /api/me handler).
+      // Unauthenticated like /api/signatures/image because an <img> tag cannot
+      // attach the bearer token; avatars are low-sensitivity.
+      if (url.startsWith('/api/me/avatar')) {
+        const who = new URL(url, 'http://localhost').searchParams.get('username') || '';
+        const img = await callProc('auth_avatar', '$1', [who]);
+        const hex = img && img.image_hex;
+        if (!img || typeof hex !== 'string' || hex.length === 0) {
+          sendJson(res, 404, { ok: false, status: 'no_avatar' });
+          return;
+        }
+        const buffer = Buffer.from(hex, 'hex');
+        res.writeHead(200, {
+          'Content-Type': (img.content_type || 'image/png'),
+          'Content-Length': buffer.length,
+          // Immutable once the cache-busting `v` (avatar_ver) changes on update.
+          'Cache-Control': 'private, max-age=86400',
+          'ETag': '"' + String(img.avatar_ver || 0) + '"',
+        });
+        res.end(buffer);
+        return;
+      }
       const username = new URL(url, 'http://localhost').searchParams.get('username') || '';
       const info = await callProc('auth_user_role', '$1', [username]);
       sendJson(res, 200, info ? Object.assign({ ok: true }, info) : { ok: false });
@@ -1052,6 +1160,9 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       const lang = String((body && body.lang) || 'en');
+      // Validate / normalise any profile image before it reaches the procedures.
+      const imagePrep = prepareProfileImage(body);
+      if (!imagePrep.ok) { sendJson(res, 400, { ok: false, status: imagePrep.status }); return; }
       const idRaw = body && (body.login_id != null ? body.login_id : body.id);
       const id = Number.parseInt(String(idRaw), 10);
       if (Number.isFinite(id)) {
@@ -1086,6 +1197,23 @@ const server = http.createServer(async (req, res) => {
         const newId = Number.parseInt(String(newUser.user_id != null ? newUser.user_id : newUser.login_id), 10);
         if (Number.isFinite(newId)) await callProc('user_apply_role_template', '$1, $2', [newId, actorOf(req).name || 'ADMIN']);
         await callProc('permissions_seed_missing', '', []);
+        // Persist the "notify by email" preference and the optional profile
+        // picture in a single follow-up update (auth_register handles neither).
+        // The image was already validated + hex-encoded by prepareProfileImage.
+        if (Number.isFinite(newId)) {
+          /** @type {Record<string, any>} */
+          const extra = { notify_email: notifyWanted };
+          if (typeof body.profile_image === 'string' && body.profile_image) {
+            extra.profile_image = body.profile_image;
+            extra.profile_image_type = body.profile_image_type || 'image/png';
+          }
+          const imgResult = await callProc('login_user_update', '$1, $2::jsonb', [newId, JSON.stringify(extra)]);
+          if (imgResult && imgResult.user && result.user) {
+            result.user.has_avatar = imgResult.user.has_avatar;
+            result.user.avatar_ver = imgResult.user.avatar_ver;
+            result.user.notify_email = imgResult.user.notify_email;
+          }
+        }
       }
       // Notify only when the account was actually created and an address exists.
       /** @type {any} */
@@ -1369,7 +1497,7 @@ const server = http.createServer(async (req, res) => {
 
     // ── Publish an exam + generate temporary exam accounts ─────
     if (method === 'POST' && url.startsWith('/api/exam/publish')) {
-      if (!(await authorize(req, res, [{ section: '10.6', action: 'approve' }]))) return;
+      if (!(await authorize(req, res, [{ section: '10.6', action: 'edit' }]))) return;
       const body = await readJsonBody(req);
       injectActor(body, actorOf(req));
       const result = await callProc('exam_publish', '$1::jsonb', [JSON.stringify(body || {})]);

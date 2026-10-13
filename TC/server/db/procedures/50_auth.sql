@@ -29,6 +29,15 @@ ALTER TABLE login ADD COLUMN IF NOT EXISTS locked_until         timestamp;
 ALTER TABLE login ADD COLUMN IF NOT EXISTS last_login_at        timestamp;
 ALTER TABLE login ADD COLUMN IF NOT EXISTS role                 varchar(50) NOT NULL DEFAULT 'Candidate';
 ALTER TABLE login ADD COLUMN IF NOT EXISTS email                varchar(255);
+-- Admin preference: whether this account should receive account-notification
+-- emails (e.g. new account / details updated). Link-based; never a password.
+ALTER TABLE login ADD COLUMN IF NOT EXISTS notify_email         boolean NOT NULL DEFAULT false;
+-- Optional profile picture: the raw bytes (bytea) + its MIME type. The heavy
+-- bytes are NEVER returned by list/login/me queries — only a lightweight
+-- `has_avatar` flag and an `avatar_ver` cache-buster are exposed; the image
+-- itself is streamed on demand by auth_avatar / GET /api/me/avatar.
+ALTER TABLE login ADD COLUMN IF NOT EXISTS profile_image        bytea;
+ALTER TABLE login ADD COLUMN IF NOT EXISTS profile_image_type   varchar(100);
 
 -- Case-insensitive uniqueness on username.
 CREATE UNIQUE INDEX IF NOT EXISTS login_username_lower_idx ON login (lower(username));
@@ -196,7 +205,9 @@ BEGIN
       'user_id', v_user.login_id,
       'username', v_user.username,
       'full_name', v_user.full_name,
-      'role', v_user.role
+      'role', v_user.role,
+      'has_avatar', (v_user.profile_image IS NOT NULL),
+      'avatar_ver', coalesce(extract(epoch FROM coalesce(v_user.updated_at, v_user.created_at))::bigint, 0)
     )
   );
 END;
@@ -296,4 +307,25 @@ BEGIN
     'temp_password', v_temp
   );
 END;
+$$;
+
+-- ----------------------------------------------------------------
+-- Auth_Avatar: return one account's profile picture (hex bytes + MIME type)
+-- so the application can stream it back to the browser. Mirrors
+-- signature_image. Returns NULL when the user has no avatar.
+-- ----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION auth_avatar(p_username text)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT jsonb_build_object(
+           'content_type', coalesce(l.profile_image_type, 'image/png'),
+           'image_hex', encode(l.profile_image, 'hex'),
+           'avatar_ver', coalesce(extract(epoch FROM coalesce(l.updated_at, l.created_at))::bigint, 0)
+         )
+  FROM login l
+  WHERE lower(l.username) = lower(p_username)
+    AND l.profile_image IS NOT NULL
+  LIMIT 1;
 $$;

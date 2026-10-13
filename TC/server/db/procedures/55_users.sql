@@ -18,11 +18,17 @@ AS $$
       'username', l.username,
       'full_name', l.full_name,
       'email', l.email,
+      'notify_email', coalesce(l.notify_email, false),
       'role', l.role,
       'is_active', l.is_active,
       'must_change_password', l.must_change_password,
+      'failed_attempts', l.failed_attempts,
+      'locked_until', l.locked_until,
+      'is_locked', (l.locked_until IS NOT NULL AND l.locked_until > now()),
       'created_at', l.created_at,
-      'last_login_at', l.last_login_at
+      'last_login_at', l.last_login_at,
+      'has_avatar', (l.profile_image IS NOT NULL),
+      'avatar_ver', coalesce(extract(epoch FROM coalesce(l.updated_at, l.created_at))::bigint, 0)
     ) AS row
     FROM login l
   ) t;
@@ -67,8 +73,23 @@ BEGIN
     email     = CASE WHEN p_data ? 'email'
                      THEN NULLIF(trim(p_data->>'email'), '')
                      ELSE email END,
+    notify_email = CASE WHEN p_data ? 'notify_email'
+                     THEN coalesce((p_data->>'notify_email')::boolean, false)
+                     ELSE notify_email END,
     role      = CASE WHEN p_data ? 'role' THEN auth_valid_role(p_data->>'role') ELSE role END,
     is_active = CASE WHEN p_data ? 'is_active' THEN (p_data->>'is_active')::boolean ELSE is_active END,
+    -- Profile picture: a `profile_image` hex string sets/replaces it; a truthy
+    -- `clear_profile_image` removes it. Absent keys leave the avatar untouched.
+    profile_image = CASE
+                     WHEN coalesce((p_data->>'clear_profile_image')::boolean, false) THEN NULL
+                     WHEN p_data ? 'profile_image' AND coalesce(p_data->>'profile_image', '') <> ''
+                       THEN decode(p_data->>'profile_image', 'hex')
+                     ELSE profile_image END,
+    profile_image_type = CASE
+                     WHEN coalesce((p_data->>'clear_profile_image')::boolean, false) THEN NULL
+                     WHEN p_data ? 'profile_image' AND coalesce(p_data->>'profile_image', '') <> ''
+                       THEN NULLIF(trim(coalesce(p_data->>'profile_image_type', '')), '')
+                     ELSE profile_image_type END,
     password  = CASE WHEN v_new_password IS NOT NULL
                      THEN crypt(v_new_password, gen_salt('bf'))
                      ELSE password END,
@@ -76,6 +97,11 @@ BEGIN
                      WHEN p_data ? 'must_change_password' THEN (p_data->>'must_change_password')::boolean
                      WHEN v_new_password IS NOT NULL THEN true
                      ELSE must_change_password END,
+    -- Admin "unlock": clear the brute-force lock and failed-attempt counter.
+    failed_attempts = CASE WHEN coalesce((p_data->>'unlock')::boolean, false)
+                          THEN 0 ELSE failed_attempts END,
+    locked_until    = CASE WHEN coalesce((p_data->>'unlock')::boolean, false)
+                          THEN NULL ELSE locked_until END,
     updated_by = coalesce(nullif(p_data->>'updated_by_name', ''), 'ADMIN'),
     updated_at = now()
   WHERE login_id = p_login_id
@@ -94,11 +120,17 @@ BEGIN
       'username', v_user.username,
       'full_name', v_user.full_name,
       'email', v_user.email,
+      'notify_email', coalesce(v_user.notify_email, false),
       'role', v_user.role,
       'is_active', v_user.is_active,
       'must_change_password', v_user.must_change_password,
+      'failed_attempts', v_user.failed_attempts,
+      'locked_until', v_user.locked_until,
+      'is_locked', (v_user.locked_until IS NOT NULL AND v_user.locked_until > now()),
       'created_at', v_user.created_at,
-      'last_login_at', v_user.last_login_at
+      'last_login_at', v_user.last_login_at,
+      'has_avatar', (v_user.profile_image IS NOT NULL),
+      'avatar_ver', coalesce(extract(epoch FROM coalesce(v_user.updated_at, v_user.created_at))::bigint, 0)
     )
   );
 END;

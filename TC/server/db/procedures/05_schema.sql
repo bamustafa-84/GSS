@@ -10,6 +10,17 @@
 -- Applicant: ID/passport number mapped from the Commitment panel.
 ALTER TABLE applicant ADD COLUMN IF NOT EXISTS id_pass_no varchar(100);
 
+-- Applicant: candidate photo captured on the Registration form. Stored as a
+-- base64 data URL (image/*, <= 1 MB enforced client- and server-side). Kept out
+-- of list/search payloads (see registration_search) and only returned for edit.
+ALTER TABLE applicant ADD COLUMN IF NOT EXISTS candidate_photo text;
+
+-- Applicant: a newly registered applicant is "Pending" interview review until an
+-- authorised reviewer (section 1.2) records an outcome. A DB-level default lets
+-- a registration clerk who lacks 1.2 permission create the record without
+-- supplying this admin-only column (it is dropped server-side when unauthorised).
+ALTER TABLE applicant ALTER COLUMN interview_result SET DEFAULT 'Pending';
+
 -- Applicant: per-panel acceptance flags.
 ALTER TABLE applicant ADD COLUMN IF NOT EXISTS conditions_accepted boolean DEFAULT false;
 ALTER TABLE applicant ADD COLUMN IF NOT EXISTS rules_accepted      boolean DEFAULT false;
