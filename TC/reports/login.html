@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GSS | Login</title>
+    <script src="./libs/tailwind.min.js"></script>
+    <script>
+      // Make every Tailwind text-* utility fluid/responsive using clamp().
+      // Each entry is [clamp(min, preferred, max), { lineHeight }].
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontSize: {
+              xs: ["clamp(0.7rem, 0.66rem + 0.2vw, 0.75rem)", { lineHeight: "1rem" }],
+              sm: ["clamp(0.8rem, 0.75rem + 0.25vw, 0.875rem)", { lineHeight: "1.25rem" }],
+              base: ["clamp(0.9rem, 0.85rem + 0.3vw, 1rem)", { lineHeight: "1.5rem" }],
+              lg: ["clamp(1rem, 0.93rem + 0.35vw, 1.125rem)", { lineHeight: "1.75rem" }],
+              xl: ["clamp(1.1rem, 1rem + 0.4vw, 1.25rem)", { lineHeight: "1.75rem" }],
+              "2xl": ["clamp(1.3rem, 1.15rem + 0.6vw, 1.5rem)", { lineHeight: "2rem" }],
+              "3xl": ["clamp(1.5rem, 1.3rem + 0.9vw, 1.875rem)", { lineHeight: "2.25rem" }],
+              "4xl": ["clamp(1.8rem, 1.5rem + 1.4vw, 2.25rem)", { lineHeight: "2.5rem" }],
+              "5xl": ["clamp(2.2rem, 1.7rem + 2.2vw, 3rem)", { lineHeight: "1" }],
+              "6xl": ["clamp(2.6rem, 2rem + 3vw, 3.75rem)", { lineHeight: "1" }],
+              "7xl": ["clamp(3rem, 2.3rem + 3.6vw, 4.5rem)", { lineHeight: "1" }],
+            },
+            keyframes: {
+              floaty: {
+                "0%, 100%": { transform: "translateY(0) scale(1)" },
+                "50%": { transform: "translateY(-18px) scale(1.05)" },
+              },
+              shine: {
+                "0%": { transform: "translateX(-120%)" },
+                "60%, 100%": { transform: "translateX(220%)" },
+              },
+              spinSlow: {
+                "from": { transform: "rotate(0deg)" },
+                "to": { transform: "rotate(360deg)" },
+              },
+              pulseRing: {
+                "0%, 100%": { transform: "scale(1)", opacity: "0.35" },
+                "50%": { transform: "scale(1.06)", opacity: "0.15" },
+              },
+            },
+            animation: {
+              floaty: "floaty 9s ease-in-out infinite",
+              shine: "shine 6s ease-in-out infinite",
+              "spin-slow": "spinSlow 40s linear infinite",
+              "spin-reverse": "spinSlow 60s linear infinite reverse",
+              "spin-shine": "spinSlow 4.5s linear infinite",
+              "pulse-ring": "pulseRing 7s ease-in-out infinite",
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      /* While an existing session is being validated, hide the auth UI to
+         avoid a flash of the login form before the auto-redirect. */
+      body.gss-auto-login { visibility: hidden; }
+    </style>
+  </head>
+
+  <body class="relative min-h-screen overflow-hidden bg-[#01030F] font-sans text-slate-100">
+    <!-- ═══════════ Background photo (full image, left) ═══════════ -->
+    <div class="fixed inset-0 -z-20" aria-hidden="true">
+      <img src="./img/background_Image.jpeg" alt="" class="h-full w-full object-scale-down object-left" />
+    </div>
+
+    <main class="relative z-10 flex min-h-screen flex-col">
+      <!-- ═══════════ Center stage ═══════════ -->
+      <div class="relative mx-auto flex w-full max-w-[1800px] flex-1 items-center px-4 py-10 sm:px-8">
+
+        <!-- Right-side brand watermark + tagline (decorative) -->
+        <!-- <div class="pointer-events-none absolute inset-y-0 right-0 hidden w-[42%] select-none lg:block" aria-hidden="true">
+          <span class="absolute right-10 top-10 origin-top-right rotate-[22deg] whitespace-nowrap text-[clamp(1.1rem,0.6rem+1vw,1.6rem)] font-semibold tracking-wide text-white/15">Guarde Security Service</span>
+          <img src="./img/logo.png" alt="" class="absolute right-6 top-1/2 h-[26rem] w-[26rem] max-w-[60%] -translate-y-1/2 object-contain opacity-[0.07]" />
+          <div class="absolute right-8 top-[17%]">
+            <p class="text-right text-[clamp(1.25rem,0.9rem+0.9vw,1.75rem)] font-light uppercase leading-[1.8] tracking-[0.42em] text-slate-200/85" data-i18n-html="loginTagline">A&nbsp;Safer<br>Tomorrow<br>Together</p>
+            <span class="ml-auto mt-4 block h-1 w-20 rounded-full bg-[#2f6bff]"></span>
+          </div>
+        </div> -->
+
+        <!-- ═══════════ Login card ═══════════ -->
+        <div class="relative z-10 mx-auto w-full max-w-[460px] lg:mx-0 lg:ml-auto pl-[30px]">
+          <div class="relative rounded-[26px] border border-white/40 bg-white/95 p-7 text-slate-800 shadow-[0_40px_120px_rgba(1,10,35,0.55)] backdrop-blur-sm sm:p-9">
+
+            <!-- ─────────── Language switcher ─────────── -->
+            <div class="absolute right-5 top-5 inline-flex gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-sm" role="group" aria-label="Language switcher">
+              <button type="button" class="rounded-full px-3 py-1 text-sm font-bold text-[#042F8D] transition-all duration-200" data-lang="fr">FR</button>
+              <button type="button" class="rounded-full px-3 py-1 text-sm font-bold text-[#042F8D] transition-all duration-200" data-lang="en">EN</button>
+            </div>
+
+            <!-- Logo -->
+            <div class="flex justify-center">
+              <img src="./img/logo.png" alt="" class="h-28 w-28 object-contain drop-shadow-[0_8px_18px_rgba(4,47,141,0.2)]" />
+            </div>
+
+            <!-- Heading -->
+            <div class="mt-3">
+              <h1 class="text-3xl font-bold text-slate-900" data-i18n="loginTitle">Login</h1>
+              <p class="mt-1 text-sm text-slate-500" data-i18n="loginSubtitle">Enter your credentials to access your dashboard.</p>
+            </div>
+
+            <form id="loginForm" class="mt-6 space-y-4" novalidate>
+              <!-- Username -->
+              <div class="space-y-1.5">
+                <label for="email" class="text-sm font-semibold text-slate-700" data-i18n="loginEmailLabel">Username</label>
+                <div class="group relative">
+                  <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition group-focus-within:text-[#042F8D]">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+                  </span>
+                  <input id="email" name="email" type="text" inputmode="text" autocomplete="username" required
+                    placeholder="Enter your username" data-i18n-placeholder="loginUserPh"
+                    class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white py-3 pl-11 pr-3 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                </div>
+              </div>
+
+              <!-- Password -->
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <label for="password" class="text-sm font-semibold text-slate-700" data-i18n="loginPasswordLabel">Password</label>
+                  <!-- <a href="#" id="forgotLink" class="text-xs font-semibold text-[#042F8D] transition hover:underline" data-i18n="loginForgot">Forgot password?</a> -->
+                </div>
+                <div class="group relative">
+                  <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition group-focus-within:text-[#042F8D]">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                  </span>
+                  <input id="password" name="password" type="password" autocomplete="current-password" required
+                    placeholder="Enter your password" data-i18n-placeholder="loginPassPh"
+                    class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white py-3 pl-11 pr-11 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+                  <button type="button" id="togglePassword" aria-label="Show password"
+                    class="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-[#042F8D]">
+                    <svg id="eyeOpen" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg id="eyeClosed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="hidden h-5 w-5"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19M6.61 6.61A18.5 18.5 0 0 0 2 12s3.5 7 10 7a9.12 9.12 0 0 0 5.17-1.56"/><path d="m2 2 20 20"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Remember me -->
+              <label class="flex cursor-pointer items-center gap-2.5 text-sm text-slate-600">
+                <input type="checkbox" id="remember" class="peer sr-only" />
+                <span class="flex h-5 w-5 items-center justify-center rounded-md border-[1.5px] border-[#dbe2f0] bg-white transition peer-checked:border-[#042F8D] peer-checked:bg-[#042F8D] peer-focus-visible:ring-4 peer-focus-visible:ring-[#042F8D]/10">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" class="h-3 w-3 opacity-0 transition peer-checked:opacity-100"><path d="m20 6-11 11-5-5"/></svg>
+                </span>
+                <span data-i18n="loginRemember">Remember me</span>
+              </label>
+
+              <!-- Submit -->
+              <button type="submit"
+                class="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-4 py-3.5 text-sm font-bold text-white shadow-[0_14px_30px_rgba(4,47,141,0.34)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_44px_rgba(4,47,141,0.44)] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/25">
+                <span class="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-white/25 transition-transform duration-700 group-hover:translate-x-[420%]"></span>
+                <span class="relative flex items-center justify-center gap-2">
+                  <span data-i18n="loginSubmit">Sign in</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4 transition group-hover:translate-x-1"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </span>
+              </button>
+
+              <p id="formStatus" class="min-h-5 text-center text-sm font-semibold text-red-600" aria-live="polite"></p>
+            </form>
+
+            <!-- Divider -->
+            <!-- <div class="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-widest text-slate-400">
+              <span class="h-px flex-1 bg-slate-200"></span><span data-i18n="loginOr">or</span><span class="h-px flex-1 bg-slate-200"></span>
+            </div> -->
+
+            <!-- <p class="text-center text-sm text-slate-600">
+              <span data-i18n="loginNoAccount">Don't have an account yet?</span>
+              <a href="#" id="openSignupBtn" class="font-semibold text-[#042F8D] transition hover:underline" data-i18n="loginCreate">Create an account</a>
+            </p> -->
+
+            <!-- Candidate exam portal (temporary exam credentials — no account) -->
+            <p class="mt-2 text-center text-sm text-slate-600">
+              <span data-i18n="loginHaveExam">Have exam credentials?</span>
+              <a href="./exam-portal.html" class="font-semibold text-[#042F8D] transition hover:underline" data-i18n="loginTakeExam">Take an exam</a>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════ Footer bar ═══════════ -->
+      <footer class="relative z-10 border-t border-white/10 bg-[#03102e]/80 backdrop-blur-sm">
+        <div class="mx-auto flex max-w-[1500px] flex-col items-center gap-4 px-6 py-4 text-sm md:flex-row md:justify-between">
+          <ul class="flex flex-col items-center gap-x-10 gap-y-2 text-slate-200 sm:flex-row">
+            <li class="flex items-center gap-2.5">
+              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0b4dc2]/40 text-[#8fb4ff]"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span>
+              <span data-i18n="loginBadge1">Secure and protected access</span>
+            </li>
+            <li class="hidden h-6 w-px bg-white/15 sm:block" aria-hidden="true"></li>
+            <li class="flex items-center gap-2.5">
+              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0b4dc2]/40 text-[#8fb4ff]"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+              <span data-i18n="loginBadge2">Centralized training management</span>
+            </li>
+            <li class="hidden h-6 w-px bg-white/15 sm:block" aria-hidden="true"></li>
+            <li class="flex items-center gap-2.5">
+              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0b4dc2]/40 text-[#8fb4ff]"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg></span>
+              <span data-i18n="loginBadge3">24/7 administrative support</span>
+            </li>
+          </ul>
+          <p class="text-center text-xs text-slate-300 md:text-right">© <span id="year"></span> Guarde Security Service. <span data-i18n="loginRights">All rights reserved.</span></p>
+        </div>
+      </footer>
+    </main>
+
+    <!-- ═══════════════════════ Sign up modal ═══════════════════════ -->
+    <div id="signupModal" class="fixed inset-0 z-[1000] hidden items-center justify-center bg-[rgba(1,7,16,0.7)] p-4 backdrop-blur-sm" aria-hidden="true">
+      <div class="relative w-full max-w-md overflow-hidden rounded-[24px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.4)]" role="dialog" aria-modal="true" aria-labelledby="signupTitle">
+
+        <!-- Header -->
+        <div class="relative overflow-hidden bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-6 py-5 text-white">
+          <span class="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/25 to-transparent blur-md animate-shine"></span>
+          <h2 id="signupTitle" class="relative text-lg font-bold" data-i18n="signupTitle">Create your account</h2>
+          <p class="relative mt-1 text-sm text-blue-100" data-i18n="signupSubtitle">Fill in your details to get started with GSS.</p>
+          <button type="button" id="closeSignupBtn" aria-label="Close"
+            class="absolute right-4 top-4 rounded-full bg-white/15 p-1.5 text-white transition hover:bg-white/25">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+
+        <!-- Form -->
+        <form id="signupForm" class="max-h-[70vh] space-y-4 overflow-y-auto p-6" novalidate>
+          <!-- Full name -->
+          <div class="space-y-1.5">
+            <label for="suName" class="text-sm font-semibold text-slate-700" data-i18n="signupNameLabel">Full name</label>
+            <input id="suName" name="name" type="text" autocomplete="name" required
+              placeholder="John Doe" data-i18n-placeholder="signupNamePh"
+              class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+          </div>
+
+          <!-- Username -->
+          <div class="space-y-1.5">
+            <label for="suEmail" class="text-sm font-semibold text-slate-700" data-i18n="signupEmailLabel">Username</label>
+            <input id="suEmail" name="email" type="text" inputmode="text" autocomplete="username" required
+              placeholder="bamustafa" data-i18n-placeholder="signupEmailPh"
+              class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+          </div>
+
+          <!-- Password -->
+          <div class="space-y-1.5">
+            <label for="suPassword" class="text-sm font-semibold text-slate-700" data-i18n="signupPasswordLabel">Password</label>
+            <div class="relative">
+              <input id="suPassword" name="password" type="password" autocomplete="new-password" required minlength="8"
+                placeholder="At least 8 characters" data-i18n-placeholder="signupPasswordPh"
+                class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 pr-11 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+              <button type="button" id="suTogglePassword" aria-label="Show password"
+                class="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-[#042F8D]">
+                <svg id="suEyeOpen" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg id="suEyeClosed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="hidden h-5 w-5"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19M6.61 6.61A18.5 18.5 0 0 0 2 12s3.5 7 10 7a9.12 9.12 0 0 0 5.17-1.56"/><path d="m2 2 20 20"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Confirm password -->
+          <div class="space-y-1.5">
+            <label for="suConfirm" class="text-sm font-semibold text-slate-700" data-i18n="signupConfirmLabel">Confirm password</label>
+            <input id="suConfirm" name="confirm" type="password" autocomplete="new-password" required minlength="8"
+              placeholder="Re-enter your password" data-i18n-placeholder="signupConfirmPh"
+              class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+          </div>
+
+          <!-- Role -->
+          <div class="space-y-1.5">
+            <label for="suRole" class="text-sm font-semibold text-slate-700" data-i18n="signupRoleLabel">Role</label>
+            <select id="suRole" name="role"
+              class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10">
+              <option value="Candidate" data-i18n="roleCandidate">Candidate</option>
+              <option value="Admin" data-i18n="roleAdmin">Admin</option>
+              <option value="Head of Training" data-i18n="roleHeadOfTraining">Head of Training</option>
+              <option value="Secretary" data-i18n="roleSecretary">Secretary</option>
+              <option value="Instructor" data-i18n="roleInstructor">Instructor</option>
+            </select>
+          </div>
+
+          <!-- Terms -->
+          <label class="flex cursor-pointer items-start gap-2.5 text-sm text-slate-600">
+            <input type="checkbox" id="suTerms" class="peer sr-only" />
+            <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-[1.5px] border-[#dbe2f0] bg-white transition peer-checked:border-[#042F8D] peer-checked:bg-[#042F8D] peer-focus-visible:ring-4 peer-focus-visible:ring-[#042F8D]/10">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" class="h-3 w-3 opacity-0 transition peer-checked:opacity-100"><path d="m20 6-11 11-5-5"/></svg>
+            </span>
+            <span data-i18n="signupTerms">I agree to the Terms of Service and Privacy Policy.</span>
+          </label>
+
+          <!-- Require password change on first login -->
+          <label class="flex cursor-pointer items-start gap-2.5 text-sm text-slate-600">
+            <input type="checkbox" id="suForceChange" class="peer sr-only" checked />
+            <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-[1.5px] border-[#dbe2f0] bg-white transition peer-checked:border-[#042F8D] peer-checked:bg-[#042F8D] peer-focus-visible:ring-4 peer-focus-visible:ring-[#042F8D]/10">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" class="h-3 w-3 opacity-0 transition peer-checked:opacity-100"><path d="m20 6-11 11-5-5"/></svg>
+            </span>
+            <span data-i18n="signupForceChange">Require password change on first login</span>
+          </label>
+
+          <!-- Submit -->
+          <button type="submit"
+            class="group relative w-full overflow-hidden rounded-full bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-4 py-3 text-sm font-bold text-white shadow-[0_14px_30px_rgba(4,47,141,0.34)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_44px_rgba(4,47,141,0.44)] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/25">
+            <span class="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-white/25 transition-transform duration-700 group-hover:translate-x-[420%]"></span>
+            <span class="relative" data-i18n="signupSubmit">Create account</span>
+          </button>
+
+          <p id="signupStatus" class="min-h-5 text-center text-sm font-semibold text-red-600" aria-live="polite"></p>
+        </form>
+
+        <!-- Footer -->
+        <div class="border-t border-slate-200 bg-slate-50 px-6 py-4 text-center text-sm text-slate-600">
+          <span data-i18n="signupHaveAccount">Already have an account?</span>
+          <button type="button" id="signupToLogin" class="font-semibold text-[#042F8D] transition hover:underline" data-i18n="signupLogin">Sign in</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════ Forgot password modal ═══════════════════════ -->
+    <div id="forgotModal" class="fixed inset-0 z-[1000] hidden items-center justify-center bg-[rgba(1,7,16,0.7)] p-4 backdrop-blur-sm" aria-hidden="true">
+      <div class="relative w-full max-w-md overflow-hidden rounded-[24px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.4)]" role="dialog" aria-modal="true" aria-labelledby="forgotTitle">
+
+        <!-- Header -->
+        <div class="relative overflow-hidden bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-6 py-5 text-white">
+          <span class="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/25 to-transparent blur-md animate-shine"></span>
+          <h2 id="forgotTitle" class="relative text-lg font-bold" data-i18n="fpTitle">Reset your password</h2>
+          <p class="relative mt-1 text-sm text-blue-100" data-i18n="fpSubtitle">Enter your username to receive a temporary password.</p>
+          <button type="button" id="closeForgotBtn" aria-label="Close"
+            class="absolute right-4 top-4 rounded-full bg-white/15 p-1.5 text-white transition hover:bg-white/25">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+
+        <!-- Form -->
+        <form id="forgotForm" class="space-y-4 p-6" novalidate>
+          <div class="space-y-1.5">
+            <label for="fpUsername" class="text-sm font-semibold text-slate-700" data-i18n="fpUsernameLabel">Username</label>
+            <input id="fpUsername" name="username" type="text" autocomplete="username" required
+              placeholder="ZakiMustafa" data-i18n-placeholder="loginEmailPh"
+              class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+          </div>
+
+          <!-- Result: the temporary password (no email in this environment) -->
+          <div id="fpResult" class="hidden rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-slate-700">
+            <p class="mb-1 font-semibold text-emerald-700" data-i18n="fpResultTitle">Temporary password generated</p>
+            <p class="mb-2" data-i18n="fpResultHint">Use this temporary password to sign in. You will be asked to set a new password.</p>
+            <code id="fpTempPassword" class="block select-all rounded-lg bg-white px-3 py-2 text-center text-base font-bold tracking-wider text-[#042F8D]"></code>
+          </div>
+
+          <!-- Submit -->
+          <button type="submit" id="fpSubmitBtn"
+            class="group relative w-full overflow-hidden rounded-full bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-4 py-3 text-sm font-bold text-white shadow-[0_14px_30px_rgba(4,47,141,0.34)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_44px_rgba(4,47,141,0.44)] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/25">
+            <span class="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-white/25 transition-transform duration-700 group-hover:translate-x-[420%]"></span>
+            <span class="relative" data-i18n="fpSubmit">Send temporary password</span>
+          </button>
+
+          <p id="forgotStatus" class="min-h-5 text-center text-sm font-semibold text-red-600" aria-live="polite"></p>
+        </form>
+
+        <!-- Footer -->
+        <div class="border-t border-slate-200 bg-slate-50 px-6 py-4 text-center text-sm text-slate-600">
+          <button type="button" id="forgotToLogin" class="font-semibold text-[#042F8D] transition hover:underline" data-i18n="signupLogin">Sign in</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════ Change password modal (forced first login) ═══════════════════════ -->
+    <div id="changePwdModal" class="fixed inset-0 z-[1000] hidden items-center justify-center bg-[rgba(1,7,16,0.7)] p-4 backdrop-blur-sm" aria-hidden="true">
+      <div class="relative w-full max-w-md overflow-hidden rounded-[24px] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.4)]" role="dialog" aria-modal="true" aria-labelledby="changePwdTitle">
+
+        <!-- Header -->
+        <div class="relative overflow-hidden bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-6 py-5 text-white">
+          <span class="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/25 to-transparent blur-md animate-shine"></span>
+          <h2 id="changePwdTitle" class="relative text-lg font-bold" data-i18n="cpTitle">Change your password</h2>
+          <p class="relative mt-1 text-sm text-blue-100" data-i18n="cpSubtitle">For your security, please set a new password to continue.</p>
+        </div>
+
+        <!-- Form -->
+        <form id="changePwdForm" class="space-y-4 p-6" novalidate>
+          <div class="space-y-1.5">
+            <label for="cpCurrent" class="text-sm font-semibold text-slate-700" data-i18n="cpCurrentLabel">Current password</label>
+            <input id="cpCurrent" name="currentPassword" type="password" autocomplete="current-password" required
+              class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+          </div>
+          <div class="space-y-1.5">
+            <label for="cpNew" class="text-sm font-semibold text-slate-700" data-i18n="cpNewLabel">New password</label>
+            <input id="cpNew" name="newPassword" type="password" autocomplete="new-password" required
+              class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+          </div>
+          <div class="space-y-1.5">
+            <label for="cpConfirm" class="text-sm font-semibold text-slate-700" data-i18n="cpConfirmLabel">Confirm new password</label>
+            <input id="cpConfirm" name="confirmPassword" type="password" autocomplete="new-password" required
+              class="w-full rounded-xl border-[1.5px] border-[#dbe2f0] bg-white px-3 py-2.5 text-sm text-slate-800 transition focus:border-[#042F8D] focus:bg-[#fbfcff] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/10" />
+          </div>
+
+          <!-- Submit -->
+          <button type="submit" id="cpSubmitBtn"
+            class="group relative w-full overflow-hidden rounded-full bg-gradient-to-r from-[#042F8D] to-[#0b4dc2] px-4 py-3 text-sm font-bold text-white shadow-[0_14px_30px_rgba(4,47,141,0.34)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_44px_rgba(4,47,141,0.44)] focus:outline-none focus:ring-4 focus:ring-[#042F8D]/25">
+            <span class="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-white/25 transition-transform duration-700 group-hover:translate-x-[420%]"></span>
+            <span class="relative" data-i18n="cpSubmit">Update password</span>
+          </button>
+
+          <p id="changePwdStatus" class="min-h-5 text-center text-sm font-semibold text-red-600" aria-live="polite"></p>
+        </form>
+      </div>
+    </div>
+
+    <script src="./js/global.js"></script>
+    <script src="./js/utils/shimmer.js"></script>
+    <script src="./js/permissions-engine.js"></script>
+    <script src="./js/utils/translation.js"></script>
+    <script src="./js/login.js"></script>
+  </body>
+</html>

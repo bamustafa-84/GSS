@@ -1,0 +1,114 @@
+====================================================================
+ GSS TRAINING CENTRE — APPLICATION FORM
+ Description of Each Panel (Tab) and General Summary
+====================================================================
+
+GENERAL SUMMARY
+--------------------------------------------------------------------
+The GSS Application form is a single multi-tab modal that walks a
+security-guard candidate through the full training-centre lifecycle:
+from initial registration, through the signing of the centre's legal
+documents, attendance, the exam, competency evaluation and physical
+measurements, and finally the assembly of the complete candidate file.
+
+The tabs run in a fixed sequence and unlock one after another
+(sequential workflow): a tab only becomes reachable once the previous
+step is completed and acknowledged (each panel ends with a green "I
+certify..." acknowledgement checkbox that marks the tab as done).
+Access to certain panels also depends on the signed-in user's role
+(Admin, Head of Training, Secretary, Instructor). Data is saved to the
+server per panel, so a candidate's progress is restored when the record
+is reopened.
+
+Workflow order:
+  Registration → Conditions → Rules → Commitment → Attendance →
+  Exam Result → Evaluation → Measurement → Candidate File (CheckList)
+
+
+PANEL-BY-PANEL DESCRIPTION
+--------------------------------------------------------------------
+
+1. REGISTRATION  (panel-registration — "GSS Application")
+   The intake form where a new candidate is registered. Sections:
+     • Personal Information — full name, phones, email, date of birth,
+       country/city, marital status, etc.
+     • Education Level and Experience — literacy and prior security
+       experience (with conditional detail fields).
+     • Health Status — declared health issues (with conditional detail).
+     • Registration Fees — payment status.
+     • Applicant's Declaration — the applicant's signature and date.
+     • For Administration Use Only — interview result and remarks,
+       visible to Admin / Head of Training / Secretary only.
+   It also checks for a duplicate Full Name (blocks submission if the
+   name already exists) and auto-fills the signature if one is already
+   on file for that name.
+
+2. CONDITIONS  (panel-conditions — "Registration Conditions")
+   Displays the training-centre registration conditions for the
+   candidate to read. The applicant's name is mirrored in, and the
+   panel closes with an acknowledgement that the conditions are accepted.
+
+3. RULES  (panel-reglement — "Internal Regulations")
+   Presents the centre's internal regulations. The candidate reviews
+   and acknowledges them; the name field is mirrored from Registration.
+
+4. COMMITMENT  (panel-engagement — "Confidentiality Agreement")
+   A confidentiality / administrative-document-protection agreement.
+   Captures the required signatures and the candidate's acceptance.
+
+5. ATTENDANCE  (panel-presences — "Individual Attendance Report")
+   Records the candidate's training attendance. Sections:
+     • Candidate Information — training title, trainer, from/to dates.
+     • Attendance History — per-session attendance entries.
+     • Summary — totals of the attendance record.
+     • Signatures — trainer/candidate sign-off.
+   Clicking "Acknowledge Presence" marks attendance complete, locks the
+   panel, and advances the workflow to the Exam Result panel.
+
+6. EXAM RESULT  (panel-exam — "Individual Exam Result")
+   Shows the outcome of the candidate's final exam (score and Pass/Fail)
+   once the exam has been taken AND corrected on the server. Sections:
+     • Exam Result — score and pass/fail outcome.
+     • Trainer's Observations — instructor comments.
+     • Validation — sign-off of the result.
+   Until the candidate has actually taken the exam, the panel shows only
+   the message: "This candidate has not taken an exam yet." The status
+   is re-checked from the server each time the tab is opened, so a stale
+   result is never displayed right after acknowledging attendance.
+
+7. EVALUATION  (panel-evaluation — "Individual Evaluation Sheet")
+   A competency-assessment sheet. Sections:
+     • Evaluation Grid — scored competency criteria.
+     • Summary — aggregated scores.
+     • Final Result — overall evaluation outcome.
+     • Signatures — evaluator/candidate sign-off.
+
+8. MEASUREMENT  (panel-mensuration — "Measurements and Additional
+   Information Sheet")
+   Captures the candidate's physical and personal file details:
+     • A. Measurements — sizes used for uniform issue.
+     • B. Medical Information — relevant medical details.
+     • C. Emergency Contact Person — next-of-kin / emergency contact.
+     • D. Observations — free-text notes.
+
+9. CANDIDATE FILE / CHECKLIST  (panel-dossier — "Individual Candidate
+   File")
+   A final document-completeness checklist confirming every required
+   item is present in the candidate's file, grouped by category:
+     • 1. Administrative Documents — Registration Form, signed
+       Conditions, ID copy, ID photos (plus optional CV, criminal
+       record, medical certificate).
+     • 2. Training — Measurements Sheet, signed Internal Regulations,
+       Confidentiality Agreement, Attendance List.
+     • 3. Evaluations — Individual Evaluation Form, Final Exam Result.
+   Ends with a certification that the file is accurate and complete.
+
+
+NOTES
+--------------------------------------------------------------------
+• Each panel ends with a green acknowledgement checkbox that marks the
+  tab as done and unlocks the next step.
+• Panels and fields are shown, hidden or made read-only according to the
+  signed-in user's role and the candidate's stage in the workflow.
+• The form is bilingual (English / French); all labels switch language
+  via the shared translation dictionary.
