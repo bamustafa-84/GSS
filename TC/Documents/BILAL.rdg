@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<RDCMan programVersion="3.12" schemaVersion="3">
+  <file>
+    <credentialsProfiles />
+    <properties>
+      <expanded>True</expanded>
+      <name>BILAL</name>
+    </properties>
+    <server>
+      <properties>
+        <name>db-sp</name>
+      </properties>
+    </server>
+    <server>
+      <properties>
+        <name>dc-sp22stg.darcairo.com</name>
+      </properties>
+    </server>
+  </file>
+  <connected />
+  <favorites />
+  <recentlyUsed />
+</RDCMan>
