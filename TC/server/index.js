@@ -167,6 +167,8 @@ const actorIsAdmin = (req) => {
  * Mandatory Admin-only gate (System Management). Independent of the Permission
  * Matrix: requires a valid token AND a live Admin role in the database, so a
  * demoted user loses access immediately. Sends 401/403 and returns false.
+ * @param {http.IncomingMessage} req
+ * @param {http.ServerResponse} res
  * @returns {Promise<boolean>}
  */
 const requireAdmin = async (req, res) => {
@@ -200,6 +202,10 @@ const actorCan = async (req, section, action) => {
  * Enforce { section, action } requirements. Sends 401 when the caller is not
  * authenticated and 403 when any requirement is not granted. Every role,
  * Candidate included, is resolved from the saved Permission Matrix.
+ * @param {http.IncomingMessage} req
+ * @param {http.ServerResponse} res
+ * @param {{ section: string, action: string }[]} requirements
+ * @param {Record<string, any>} [opts]
  * @returns {Promise<boolean>} true when the request may proceed
  */
 const authorize = async (req, res, requirements, opts = {}) => {
@@ -956,14 +962,6 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (method === 'POST' && url === '/api/forgot-password') {
-      const body = await readJsonBody(req);
-      const username = String((body && (body.username || body.email)) || '').trim();
-      const result = await callProc('auth_forgot_password', '$1', [username]);
-      sendJson(res, 200, result || { ok: false, status: 'invalid' });
-      return;
-    }
-
     if (method === 'POST' && url === '/api/register') {
       const body = await readJsonBody(req);
       const username = String((body && (body.username || body.email)) || '').trim();
@@ -1018,6 +1016,29 @@ const server = http.createServer(async (req, res) => {
     if (method === 'GET' && url.startsWith('/api/instructors')) {
       const rows = await callProc('instructors_list', '', []);
       sendJson(res, 200, { ok: true, instructors: Array.isArray(rows) ? rows : [] });
+      return;
+    }
+
+    // ── Reports: dynamic discovery of the /reports folder ──────
+    // Each report lives in reports/<key>/ and ships an entry page named
+    // <key>.html. The folder name is the stable key AND the display name
+    // (prettified). This lets the dropdown + permissions grid list reports
+    // without hardcoding them anywhere.
+    if (method === 'GET' && url.startsWith('/api/reports/list')) {
+      /** @type {Array<{key:string,label:string}>} */
+      let reports = [];
+      try {
+        const reportsDir = path.join(STATIC_ROOT, 'reports');
+        reports = fs.readdirSync(reportsDir, { withFileTypes: true })
+          .filter((d) => d.isDirectory() && d.name[0] !== '.')
+          .map((d) => d.name)
+          .filter((name) => fs.existsSync(path.join(reportsDir, name, `${name}.html`)))
+          .map((name) => ({
+            key: name,
+            label: name.replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).trim(),
+          }));
+      } catch (_) { reports = []; }
+      sendJson(res, 200, { ok: true, reports });
       return;
     }
 
