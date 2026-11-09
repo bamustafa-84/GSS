@@ -1,84 +1,22 @@
-﻿// @ts-check
-/// <reference path="./modules/registration.js" />
-/// <reference path="./modules/applicant-link.js" />
-
-// ── Authenticated session guard ────────────────────────────────
-// Redirect to the login page when there is no active session, and wire the
-// header user chip + logout button. GSSSession lives in js/global.js.
+﻿
+/* ------------------------------------------------------------------
+ * Dashboard statistic: real number of trainees who completed training.
+ * Replaces the hard-coded placeholder (+250) when the stat element is present.
+ * ---------------------------------------------------------------- */
 (() => {
-  const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
-  if (!session) {
-    window.location.replace('./login.html');
-    return;
-  }
-  // Render the current role as a fancy header badge. Exposed on window so
-  // admin.js can refresh it once the live role is fetched from the server.
-  const applyRoleBadge = (/** @type {string | undefined} */ roleName) => {
-    const badge = document.getElementById('userChipRole');
-    const text = document.getElementById('userChipRoleText');
-    const current = (typeof GSSSession !== 'undefined' ? GSSSession.get() : null) || {};
-    const r = String(roleName || current.role || '').trim();
-    if (!badge || !text) return;
-    if (!r) { badge.classList.add('hidden'); badge.classList.remove('inline-flex'); return; }
-    let label = r;
-    try {
-      const lang = document.documentElement.lang || 'en';
-      const key = 'role' + r.replace(/[^a-z]/gi, '');
-      const dict = /** @type {any} */ (typeof translations !== 'undefined' ? translations : null);
-      if (dict && dict[lang] && dict[lang][key]) label = dict[lang][key];
-    } catch (_) { /* noop */ }
-    text.textContent = label;
-    badge.classList.remove('hidden');
-    badge.classList.add('inline-flex');
+  if (typeof document === 'undefined') return;
+  const fill = () => {
+    const el = document.getElementById('statTraineesTrained');
+    if (!el) return;
+    fetch(`${API_BASE}/api/stats/trainees-trained`, { headers: { Accept: 'application/json' } })
+      .then((r) => r.json())
+      .then((d) => { if (d && typeof d.count === 'number') el.textContent = '+' + d.count; })
+      .catch(() => { /* keep the static fallback */ });
   };
-  /** @type {any} */ (window).GSSChip = { applyRoleBadge };
-  // Render the header avatar from the session: show the uploaded picture when
-  // one exists (streamed + browser-cached via /api/me/avatar), otherwise keep
-  // the default SVG. onerror falls back to the SVG if the image is missing.
-  const applyAvatar = () => {
-    const img = /** @type {HTMLImageElement | null} */ (document.getElementById('userChipAvatarImg'));
-    const wrap = document.getElementById('userChipAvatar');
-    const zoom = document.getElementById('userChipAvatarZoom');
-    const zoomImg = /** @type {HTMLImageElement | null} */ (document.getElementById('userChipAvatarZoomImg'));
-    if (!img || !wrap) return;
-    const svg = wrap.querySelector('svg');
-    const cur = (typeof GSSSession !== 'undefined' ? GSSSession.get() : null) || {};
-    const showSvg = () => {
-      img.classList.add('hidden'); img.removeAttribute('src'); svg?.classList.remove('hidden');
-      // No picture → disable the hover zoom so it never shows an empty card.
-      zoom?.classList.remove('peer-hover:block');
-      if (zoomImg) zoomImg.removeAttribute('src');
-    };
-    if (!cur.has_avatar || !cur.username) { showSvg(); return; }
-    const url = `${API_BASE}/api/me/avatar?username=${encodeURIComponent(String(cur.username))}&v=${encodeURIComponent(String(cur.avatar_ver || 0))}`;
-    img.onerror = showSvg;
-    img.onload = () => {
-      img.classList.remove('hidden'); svg?.classList.add('hidden');
-      // Reuse the same cached URL for the hover preview and enable the zoom.
-      if (zoomImg) zoomImg.src = url;
-      zoom?.classList.add('peer-hover:block');
-    };
-    img.src = url;
-  };
-  /** @type {any} */ (window).GSSChip.applyAvatar = applyAvatar;
-  const applyChip = () => {
-    const chip = document.getElementById('userChip');
-    const name = document.getElementById('userChipName');
-    if (name) name.textContent = session.full_name || session.username || 'User';
-    if (chip) { chip.classList.remove('hidden'); chip.classList.add('flex'); }
-    applyRoleBadge(session.role);
-    applyAvatar();
-    const btn = document.getElementById('logoutBtn');
-    if (btn) {
-      btn.addEventListener('click', () => {
-        if (typeof GSSSession !== 'undefined') GSSSession.clear();
-        window.location.replace('./login.html');
-      });
-    }
-  };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyChip);
-  else applyChip();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fill);
+  else fill();
 })();
+
 
 const modal = document.getElementById('formModal');
 const openFormBtn = document.getElementById('openFormBtn');
@@ -87,9 +25,7 @@ const closeModalBtn = document.getElementById('closeModalBtn');
 // ── Tab state ──────────────────────────────────────────────
 /** @type {Record<string, boolean>} */
 const tabState = { registration: false, conditions: false, reglement: false, engagement: false, presences: false, 
-                   evaluation: false, exam: false, mensuration: false, 
-                   // lettre: false, uniforme: false, 
-                   dossier: false };
+                   evaluation: false, exam: false, mensuration: false, dossier: false };
 
 let defaultTab = Object.keys(tabState)[0];; //'registration';
 

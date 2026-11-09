@@ -35,7 +35,7 @@
 
   /** @type {any} */ let exam = null;
   /** @type {any[]} */ let questions = [];
-  let candidateNo = null;
+  /** @type {number | null} */ let candidateNo = null;
   let previewMode = false;
 
   const metaHtml = (/** @type {any} */ e) => {
@@ -58,11 +58,12 @@
     ? `<div class="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800">${t('examPreviewBanner', 'Preview mode — this is how the exam looks to a candidate. Answers will not be saved.')}</div>`
     : '';
 
-  const setStatus = (/** @type {string} */ msg, /** @type {boolean} */ ok) => {
+  const setStatus = (/** @type {string} */ msg, /** @type {boolean | undefined} */ ok) => {
     if (!statusEl) return;
     statusEl.textContent = msg;
     statusEl.classList.toggle('text-red-600', ok === false);
     statusEl.classList.toggle('text-emerald-600', ok === true);
+    statusEl.classList.toggle('text-slate-500', ok === undefined);
   };
 
   const resolveCandidateNo = () => {
@@ -89,24 +90,28 @@
 
     let field = '';
     if (type === 'MULTIPLE_CHOICE' || type === 'TRUE_FALSE') {
-      field = `<div class="space-y-2">${(q.answers || []).map((/** @type {any} */ a, i) => `
+      const answers = /** @type {any[]} */ (Array.isArray(q.answers) ? q.answers : []);
+      const renderChoice = /** @type {(answer: any, index: number) => string} */ ((answer, index) => `
         <label class="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm hover:border-[#042F8D]">
-          <input type="radio" name="q${q.question_id}" value="${a.answer_id}" class="accent-[#042F8D]" />
-          <span class="font-bold text-[#042F8D]">${esc(a.answer_key || letters[i] || (i + 1))}.</span>
-          <span>${esc(a.answer_text)}</span>
-        </label>`).join('')}</div>`;
+          <input type="radio" name="q${q.question_id}" value="${answer.answer_id}" class="accent-[#042F8D]" />
+          <span class="font-bold text-[#042F8D]">${esc(answer.answer_key || letters[index] || (index + 1))}.</span>
+          <span>${esc(answer.answer_text)}</span>
+        </label>`);
+      field = `<div class="space-y-2">${answers.map(renderChoice).join('')}</div>`;
     } else if (type === 'MATCH_ITEMS') {
-      const values = (q.answers || []).map((/** @type {any} */ a) => a.match_value);
+      const answers = /** @type {any[]} */ (Array.isArray(q.answers) ? q.answers : []);
+      const values = /** @type {string[]} */ (answers.map((answer) => String(answer.match_value || '')));
       // Present each left item with a dropdown of all possible right values.
-      field = `<div class="space-y-2">${(q.answers || []).map((/** @type {any} */ a) => `
+      const renderMatch = /** @type {(answer: any) => string} */ ((answer) => `
         <div class="flex items-center gap-2 text-sm">
-          <span class="min-w-[40%] rounded bg-slate-100 px-2 py-1 font-medium">${esc(a.match_key)}</span>
+          <span class="min-w-[40%] rounded bg-slate-100 px-2 py-1 font-medium">${esc(answer.match_key)}</span>
           <span class="text-slate-400">→</span>
-          <select data-matchkey="${esc(a.match_key)}" class="flex-1 rounded-md border border-slate-200 px-2 py-1">
+          <select data-matchkey="${esc(answer.match_key)}" class="flex-1 rounded-md border border-slate-200 px-2 py-1">
             <option value="">${t('examSelect', 'Select…')}</option>
-            ${values.map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join('')}
+            ${values.map((/** @type {string} */ value) => `<option value="${esc(value)}">${esc(value)}</option>`).join('')}
           </select>
-        </div>`).join('')}</div>`;
+        </div>`);
+      field = `<div class="space-y-2">${answers.map(renderMatch).join('')}</div>`;
     } else if (type === 'CHRONOLOGICAL_ORDERING') {
       // Present each item with an order number input.
       field = `<div class="space-y-2" data-ordering="1">${(q.answers || []).map((/** @type {any} */ a) => `
@@ -134,9 +139,12 @@
         const sel = /** @type {HTMLInputElement} */ (card.querySelector('input[type=radio]:checked'));
         r.selected_ids = sel ? [Number(sel.value)] : [];
       } else if (type === 'MATCH_ITEMS') {
-        const obj = {};
+        /** @type {Record<string, string>} */
+        /** @type {Record<string, string>} */ const obj = {};
         card.querySelectorAll('select[data-matchkey]').forEach((s) => {
-          obj[/** @type {HTMLSelectElement} */ (s).dataset.matchkey] = /** @type {HTMLSelectElement} */ (s).value;
+          const select = /** @type {HTMLSelectElement} */ (s);
+          const matchKey = select.dataset.matchkey;
+          if (matchKey) obj[matchKey] = select.value;
         });
         r.response_json = obj;
       } else if (type === 'CHRONOLOGICAL_ORDERING') {
@@ -169,7 +177,7 @@
 
     try {
       const list = await fetch(`${API_BASE}/api/exam/available?candidate_no=${candidateNo}`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
-      const exams = (list && Array.isArray(list.exams)) ? list.exams : [];
+      const exams = /** @type {any[]} */ ((list && Array.isArray(list.exams)) ? list.exams : []);
       if (!exams.length) {
         body.innerHTML = `<p class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-sm text-slate-400">${t('examTakeNone', 'No exam is available for your assigned training.')}</p>`;
         return;
@@ -180,11 +188,12 @@
       }
       // Multiple assigned trainings → let the candidate choose which to sit.
       if (subtitle) subtitle.textContent = t('examTakePick', 'Choose which exam to take');
-      body.innerHTML = `<div class="space-y-2">${exams.map((e) => `
-        <button type="button" data-examid="${e.exam_id}" class="exam-pick flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-800 shadow-sm transition hover:border-[#042F8D]">
-          <span>${esc(e.exam_title)}</span>
-          <span class="text-xs font-medium text-slate-400">${esc(e.training_title)}</span>
-        </button>`).join('')}</div>`;
+      const renderExamChoice = /** @type {(examOption: any) => string} */ ((examOption) => `
+        <button type="button" data-examid="${examOption.exam_id}" class="exam-pick flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-800 shadow-sm transition hover:border-[#042F8D]">
+          <span>${esc(examOption.exam_title)}</span>
+          <span class="text-xs font-medium text-slate-400">${esc(examOption.training_title)}</span>
+        </button>`);
+      body.innerHTML = `<div class="space-y-2">${exams.map(renderExamChoice).join('')}</div>`;
       body.querySelectorAll('.exam-pick').forEach((btn) =>
         btn.addEventListener('click', () => loadExam(Number(/** @type {HTMLElement} */ (btn).dataset.examid))));
     } catch (_) {
@@ -347,7 +356,7 @@
   };
   if (isCandidate()) { openBtn.classList.remove('hidden'); openBtn.style.display = 'inline-flex'; }
 
-  openBtn.addEventListener('click', open);
+  /** @type {any} */ (window).GSSExamTake = { open, close };
   closeBtn?.addEventListener('click', close);
   submitBtn?.addEventListener('click', submit);
 })();

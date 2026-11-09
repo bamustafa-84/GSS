@@ -1,4 +1,5 @@
 // @ts-check
+/// <reference path="./global.js" />
 /**
  * GSS · Candidate Exam Portal
  * ------------------------------------------------------------------
@@ -9,57 +10,137 @@
  *   • login  → POST /api/exam/login  (returns token + questions + saved answers)
  *   • change → POST /api/exam/answer (auto-save, one call per question)
  *   • submit → POST /api/exam/submit (final batch + finalize)
- *   • result → POST /api/exam/result / re-login (panel-exam once corrected)
  * The visual countdown is derived from the server clock; the server rejects any
  * write once the attempt has expired, so a tampered client timer cannot help.
  */
 (() => {
-  'use strict';
 
-  const $ = (/** @type {string} */ id) => document.getElementById(id);
-  const esc = (/** @type {any} */ s) => String(s == null ? '' : s)
+ //#region DECLARE VARIABLES
+ const $ = (/** @type {string} */ id) => document.getElementById(id);
+ const esc = (/** @type {any} */ s) => String(s == null ? '' : s)
     .replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] || c));
-  const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
-  const loginCard = $('loginCard');
-  const examCard = $('examCard');
-  const statePanel = $('statePanel');
-  const questionsEl = $('examQuestions');
-  const metaEl = $('examMeta');
-  const timerEl = $('examTimer');
-  const timerText = $('examTimerText');
-  const saveStatus = $('examSaveStatus');
-  const subtitle = $('portalSubtitle');
+ const show = (/** @type {HTMLElement|null} */ el) => { 
+   if (el) {
+     el.classList.remove('hidden'); el.classList.add('block'); 
+   } 
+  };
+  const hide = (/** @type {HTMLElement|null} */ el) => { 
+    if (el) { 
+      el.classList.add('hidden'); el.classList.remove('block'); 
+    } 
+  };
+   
+ const loginCard = $('loginCard');
+ let creds = { username: '', password: '' };
+ const examCard = $('examCard');
+ const statePanel = $('statePanel');
+ const subtitle = $('portalSubtitle');
+ const metaEl = $('examMeta');
+ const questionsEl = $('examQuestions');
+ const saveStatus = $('examSaveStatus');
+ const timerEl = $('examTimer');
+ const timerText = $('examTimerText');
 
-  /** @type {string|null} */ let token = null;
-  /** @type {any[]} */ let questions = [];
-  /** @type {number} */ let clockOffset = 0;      // serverNow - clientNow (ms)
-  /** @type {number} */ let expiresAtMs = 0;
-  /** @type {any} */ let timerHandle = null;
-  let submitting = false;
-  let knownExpired = false;  // server already told us the attempt is closed
-  let creds = { username: '', password: '' };
+ let knownExpired = false;  // server already told us the attempt is closed
+ /** @type {string|null} */ let token = null;
+ /** @type {any[]} */ let questions = [];
+ /** @type {number} */ let clockOffset = 0;      // serverNow - clientNow (ms)
+ /** @type {number} */ let expiresAtMs = 0;
+ /** @type {any} */ let timerHandle = null;
 
-  const serverNow = () => Date.now() + clockOffset;
+ let submitting = false;
+ const serverNow = () => Date.now() + clockOffset;
+ //#endregion
 
-  const setLoginStatus = (/** @type {string} */ msg, ok) => {
-    const el = $('loginStatus'); if (!el) return;
+  //#region SUBMIT EXAM LOGIN FORM
+  $('examLoginForm')?.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const u = /** @type {HTMLInputElement} */ ($('examUsername')).value.trim();
+    const p = /** @type {HTMLInputElement} */ ($('examPassword')).value;
+    if (!u || !p) { setLoginStatus('Enter your username and password.', false); return; }
+    creds = { username: u, password: p };
+    setLoginStatus('Signing in…', true);
+    try {
+      const data = await fetch(`${API_BASE}/api/exam/login`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(creds),
+      }).then((r) => r.json());
+      applyLogin(data, false);
+    } catch (_) { setLoginStatus('Could not reach the server.', false); }
+  });
+
+  const setLoginStatus = (/** @type {string} */ msg, /** @type {boolean} */ ok) => {
+    const el = $('loginStatus'); 
+    if (!el) 
+      return;
+
     el.textContent = msg;
     el.classList.toggle('text-red-600', ok === false);
     el.classList.toggle('text-emerald-600', ok === true);
   };
-  const setSaveStatus = (/** @type {string} */ msg, ok) => {
-    if (!saveStatus) return;
-    saveStatus.textContent = msg;
-    saveStatus.classList.toggle('text-red-600', ok === false);
-    saveStatus.classList.toggle('text-emerald-600', ok === true);
-    saveStatus.classList.toggle('text-slate-500', ok === undefined);
+
+  const applyLogin = (/** @type {any} */ data, /** @type {boolean} */ auto) => {
+    if (!data || data.ok === false) {
+      const msg = statusMessage(data && data.status);
+      // If the user is already inside the exam, show the message as a state
+      // screen rather than writing to the (possibly hidden) login form.
+      if (examCard && !examCard.classList.contains('hidden')) {
+
+        hide(examCard); 
+        
+        stopTimer();
+
+        if (statePanel) {
+          statePanel.classList.remove('hidden');
+          statePanel.innerHTML = `
+            <div class="mx-auto max-w-lg rounded-3xl bg-white p-8 text-center shadow-[0_20px_60px_rgba(4,47,141,0.14)]">
+              <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+              </div>
+              <h2 class="text-lg font-bold text-slate-800">Exam closed</h2>
+              <p class="mt-2 text-sm text-slate-600">${esc(msg)}</p>
+              <a href="./login.html" class="mt-5 inline-block rounded-full bg-[#042F8D] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-px">Leave the exam portal</a>
+            </div>`;
+        }
+      } else {
+        setLoginStatus(msg, false);
+      }
+      return;
+    }
+    const state = data.state;
+    if (state === 'result' && data.result) { showResult(data.result); return; }
+    if (state === 'submitted' || (data.ok && state !== 'in_progress' && !data.result)) { showWaiting(auto); return; }
+    if (state === 'result') { showResult(data.result || data); return; }
+
+    // in_progress → render the exam.
+    knownExpired = false;
+    token = data.token;
+    questions = Array.isArray(data.questions) ? data.questions : [];
+    clockOffset = data.server_now ? new Date(data.server_now).getTime() - Date.now() : 0;
+    expiresAtMs = data.expires_at ? new Date(data.expires_at).getTime() : 0;
+    const e = data.exam || {};
+    if (subtitle) subtitle.textContent = [e.exam_title, e.training_title].filter(Boolean).join(' · ');
+    if (metaEl) {
+      metaEl.innerHTML = `<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h3 class="text-sm font-bold text-[#042F8D]">${esc(e.exam_title || '')}</h3>
+        <p class="mt-0.5 text-xs text-slate-500">${esc(e.training_title || '')}${e.instructor ? ' · ' + esc(e.instructor) : ''}${e.duration_minutes ? ' · ' + e.duration_minutes + ' min' : ''}</p>
+        ${e.instructions ? `<p class="mt-2 whitespace-pre-line rounded-lg border border-[#042F8D]/15 bg-[#042F8D]/5 px-3 py-2 text-sm text-slate-700">${esc(e.instructions)}</p>` : ''}</div>`;
+    }
+    if (questionsEl) {
+      if (!questions.length) {
+        questionsEl.innerHTML = `<p class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-sm text-slate-400">This exam has no questions.</p>`;
+      } else {
+        questionsEl.innerHTML = questions.map((q, i) => renderQuestion(q, i, data.saved)).join('');
+        wireInputs();
+      }
+    }
+    hide(loginCard); hide(statePanel); show(examCard);
+    if (examCard) examCard.classList.remove('hidden');
+    setSaveStatus('Answers auto-save as you go.', undefined);
+    startTimer();
   };
 
-  const show = (/** @type {HTMLElement|null} */ el) => { if (el) { el.classList.remove('hidden'); el.classList.add('block'); } };
-  const hide = (/** @type {HTMLElement|null} */ el) => { if (el) { el.classList.add('hidden'); el.classList.remove('block'); } };
-
-  // ── Render one question by type ─────────────────────────────────
+   //RENDER ONE QUESTION BY TYPE
   const renderQuestion = (/** @type {any} */ q, /** @type {number} */ idx, /** @type {any} */ saved) => {
     const type = q.question_type;
     const img = q.image_url ? `<img src="${esc(q.image_url)}" alt="" class="mb-3 max-h-56 w-auto rounded-lg border border-slate-200 object-contain" />` : '';
@@ -77,10 +158,10 @@
 
     let field = '';
     if (type === 'MULTIPLE_CHOICE' || type === 'TRUE_FALSE') {
-      field = `<div class="space-y-2">${(q.answers || []).map((/** @type {any} */ a, i) => `
+      field = `<div class="space-y-2">${(q.answers || []).map((/** @type {any} */ a, /** @type {number} */ i) => `
         <label class="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm hover:border-[#042F8D]">
           <input type="radio" name="q${q.question_id}" value="${a.answer_id}" class="accent-[#042F8D]" ${selectedIds.includes(Number(a.answer_id)) ? 'checked' : ''} />
-          <span class="font-bold text-[#042F8D]">${esc(a.answer_key || letters[i] || (i + 1))}.</span>
+          <span class="font-bold text-[#042F8D]">${esc(a.answer_key || String.fromCharCode(65 + i))}.</span>
           <span>${esc(a.answer_text)}</span>
         </label>`).join('')}</div>`;
     } else if (type === 'MATCH_ITEMS') {
@@ -92,7 +173,7 @@
           <span class="text-slate-400">→</span>
           <select data-matchkey="${esc(a.match_key)}" class="flex-1 rounded-md border border-slate-200 px-2 py-1">
             <option value="">Select…</option>
-            ${values.map((v) => `<option value="${esc(v)}" ${String(cur) === String(v) ? 'selected' : ''}>${esc(v)}</option>`).join('')}
+            ${values.map((/** @type {any} */ v) => `<option value="${esc(v)}" ${String(cur) === String(v) ? 'selected' : ''}>${esc(v)}</option>`).join('')}
           </select></div>`;
       }).join('')}</div>`;
     } else if (type === 'CHRONOLOGICAL_ORDERING') {
@@ -109,33 +190,15 @@
     return `<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" data-qid="${q.question_id}" data-type="${type}">${head}${field}</div>`;
   };
 
-  // ── Collect one question's response object ──────────────────────
-  const collectOne = (/** @type {HTMLElement} */ card) => {
-    const type = card.dataset.type;
-    /** @type {any} */ const r = { question_id: Number(card.dataset.qid) };
-    if (type === 'MULTIPLE_CHOICE' || type === 'TRUE_FALSE') {
-      const sel = /** @type {HTMLInputElement|null} */ (card.querySelector('input[type=radio]:checked'));
-      r.selected_ids = sel ? [Number(sel.value)] : [];
-    } else if (type === 'MATCH_ITEMS') {
-      const obj = {};
-      card.querySelectorAll('select[data-matchkey]').forEach((s) => {
-        const el = /** @type {HTMLSelectElement} */ (s);
-        if (el.value) obj[el.dataset.matchkey || ''] = el.value;
-      });
-      r.response_json = obj;
-    } else if (type === 'CHRONOLOGICAL_ORDERING') {
-      const items = Array.from(card.querySelectorAll('input[data-answerid]')).map((i) => {
-        const el = /** @type {HTMLInputElement} */ (i);
-        return { id: Number(el.dataset.answerid), pos: Number.parseInt(el.value, 10) };
-      }).filter((x) => Number.isFinite(x.pos)).sort((a, b) => a.pos - b.pos);
-      r.response_json = items.map((x) => x.id);
-    } else {
-      const ta = /** @type {HTMLTextAreaElement|null} */ (card.querySelector('textarea[data-text]'));
-      r.response_text = ta ? ta.value : '';
-    }
-    return r;
+  const wireInputs = () => {
+    if (!questionsEl) return;
+    questionsEl.querySelectorAll('[data-qid]').forEach((card) => {
+      const el = /** @type {HTMLElement} */ (card);
+      el.addEventListener('change', () => autoSave(el));
+      el.querySelectorAll('textarea[data-text]').forEach((ta) =>
+        ta.addEventListener('input', () => autoSave(el)));
+    });
   };
-  const collectAll = () => Array.from(questionsEl.querySelectorAll('[data-qid]')).map((c) => collectOne(/** @type {HTMLElement} */ (c)));
 
   // ── Auto-save (debounced per question) ──────────────────────────
   const saveTimers = new Map();
@@ -158,7 +221,7 @@
           setSaveStatus('Time is up.', false);
           knownExpired = true;
           stopTimer();
-          showWaiting({}, true);
+          showWaiting(true);
         } else {
           setSaveStatus('Could not save.', false);
         }
@@ -166,24 +229,48 @@
     }, 700));
   };
 
-  const wireInputs = () => {
-    questionsEl.querySelectorAll('[data-qid]').forEach((card) => {
-      const el = /** @type {HTMLElement} */ (card);
-      el.addEventListener('change', () => autoSave(el));
-      el.querySelectorAll('textarea[data-text]').forEach((ta) =>
-        ta.addEventListener('input', () => autoSave(el)));
-    });
-  };
+   //#region UTILS
+   const statusMessage = (/** @type {string} */ s) => ({
+      invalid: 'Invalid username or password.',
+      disabled: 'This exam credential has been disabled.',
+      expired: 'This exam credential has expired.',
+      not_assigned: 'You are not assigned to this training.',
+      exam_unavailable: 'This exam is not currently available.',
+      not_yet_available: 'This exam is not available yet. Please try again at the scheduled time.',
+   }[s] || 'Unable to sign in.');
 
-  // ── Timer ───────────────────────────────────────────────────────
-  const fmt = (/** @type {number} */ ms) => {
+   const stopTimer = () => {
+     if (timerHandle) { 
+      clearInterval(timerHandle); timerHandle = null; } 
+     if (timerEl) { 
+      timerEl.classList.add('hidden'); timerEl.classList.remove('flex'); 
+     } 
+   };
+   
+  const setSaveStatus = (/** @type {string} */ msg, /** @type {boolean | undefined} */ ok = undefined) => {
+    if (!saveStatus) return;
+    saveStatus.textContent = msg;
+    saveStatus.classList.toggle('text-red-600', ok === false);
+    saveStatus.classList.toggle('text-emerald-600', ok === true);
+    saveStatus.classList.toggle('text-slate-500', ok === undefined);
+   };
+
+   const startTimer = () => {
+    show(timerEl); if (timerEl) { timerEl.classList.remove('hidden'); timerEl.classList.add('flex'); }
+    tickTimer();
+    timerHandle = setInterval(tickTimer, 1000);
+   };
+
+     //Timer
+   const fmt = (/** @type {number} */ ms) => {
     if (ms < 0) ms = 0;
     const s = Math.floor(ms / 1000);
     const m = Math.floor(s / 60);
     const ss = s % 60;
     return `${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
-  };
-  const tickTimer = () => {
+   };
+
+   const tickTimer = () => {
     const remaining = expiresAtMs - serverNow();
     if (timerText) timerText.textContent = fmt(remaining);
     if (timerEl) {
@@ -191,27 +278,28 @@
       timerEl.classList.toggle('bg-white/15', remaining > 60 * 1000);
     }
     if (remaining <= 0) { finishByTimeout(); }
-  };
-  const startTimer = () => {
-    show(timerEl); if (timerEl) { timerEl.classList.remove('hidden'); timerEl.classList.add('flex'); }
-    tickTimer();
-    timerHandle = setInterval(tickTimer, 1000);
-  };
-  const stopTimer = () => { if (timerHandle) { clearInterval(timerHandle); timerHandle = null; } if (timerEl) { timerEl.classList.add('hidden'); timerEl.classList.remove('flex'); } };
+   };
 
-  const finishByTimeout = async () => {
+   const finishByTimeout = async () => {
     if (submitting || knownExpired) return;
     stopTimer();
     await doSubmit(true);
-  };
+   };
+   //#endregion
 
-  // ── Submit ──────────────────────────────────────────────────────
+  //#endregion
+
+  //#region SUBMIT EXAM
+  $('examSubmitBtn')?.addEventListener('click', () => {
+    if (window.confirm('Submit your exam? You will not be able to change your answers afterwards.')) 
+      doSubmit(false);
+  });
   const doSubmit = async (/** @type {boolean} */ auto) => {
     if (submitting || !token) return;
     submitting = true;
     const btn = /** @type {HTMLButtonElement|null} */ ($('examSubmitBtn'));
     if (btn) btn.setAttribute('disabled', 'true');
-    setSaveStatus(auto ? 'Time is up — submitting…' : 'Submitting…');
+    setSaveStatus(auto ? 'Time is up — submitting…' : 'Submitting…', undefined);
     try {
       const r = await fetch(`${API_BASE}/api/exam/submit`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -221,7 +309,7 @@
       // The credential is disabled once the attempt is finalized, so re-login
       // would fail. Show the post-exam state screen directly.
       if (r && (r.ok || r.status === 'expired')) {
-        showWaiting({}, auto);
+        showWaiting(auto);
       } else {
         await refreshState(auto);
       }
@@ -232,8 +320,7 @@
     }
   };
 
-  // ── State screens (waiting / result) ────────────────────────────
-  const showWaiting = (/** @type {any} */ data, auto) => {
+  const showWaiting = (/** @type {boolean} */ auto) => {
     hide(examCard); hide(loginCard); stopTimer();
     if (statePanel) {
       statePanel.classList.remove('hidden');
@@ -254,7 +341,7 @@
     const badge = res.passed == null
       ? `<span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">No pass mark</span>`
       : `<span class="rounded-full px-3 py-1 text-xs font-bold ${pass ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">${pass ? 'PASSED' : 'DID NOT PASS'}</span>`;
-    const qhtml = (res.questions || []).map((/** @type {any} */ q, i) => `
+    const qhtml = (res.questions || []).map((/** @type {any} */ q, /** @type {number} */ i) => `
       <div class="rounded-xl border border-slate-200 bg-white p-3">
         <div class="flex items-start justify-between gap-3">
           <p class="text-sm font-semibold text-slate-700">${i + 1}. ${esc(q.question_text)}</p>
@@ -292,90 +379,36 @@
     } catch (_) { setSaveStatus('Could not refresh — please retry.', false); }
   };
 
-  // ── Apply a login/state payload ─────────────────────────────────
-  const statusMessage = (/** @type {string} */ s) => ({
-    invalid: 'Invalid username or password.',
-    disabled: 'This exam credential has been disabled.',
-    expired: 'This exam credential has expired.',
-    not_assigned: 'You are not assigned to this training.',
-    exam_unavailable: 'This exam is not currently available.',
-    not_yet_available: 'This exam is not available yet. Please try again at the scheduled time.',
-  }[s] || 'Unable to sign in.');
-
-  const applyLogin = (/** @type {any} */ data, auto) => {
-    if (!data || data.ok === false) {
-      const msg = statusMessage(data && data.status);
-      // If the user is already inside the exam, show the message as a state
-      // screen rather than writing to the (possibly hidden) login form.
-      if (examCard && !examCard.classList.contains('hidden')) {
-        hide(examCard); stopTimer();
-        if (statePanel) {
-          statePanel.classList.remove('hidden');
-          statePanel.innerHTML = `
-            <div class="mx-auto max-w-lg rounded-3xl bg-white p-8 text-center shadow-[0_20px_60px_rgba(4,47,141,0.14)]">
-              <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-              </div>
-              <h2 class="text-lg font-bold text-slate-800">Exam closed</h2>
-              <p class="mt-2 text-sm text-slate-600">${esc(msg)}</p>
-              <a href="./login.html" class="mt-5 inline-block rounded-full bg-[#042F8D] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-px">Leave the exam portal</a>
-            </div>`;
-        }
-      } else {
-        setLoginStatus(msg, false);
-      }
-      return;
-    }
-    const state = data.state;
-    if (state === 'result' && data.result) { showResult(data.result); return; }
-    if (state === 'submitted' || (data.ok && state !== 'in_progress' && !data.result)) { showWaiting(data, auto); return; }
-    if (state === 'result') { showResult(data.result || data); return; }
-
-    // in_progress → render the exam.
-    knownExpired = false;
-    token = data.token;
-    questions = Array.isArray(data.questions) ? data.questions : [];
-    clockOffset = data.server_now ? new Date(data.server_now).getTime() - Date.now() : 0;
-    expiresAtMs = data.expires_at ? new Date(data.expires_at).getTime() : 0;
-    const e = data.exam || {};
-    if (subtitle) subtitle.textContent = [e.exam_title, e.training_title].filter(Boolean).join(' · ');
-    if (metaEl) {
-      metaEl.innerHTML = `<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h3 class="text-sm font-bold text-[#042F8D]">${esc(e.exam_title || '')}</h3>
-        <p class="mt-0.5 text-xs text-slate-500">${esc(e.training_title || '')}${e.instructor ? ' · ' + esc(e.instructor) : ''}${e.duration_minutes ? ' · ' + e.duration_minutes + ' min' : ''}</p>
-        ${e.instructions ? `<p class="mt-2 whitespace-pre-line rounded-lg border border-[#042F8D]/15 bg-[#042F8D]/5 px-3 py-2 text-sm text-slate-700">${esc(e.instructions)}</p>` : ''}</div>`;
-    }
-    if (!questions.length) {
-      questionsEl.innerHTML = `<p class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-sm text-slate-400">This exam has no questions.</p>`;
+   //Collect one question's response object
+  const collectOne = (/** @type {HTMLElement} */ card) => {
+    const type = card.dataset.type;
+    /** @type {any} */ const r = { question_id: Number(card.dataset.qid) };
+    if (type === 'MULTIPLE_CHOICE' || type === 'TRUE_FALSE') {
+      const sel = /** @type {HTMLInputElement|null} */ (card.querySelector('input[type=radio]:checked'));
+      r.selected_ids = sel ? [Number(sel.value)] : [];
+    } else if (type === 'MATCH_ITEMS') {
+      const obj = /** @type {Record<string, string>} */ ({});
+      card.querySelectorAll('select[data-matchkey]').forEach((s) => {
+        const el = /** @type {HTMLSelectElement} */ (s);
+        if (el.value) obj[el.dataset.matchkey || ''] = el.value;
+      });
+      r.response_json = obj;
+    } else if (type === 'CHRONOLOGICAL_ORDERING') {
+      const items = Array.from(card.querySelectorAll('input[data-answerid]')).map((i) => {
+        const el = /** @type {HTMLInputElement} */ (i);
+        return { id: Number(el.dataset.answerid), pos: Number.parseInt(el.value, 10) };
+      }).filter((x) => Number.isFinite(x.pos)).sort((a, b) => a.pos - b.pos);
+      r.response_json = items.map((x) => x.id);
     } else {
-      questionsEl.innerHTML = questions.map((q, i) => renderQuestion(q, i, data.saved)).join('');
-      wireInputs();
+      const ta = /** @type {HTMLTextAreaElement|null} */ (card.querySelector('textarea[data-text]'));
+      r.response_text = ta ? ta.value : '';
     }
-    hide(loginCard); hide(statePanel); show(examCard);
-    if (examCard) examCard.classList.remove('hidden');
-    setSaveStatus('Answers auto-save as you go.');
-    startTimer();
+    return r;
   };
-
-  // ── Login form ──────────────────────────────────────────────────
-  $('examLoginForm')?.addEventListener('submit', async (ev) => {
-    ev.preventDefault();
-    const u = /** @type {HTMLInputElement} */ ($('examUsername')).value.trim();
-    const p = /** @type {HTMLInputElement} */ ($('examPassword')).value;
-    if (!u || !p) { setLoginStatus('Enter your username and password.', false); return; }
-    creds = { username: u, password: p };
-    setLoginStatus('Signing in…');
-    try {
-      const data = await fetch(`${API_BASE}/api/exam/login`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(creds),
-      }).then((r) => r.json());
-      applyLogin(data, false);
-    } catch (_) { setLoginStatus('Could not reach the server.', false); }
-  });
-
-  $('examSubmitBtn')?.addEventListener('click', () => {
-    if (window.confirm('Submit your exam? You will not be able to change your answers afterwards.')) doSubmit(false);
-  });
+  const collectAll = () => questionsEl
+    ? Array.from(questionsEl.querySelectorAll('[data-qid]')).map((c) => collectOne(/** @type {HTMLElement} */ (c)))
+    : [];
+  //#endregion
 
   // Warn before leaving an active exam.
   window.addEventListener('beforeunload', (e) => {

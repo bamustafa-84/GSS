@@ -12,7 +12,6 @@
  * All members live on the global (window) scope on purpose — the app
  * is a set of classic <script> files, not ES modules.
  */
-'use strict';
 
 /* ------------------------------------------------------------------
  * Persistence keys (localStorage)
@@ -262,30 +261,4 @@ const GSSSession = Object.freeze({
       return res;
     });
   };
-})();
-
-/* ------------------------------------------------------------------
- * Permission-aware UI gating (GSSPerms)
- * ------------------------------------------------------------------
- * The permission engine now lives in its own file for easier
- * troubleshooting: js/permissions-engine.js (loaded immediately after
- * this file on every page). It depends on API_BASE and GSSSession above.
- * ---------------------------------------------------------------- */
-
-/* ------------------------------------------------------------------
- * Dashboard statistic: real number of trainees who completed training.
- * Replaces the hard-coded placeholder when the stat element is present.
- * ---------------------------------------------------------------- */
-(() => {
-  if (typeof document === 'undefined') return;
-  const fill = () => {
-    const el = document.getElementById('statTraineesTrained');
-    if (!el) return;
-    fetch(`${API_BASE}/api/stats/trainees-trained`, { headers: { Accept: 'application/json' } })
-      .then((r) => r.json())
-      .then((d) => { if (d && typeof d.count === 'number') el.textContent = '+' + d.count; })
-      .catch(() => { /* keep the static fallback */ });
-  };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fill);
-  else fill();
 })();

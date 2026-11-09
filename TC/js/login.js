@@ -5,78 +5,65 @@
 // which is loaded before this file. Wrapped in an IIFE so its locals
 // never collide with translation.js globals.
 (() => {
-  'use strict';
 
+  //#region GET LANGUAGE
   // `loginTranslations` and `GSS_LANG_KEY` come from translation.js.
   const dictFor = (/** @type {string} */ lang) =>
     /** @type {Record<string, string>} */ (
       loginTranslations[/** @type {keyof typeof loginTranslations} */ (lang)] || loginTranslations.en
-    );
+  );
 
   // Read the shared language; anything other than 'fr' defaults to English.
-  const getStoredLang = () => {
-    const saved = localStorage.getItem(GSS_LANG_KEY);
-    return saved === 'fr' || saved === 'en' ? saved : 'en';
-  };
-
-  let currentLang = getStoredLang();
-
+  let currentLang = localStorage.getItem(GSS_LANG_KEY) || 'en';
   const langButtons = Array.from(document.querySelectorAll('[data-lang]')).slice(0, 2);
-
-  // ── DOM references ──────────────────────────────────────────────
-  const pwd = /** @type {HTMLInputElement | null} */ (document.getElementById('password'));
-  const toggleBtn = document.getElementById('togglePassword');
-  const eyeOpen = document.getElementById('eyeOpen');
-  const eyeClosed = document.getElementById('eyeClosed');
-  const form = /** @type {HTMLFormElement | null} */ (document.getElementById('loginForm'));
-  const statusEl = document.getElementById('formStatus');
-  const yearEl = document.getElementById('year');
-  const rememberEl = /** @type {HTMLInputElement | null} */ (document.getElementById('remember'));
-
-
-  // The username of an account that authenticated but must change its password
-  // before entering the app (first-login flow).
-  let pendingUsername = '';
-
+  //#endregion
+ 
+  //#region APPLY DEFAULT LANGUAGE (ENG)                                                                 E
   // ── Apply the selected language across the login page ───────────
-  const applyLanguage = (/** @type {string} */ lang) => {
-    const dict = dictFor(lang);
-    currentLang = lang;
+    const applyLanguage = (/** @type {string} */ lang) => {
+      const dict = dictFor(lang);
+      currentLang = lang;
 
-    document.documentElement.lang = lang;
-    document.title = dict.title;
+      document.documentElement.lang = lang;
+      document.title = dict.title;
 
-    document.querySelectorAll('[data-i18n]').forEach((el) => {
-      const key = el.getAttribute('data-i18n');
-      if (key && dict[key] != null) el.textContent = dict[key];
-    });
+      document.querySelectorAll('[data-i18n]').forEach((el) => {
+        const key = el.getAttribute('data-i18n');
+        if (key && dict[key] != null) el.textContent = dict[key];
+      });
 
-    document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
-      const key = el.getAttribute('data-i18n-placeholder');
-      if (key && dict[key] != null) /** @type {HTMLInputElement} */ (el).placeholder = dict[key];
-    });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (key && dict[key] != null) /** @type {HTMLInputElement} */ (el).placeholder = dict[key];
+      });
 
-    // Active/inactive states for the FR/EN buttons (mirrors tc.html).
-    langButtons.forEach((btn) => {
-      const active = btn.getAttribute('data-lang') === lang;
-      btn.classList.toggle('bg-[#042F8D]', active);
-      btn.classList.toggle('text-white', active);
-      btn.classList.toggle('shadow-sm', active);
-      btn.classList.toggle('text-[#042F8D]', !active);
-    });
+      // Active/inactive states for the FR/EN buttons (mirrors tc.html).
+      langButtons.forEach((btn) => {
+        const active = btn.getAttribute('data-lang') === lang;
+        btn.classList.toggle('bg-[#042F8D]', active);
+        btn.classList.toggle('text-white', active);
+        btn.classList.toggle('shadow-sm', active);
+        btn.classList.toggle('text-[#042F8D]', !active);
+      });
 
-    // Keep the password toggle's aria-label localized.
-    if (toggleBtn) {
-      const shown = pwd && pwd.type === 'text';
-      toggleBtn.setAttribute('aria-label', shown ? dict.hidePassword : dict.showPassword);
-    }
+      // Persist so every other page/panel follows the same language.
+      localStorage.setItem(GSS_LANG_KEY, lang);
+    };
+  //#endregion
 
-    // Persist so every other page/panel follows the same language.
-    localStorage.setItem(GSS_LANG_KEY, lang);
-  };
+  //#region LANGUAGE SWITCHER
+  langButtons.forEach((btn) => {
+    btn.addEventListener('click', () => applyLanguage(btn.getAttribute('data-lang') ?? currentLang));
+  });
+  //#endregion
 
-  // ── Password visibility toggle ──────────────────────────────────
+  //#region PASSWORD VISIBILITY TOGGLE
+   // This section handles the toggling of the password visibility in the login form.
+  const toggleBtn = document.getElementById('togglePassword');
+  const pwd = /** @type {HTMLInputElement | null} */ (document.getElementById('password'));
   if (toggleBtn && pwd) {
+    const eyeOpen = document.getElementById('eyeOpen');
+    const eyeClosed = document.getElementById('eyeClosed');
     toggleBtn.addEventListener('click', () => {
       const show = pwd.type === 'password';
       pwd.type = show ? 'text' : 'password';
@@ -86,24 +73,21 @@
       toggleBtn.setAttribute('aria-label', show ? dict.hidePassword : dict.showPassword);
     });
   }
+  //#endregion
 
-  // ── Language switcher wiring ────────────────────────────────────
-  langButtons.forEach((btn) => {
-    btn.addEventListener('click', () => applyLanguage(btn.getAttribute('data-lang') ?? currentLang));
-  });
+  //#region REMEMBER ME CHECKBOX
+  const rememberEl = /** @type {HTMLInputElement | null} */ (document.getElementById('remember'));
+  if (rememberEl) 
+    rememberEl.checked = true;
+  //#endregion
 
-  // ── Footer year ─────────────────────────────────────────────────
+  //#region SET YEAR IN FOOTER
+  const yearEl = document.getElementById('year');
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
+  //#endregion
 
-  // ── Change-password (first login) modal ────────────────────────
-  const changePwdModal = document.getElementById('changePwdModal');
-  const changePwdForm = /** @type {HTMLFormElement | null} */ (document.getElementById('changePwdForm'));
-  const changePwdStatus = document.getElementById('changePwdStatus');
-  const cpCurrent = /** @type {HTMLInputElement | null} */ (document.getElementById('cpCurrent'));
-  const cpNew = /** @type {HTMLInputElement | null} */ (document.getElementById('cpNew'));
-  const cpConfirm = /** @type {HTMLInputElement | null} */ (document.getElementById('cpConfirm'));
 
-  /** Persist the signed-in user then enter the application. */
+  //#region COMMON UTILS
   const enterApp = () => { window.location.href = './tc.html'; };
 
   const storeUser = (/** @type {any} */ user) => {
@@ -116,45 +100,14 @@
     }
   };
 
-  // ── Auto-login / session persistence (GitHub-like) ──────────────
-  // If a user is already signed in and their account is still valid, skip the
-  // login form and enter the app directly. The stored session is reconciled
-  // against the live account (/api/me) so disabled/deleted users are forced to
-  // sign in again; a network error falls back to the stored session (offline).
-  const attemptAutoLogin = async () => {
-    const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
-    if (!session || !session.username) return;
+  let pendingUsername = '';
+  const changePwdModal = document.getElementById('changePwdModal');
+  const changePwdForm = /** @type {HTMLFormElement | null} */ (document.getElementById('changePwdForm'));
+  const changePwdStatus = document.getElementById('changePwdStatus');
+  const cpCurrent = /** @type {HTMLInputElement | null} */ (document.getElementById('cpCurrent'));
 
-    // A stored session without an API token cannot authorize protected calls
-    // (e.g. a legacy session saved before tokens existed). Force a fresh
-    // sign-in so the server issues a token instead of entering the app blind.
-    if (!session.token) { if (typeof GSSSession !== 'undefined') GSSSession.clear(); return; }
-
-    // Optimistically hide the auth UI to avoid a flash of the login form.
-    document.body.classList.add('gss-auto-login');
-
-    try {
-      const info = await fetch(`${API_BASE}/api/me?username=${encodeURIComponent(session.username)}`, {
-        headers: { Accept: 'application/json' },
-      }).then((r) => r.json());
-
-      if (info && info.ok && info.is_active !== false) {
-        // Refresh the stored role/name from the live account, then enter.
-        if (typeof GSSSession !== 'undefined' && GSSSession.update) {
-          GSSSession.update({ role: info.role, full_name: info.full_name });
-        }
-        enterApp();
-        return;
-      }
-      // Account is disabled or no longer exists → force a fresh sign-in.
-      if (typeof GSSSession !== 'undefined') GSSSession.clear();
-      document.body.classList.remove('gss-auto-login');
-    } catch (_) {
-      // Server unreachable — trust the stored session and enter the app.
-      enterApp();
-    }
-  };
-
+  // The username of an account that authenticated but must change its password
+  // before entering the app (first-login flow).
   const openChangePwd = (/** @type {string} */ username) => {
     pendingUsername = username;
     if (!changePwdModal) { enterApp(); return; }
@@ -166,6 +119,11 @@
     if (changePwdStatus) changePwdStatus.textContent = '';
     if (cpCurrent) window.setTimeout(() => cpCurrent.focus(), 50);
   };
+  //#endregion
+
+  //#region CHANGE-PASSWORD (FIRST LOGIN) MODAL OVERLAY
+  const cpNew = /** @type {HTMLInputElement | null} */ (document.getElementById('cpNew'));
+  const cpConfirm = /** @type {HTMLInputElement | null} */ (document.getElementById('cpConfirm'));
 
   if (changePwdForm) {
     changePwdForm.addEventListener('submit', async (e) => {
@@ -219,90 +177,48 @@
     });
   }
 
-  // ── Forgot password modal ───────────────────────────────────────
-  const forgotLink = document.getElementById('forgotLink');
-  const forgotModal = document.getElementById('forgotModal');
-  const forgotForm = /** @type {HTMLFormElement | null} */ (document.getElementById('forgotForm'));
-  const forgotStatus = document.getElementById('forgotStatus');
-  const closeForgotBtn = document.getElementById('closeForgotBtn');
-  const forgotToLogin = document.getElementById('forgotToLogin');
-  const fpUsername = /** @type {HTMLInputElement | null} */ (document.getElementById('fpUsername'));
-  const fpResult = document.getElementById('fpResult');
-  const fpTempPassword = document.getElementById('fpTempPassword');
-  const fpSubmitBtn = document.getElementById('fpSubmitBtn');
+  // If a user is already signed in and their account is still valid, skip the
+  // login form and enter the app directly. The stored session is reconciled
+  // against the live account (/api/me) so disabled/deleted users are forced to
+  // sign in again; a network error falls back to the stored session (offline).
+  const attemptAutoLogin = async () => {
+    const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
+    if (!session || !session.username) return;
 
-  const openForgot = () => {
-    if (!forgotModal) return;
-    forgotModal.classList.remove('hidden');
-    forgotModal.classList.add('flex');
-    forgotModal.setAttribute('aria-hidden', 'false');
-    document.body.classList.add('overflow-hidden');
-    if (forgotForm) forgotForm.reset();
-    if (forgotStatus) forgotStatus.textContent = '';
-    fpResult?.classList.add('hidden');
-    fpSubmitBtn?.classList.remove('hidden');
-    // Prefill with whatever is already typed in the login username field.
-    const loginEmail = /** @type {HTMLInputElement | null} */ (document.getElementById('email'));
-    if (fpUsername && loginEmail) fpUsername.value = loginEmail.value.trim();
-    if (fpUsername) window.setTimeout(() => fpUsername.focus(), 50);
-  };
+    // A stored session without an API token cannot authorize protected calls
+    // (e.g. a legacy session saved before tokens existed). Force a fresh
+    // sign-in so the server issues a token instead of entering the app blind.
+    if (!session.token) { if (typeof GSSSession !== 'undefined') GSSSession.clear(); return; }
 
-  const closeForgot = () => {
-    if (!forgotModal) return;
-    forgotModal.classList.add('hidden');
-    forgotModal.classList.remove('flex');
-    forgotModal.setAttribute('aria-hidden', 'true');
-    document.body.classList.remove('overflow-hidden');
-  };
+    // Optimistically hide the auth UI to avoid a flash of the login form.
+    document.body.classList.add('gss-auto-login');
 
-  if (forgotLink) forgotLink.addEventListener('click', (e) => { e.preventDefault(); openForgot(); });
-  if (closeForgotBtn) closeForgotBtn.addEventListener('click', closeForgot);
-  if (forgotToLogin) forgotToLogin.addEventListener('click', closeForgot);
-  if (forgotModal) forgotModal.addEventListener('click', (e) => { if (e.target === forgotModal) closeForgot(); });
+    try {
+      const info = await fetch(`${API_BASE}/api/me?username=${encodeURIComponent(session.username)}`, {
+        headers: { Accept: 'application/json' },
+      }).then((r) => r.json());
 
-  if (forgotForm) {
-    forgotForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (!forgotStatus) return;
-      const dict = dictFor(currentLang);
-      const username = fpUsername ? fpUsername.value.trim() : '';
-
-      forgotStatus.classList.remove('text-emerald-600');
-      forgotStatus.classList.add('text-red-600');
-      if (!username) { forgotStatus.textContent = dict.fpErrRequired; return; }
-
-      try {
-        const res = await fetch(`${API_BASE}/api/forgot-password`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username }),
-        });
-        const data = await res.json().catch(() => ({}));
-
-        forgotStatus.classList.remove('text-red-600');
-        forgotStatus.classList.add('text-emerald-600');
-        forgotStatus.textContent = dict.fpSent;
-
-        // No email in this environment: reveal the temporary password and
-        // prefill the login form so the user can sign in and change it.
-        if (data && data.temp_password && fpResult && fpTempPassword) {
-          fpTempPassword.textContent = data.temp_password;
-          fpResult.classList.remove('hidden');
-          fpSubmitBtn?.classList.add('hidden');
-          const loginEmail = /** @type {HTMLInputElement | null} */ (document.getElementById('email'));
-          const loginPwd = /** @type {HTMLInputElement | null} */ (document.getElementById('password'));
-          if (loginEmail) loginEmail.value = username;
-          if (loginPwd) loginPwd.value = data.temp_password;
+      if (info && info.ok && info.is_active !== false) {
+        // Refresh the stored role/name from the live account, then enter.
+        if (typeof GSSSession !== 'undefined' && GSSSession.update) {
+          GSSSession.update({ role: info.role, full_name: info.full_name });
         }
-      } catch (_) {
-        forgotStatus.classList.remove('text-emerald-600');
-        forgotStatus.classList.add('text-red-600');
-        forgotStatus.textContent = dict.errServer;
+        enterApp();
+        return;
       }
-    });
-  }
+      // Account is disabled or no longer exists → force a fresh sign-in.
+      if (typeof GSSSession !== 'undefined') GSSSession.clear();
+      document.body.classList.remove('gss-auto-login');
+    } catch (_) {
+      // Server unreachable — trust the stored session and enter the app.
+      enterApp();
+    }
+  };
+  //#endregion
 
-  // ── Login submit → authenticate against the server ─────────────
+  //#region SIGN IN FORM
+  const form = /** @type {HTMLFormElement | null} */ (document.getElementById('loginForm'));
+  const statusEl = document.getElementById('formStatus'); // Display Error Messages for User
   if (form) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -370,157 +286,10 @@
       }
     });
   }
+  //#endregion
 
-  // ── Sign up modal ───────────────────────────────────────────────
-  const signupModal = document.getElementById('signupModal');
-  const openSignupBtn = document.getElementById('openSignupBtn');
-  const closeSignupBtn = document.getElementById('closeSignupBtn');
-  const signupToLogin = document.getElementById('signupToLogin');
-  const signupForm = /** @type {HTMLFormElement | null} */ (document.getElementById('signupForm'));
-  const signupStatus = document.getElementById('signupStatus');
-  const suToggle = document.getElementById('suTogglePassword');
-  const suPwd = /** @type {HTMLInputElement | null} */ (document.getElementById('suPassword'));
-  const suEyeOpen = document.getElementById('suEyeOpen');
-  const suEyeClosed = document.getElementById('suEyeClosed');
-
-  const openSignup = () => {
-    if (!signupModal) return;
-    signupModal.classList.remove('hidden');
-    signupModal.classList.add('flex');
-    signupModal.setAttribute('aria-hidden', 'false');
-    document.body.classList.add('overflow-hidden');
-    const firstField = document.getElementById('suName');
-    if (firstField) window.setTimeout(() => firstField.focus(), 50);
-  };
-
-  const closeSignup = () => {
-    if (!signupModal) return;
-    signupModal.classList.add('hidden');
-    signupModal.classList.remove('flex');
-    signupModal.setAttribute('aria-hidden', 'true');
-    document.body.classList.remove('overflow-hidden');
-  };
-
-  if (openSignupBtn) {
-    openSignupBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      openSignup();
-    });
-  }
-  if (closeSignupBtn) closeSignupBtn.addEventListener('click', closeSignup);
-  if (signupToLogin) signupToLogin.addEventListener('click', closeSignup);
-
-  // Close on backdrop click.
-  if (signupModal) {
-    signupModal.addEventListener('click', (e) => {
-      if (e.target === signupModal) closeSignup();
-    });
-  }
-  // Close on Escape.
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && signupModal && !signupModal.classList.contains('hidden')) {
-      closeSignup();
-    }
-  });
-
-  // Show/hide the sign-up password.
-  if (suToggle && suPwd) {
-    suToggle.addEventListener('click', () => {
-      const show = suPwd.type === 'password';
-      suPwd.type = show ? 'text' : 'password';
-      suEyeOpen?.classList.toggle('hidden', show);
-      suEyeClosed?.classList.toggle('hidden', !show);
-      const dict = dictFor(currentLang);
-      suToggle.setAttribute('aria-label', show ? dict.hidePassword : dict.showPassword);
-    });
-  }
-
-  // Validate + submit the sign-up form.
-  if (signupForm) {
-    signupForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (!signupStatus) return;
-      const dict = dictFor(currentLang);
-      const nameField = /** @type {HTMLInputElement} */ (signupForm.elements.namedItem('name'));
-      const emailField = /** @type {HTMLInputElement} */ (signupForm.elements.namedItem('email'));
-      const passwordField = /** @type {HTMLInputElement} */ (signupForm.elements.namedItem('password'));
-      const confirmField = /** @type {HTMLInputElement} */ (signupForm.elements.namedItem('confirm'));
-      const name = nameField.value.trim();
-      const email = emailField.value.trim();
-      const pw = passwordField.value;
-      const confirm = confirmField.value;
-      const termsEl = /** @type {HTMLInputElement | null} */ (document.getElementById('suTerms'));
-      const terms = !!termsEl && termsEl.checked;
-
-      signupStatus.classList.remove('text-emerald-600');
-      signupStatus.classList.add('text-red-600');
-
-      if (!name) {
-        signupStatus.textContent = dict.signupErrName;
-        return;
-      }
-      if (!email) {
-        signupStatus.textContent = dict.signupErrUsername;
-        return;
-      }
-      if (pw.length < 8) {
-        signupStatus.textContent = dict.signupErrPwShort;
-        return;
-      }
-      if (pw !== confirm) {
-        signupStatus.textContent = dict.signupErrPwMatch;
-        return;
-      }
-      if (!terms) {
-        signupStatus.textContent = dict.signupErrTerms;
-        return;
-      }
-
-      // Create the account on the server. New accounts are flagged to change
-      // their password on first login.
-      try {
-        const forceChangeCb = /** @type {HTMLInputElement | null} */ (document.getElementById('suForceChange'));
-        const mustChange = !forceChangeCb || forceChangeCb.checked;
-        const roleSel = /** @type {HTMLSelectElement | null} */ (document.getElementById('suRole'));
-        const role = roleSel && roleSel.value ? roleSel.value : 'Candidate';
-        const res = await fetch(`${API_BASE}/api/register`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: email, fullName: name, password: pw, mustChange, role }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!data || !data.ok) {
-          if (data && data.status === 'exists') signupStatus.textContent = dict.signupErrExists;
-          else if (data && data.status === 'weak') signupStatus.textContent = dict.signupErrPwShort;
-          else signupStatus.textContent = dict.signupErrUsername;
-          return;
-        }
-      } catch (_) {
-        signupStatus.textContent = dict.errServer;
-        return;
-      }
-
-      // Success. Prefill the login username and close the modal.
-      signupStatus.classList.remove('text-red-600');
-      signupStatus.classList.add('text-emerald-600');
-      signupStatus.textContent = dict.signupSuccess;
-
-      const loginEmail = /** @type {HTMLInputElement | null} */ (document.getElementById('email'));
-      if (loginEmail) loginEmail.value = email;
-
-      window.setTimeout(() => {
-        closeSignup();
-        signupForm.reset();
-        signupStatus.textContent = '';
-      }, 1200);
-    });
-  }
-
-  // ── Initial apply (default English unless French was chosen) ────
+  // Initial apply (default English unless French was chosen) ────
   applyLanguage(currentLang);
-
-  // Default "remember me" on so sessions persist across browser restarts.
-  if (rememberEl) rememberEl.checked = true;
 
   // Enter the app automatically when a valid session already exists.
   attemptAutoLogin();

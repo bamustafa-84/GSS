@@ -103,29 +103,9 @@
   const wireNotifications = () => {
     const pendingBell = document.getElementById('pendingBell');
     const secretaryBell = document.getElementById('secretaryBell');
-    const notifBell = document.getElementById('notifBell');
-    const notifMenu = document.getElementById('notifMenu');
-
-    // Dropdown open/close for the single bell.
     const closeMenu = () => {
-      notifMenu?.classList.add('hidden');
-      notifBell?.setAttribute('aria-expanded', 'false');
-    };
-    if (notifBell && notifMenu) {
-      notifBell.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const willOpen = notifMenu.classList.contains('hidden');
-        notifMenu.classList.toggle('hidden', !willOpen);
-        notifBell.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
-      });
-      document.addEventListener('click', (e) => {
-        if (!notifMenu.classList.contains('hidden') &&
-            !notifMenu.contains(/** @type {Node} */ (e.target)) &&
-            !notifBell.contains(/** @type {Node} */ (e.target))) {
-          closeMenu();
-        }
-      });
-      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
+      const nav = /** @type {any} */ (window).GSSNav;
+      if (nav && typeof nav.closeMenu === 'function') nav.closeMenu('notifBell');
     }
 
     pendingBell?.addEventListener('click', () => {
@@ -133,7 +113,8 @@
       if (!permitted('10.4', 'view')) return;
       const grid = /** @type {any} */ (window).GSSGrid;
       if (grid && typeof grid.filterByPredicate === 'function') {
-        grid.filterByPredicate('registration', (rec) => String((rec && rec.interview_result) || 'Pending') === 'Pending');
+        const isPending = (/** @type {any} */ record) => String((record && record.interview_result) || 'Pending') === 'Pending';
+        grid.filterByPredicate('registration', isPending);
       }
     });
 
@@ -145,9 +126,11 @@
       let ids = new Set();
       try {
         const d = await fetch(`${API_BASE}/api/applicants/secretary-queue`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
-        (d && Array.isArray(d.applicants) ? d.applicants : []).forEach((a) => ids.add(Number(a.candidate_no)));
+        const applicants = /** @type {any[]} */ (d && Array.isArray(d.applicants) ? d.applicants : []);
+        applicants.forEach((/** @type {any} */ applicant) => ids.add(Number(applicant.candidate_no)));
       } catch (_) { /* noop */ }
-      grid.filterByPredicate('registration', (rec) => ids.has(Number(rec.candidate_no)));
+      const isInQueue = (/** @type {any} */ record) => ids.has(Number(record.candidate_no));
+      grid.filterByPredicate('registration', isInQueue);
     });
   };
 
@@ -340,8 +323,11 @@
   };
 
   const roleLabel = (/** @type {string} */ r) => {
-    const map = { 'Admin': 'roleAdmin', 'Head of Training': 'roleHeadOfTraining', 'Secretary': 'roleSecretary', 'Candidate': 'roleCandidate', 'Instructor': 'roleInstructor' };
-    return t(map[r] || '', r);
+    const map = new Map([
+      ['Admin', 'roleAdmin'], ['Head of Training', 'roleHeadOfTraining'], ['Secretary', 'roleSecretary'],
+      ['Candidate', 'roleCandidate'], ['Instructor', 'roleInstructor'],
+    ]);
+    return t(map.get(r) || '', r);
   };
 
   const renderUsers = (/** @type {any[]} */ users) => {

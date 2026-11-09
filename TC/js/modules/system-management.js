@@ -104,8 +104,6 @@
   // ── Elements ───────────────────────────────────────────────────
   const $ = (/** @type {string} */ id) => document.getElementById(id);
   const sysWrap = $('sysMgmtWrap');
-  const sysBtn = $('sysMgmtBtn');
-  const sysMenu = $('sysMgmtMenu');
   const openUsersBtn = $('openUsersBtn');
   const openPermsBtn = $('openPermsBtn');
   const openDictConfigBtn = $('openDictConfigBtn');
@@ -151,6 +149,7 @@
   /** @type {any} */ let currentUser = null;
   /** @type {any[]} */ let templatesCache = [];
   /** @type {any} */ let currentTpl = null;
+  /** @type {Array<{key:string,label:string}>} */ let reportsCatalog = [];
   /** @type {Set<number>} */ const applySelected = new Set();
   // Monotonic request tokens: a slower/earlier fetch must never overwrite the
   // grid for a newer selection (templates tab + per-user permissions tab).
@@ -185,19 +184,9 @@
   applyAdminVisibility();
   /** @type {any} */ (window).GSSSysMgmt = { applyAdminVisibility };
   const closeMenu = () => {
-    sysMenu?.classList.add('hidden');
-    sysBtn?.setAttribute('aria-expanded', 'false');
+    const nav = /** @type {any} */ (window).GSSNav;
+    if (nav && typeof nav.closeMenu === 'function') nav.closeMenu('sysMgmtBtn');
   };
-  const toggleMenu = () => {
-    if (!sysMenu || !isAdminRole()) return;
-    const willOpen = sysMenu.classList.contains('hidden');
-    sysMenu.classList.toggle('hidden', !willOpen);
-    sysBtn?.setAttribute('aria-expanded', String(willOpen));
-  };
-  sysBtn?.addEventListener('click', (e) => { e.stopPropagation(); toggleMenu(); });
-  document.addEventListener('click', (e) => {
-    if (sysWrap && !sysWrap.contains(/** @type {Node} */ (e.target))) closeMenu();
-  });
 
   openUsersBtn?.addEventListener('click', () => {
     closeMenu();
@@ -241,23 +230,88 @@
         const top = first ? 'border-t-2 border-t-slate-200' : 'border-t border-t-slate-100';
         html += `<tr class="group transition-colors ${theme.row}">`;
         if (first) {
-          html += `<td rowspan="${sec.rows.length}" class="w-[200px] border-r border-t-2 border-slate-200 px-4 py-3 align-middle ${theme.group}">` +
+          html += `<td rowspan="${sec.rows.length}" data-module-group="${sec.n}" data-base-rows="${sec.rows.length}" class="w-[200px] border-r border-t-2 border-slate-200 px-4 py-3 align-middle ${theme.group}">` +
             `<div class="flex items-center gap-3">` +
               `<span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${theme.icon}">${svg(sec.icon)}</span>` +
               `<span class="text-[13px] font-bold leading-tight">${sec.n}. ${esc(t('permSecTitle_' + sec.n, sec.title))}</span>` +
             `</div></td>`;
         }
         html += `<td class="whitespace-nowrap ${top} bg-white px-3 py-3 align-middle text-xs font-semibold tabular-nums text-slate-400 transition-colors group-hover:bg-transparent">${esc(row.no)}</td>`;
-        html += `<td class="whitespace-nowrap ${top} bg-white px-3 py-3 align-middle text-sm font-medium text-slate-700 transition-colors group-hover:bg-transparent">${esc(t('permRowLabel_' + row.no.replace('.', '_'), row.label))}</td>`;
+        const rowLabel = esc(t('permRowLabel_' + row.no.replace('.', '_'), row.label));
+        const isReportsParent = sec.n === 10 && row.no === '10.1' && reportsCatalog.length > 0;
+        const labelInner = isReportsParent
+          ? `<button type="button" class="perms-report-toggle inline-flex items-center gap-2 text-left text-sm font-medium text-slate-700 transition-colors hover:text-[#042F8D]" data-expanded="false" aria-expanded="false">` +
+              `<span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-500">` +
+                `<span class="report-ic-plus">${svg('<path d="M12 5v14"/><path d="M5 12h14"/>')}</span>` +
+                `<span class="report-ic-minus hidden">${svg('<path d="M5 12h14"/>')}</span>` +
+              `</span>${rowLabel}` +
+              `<span class="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">${reportsCatalog.length}</span>` +
+            `</button>`
+          : rowLabel;
+        html += `<td class="whitespace-nowrap ${top} bg-white px-3 py-3 align-middle text-sm font-medium text-slate-700 transition-colors group-hover:bg-transparent">${labelInner}</td>`;
         COLS.forEach((col) => {
           html += `<td class="${top} ${COL_TINT[col]} px-2 py-3 text-center align-middle"><input type="checkbox" data-no="${row.no}" data-col="${col}" class="block mx-auto h-4 w-4 cursor-pointer rounded border-slate-300 accent-[#042F8D] transition-transform hover:scale-110" /></td>`;
         });
         html += `<td class="w-[260px] ${top} bg-white px-4 py-3 align-middle text-xs leading-snug text-slate-500 transition-colors group-hover:bg-transparent">${esc(t('permRowRemark_' + row.no.replace('.', '_'), row.remark))}</td>`;
         html += '</tr>';
+        // Module 10 · Reports — collapsible child rows nested right under 10.1.
+        // They carry no first-column cell (covered by the module group cell,
+        // whose rowspan is widened on expand) and store each grant under
+        // section "10.1.<folder>" so save/load flows through the generic boxes.
+        if (sec.n === 10 && row.no === '10.1' && reportsCatalog.length) {
+          reportsCatalog.forEach((rep, i) => {
+            const no = `10.1.${rep.key}`;
+            const dispNo = `10.1.${i + 1}`;
+            const rtop = 'border-t border-t-slate-100';
+            html += `<tr class="group transition-colors ${theme.row} perms-report-row" data-report-row hidden>`;
+            html += `<td class="whitespace-nowrap ${rtop} bg-white px-3 py-2.5 align-middle text-xs font-semibold tabular-nums text-slate-400 transition-colors group-hover:bg-transparent">${esc(dispNo)}</td>`;
+            html += `<td class="whitespace-nowrap ${rtop} bg-white px-3 py-2.5 align-middle text-sm font-medium text-slate-600 transition-colors group-hover:bg-transparent">` +
+              `<span class="inline-flex items-center gap-2 pl-5"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-slate-300"></span>${esc(rep.label)}</span></td>`;
+            COLS.forEach((col) => {
+              html += `<td class="${rtop} ${COL_TINT[col]} px-2 py-2.5 text-center align-middle"><input type="checkbox" data-no="${esc(no)}" data-col="${col}" class="block mx-auto h-4 w-4 cursor-pointer rounded border-slate-300 accent-[#042F8D] transition-transform hover:scale-110" /></td>`;
+            });
+            html += `<td class="w-[260px] ${rtop} bg-white px-4 py-2.5 align-middle text-xs leading-snug text-slate-500 transition-colors group-hover:bg-transparent">${esc(t('permReportRemarkPre', 'Access to the') + ' ' + rep.label + ' ' + t('permReportRemarkPost', 'report.'))}</td>`;
+            html += '</tr>';
+          });
+        }
       });
     });
     return html;
   };
+
+  /** Fetch the available reports once (dynamic folder discovery). */
+  const ensureReports = async () => {
+    if (reportsCatalog.length) return;
+    try {
+      const d = await fetch(`${API_BASE}/api/reports/list`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
+      reportsCatalog = (d && Array.isArray(d.reports)) ? d.reports : [];
+    } catch (_) { reportsCatalog = []; }
+  };
+
+  /** Wire the Reports (10.1) +/− expander for a grid body (users + templates). */
+  const wireReportToggles = (/** @type {HTMLElement | null} */ grid) => {
+    if (!grid) return;
+    grid.addEventListener('click', (e) => {
+      const btn = /** @type {HTMLElement | null} */ (/** @type {HTMLElement} */ (e.target).closest('.perms-report-toggle'));
+      if (!btn || !grid.contains(btn)) return;
+      const next = btn.getAttribute('data-expanded') !== 'true';
+      btn.setAttribute('data-expanded', String(next));
+      btn.setAttribute('aria-expanded', String(next));
+      const rows = grid.querySelectorAll('tr[data-report-row]');
+      rows.forEach((tr) => { /** @type {HTMLElement} */ (tr).hidden = !next; });
+      // Widen the module group cell so its rowspan covers the revealed rows.
+      const groupCell = /** @type {HTMLTableCellElement | null} */ (grid.querySelector('[data-module-group="10"]'));
+      if (groupCell) {
+        const base = Number(groupCell.getAttribute('data-base-rows')) || 0;
+        groupCell.rowSpan = next ? base + rows.length : base;
+      }
+      const plus = btn.querySelector('.report-ic-plus');
+      const minus = btn.querySelector('.report-ic-minus');
+      if (plus) plus.classList.toggle('hidden', next);
+      if (minus) minus.classList.toggle('hidden', !next);
+    });
+  };
+
   /** @returns {HTMLInputElement[]} */
   const boxesIn = (/** @type {HTMLElement | null} */ tbody) => Array.from(tbody ? tbody.querySelectorAll('input[type="checkbox"]') : []);
   /** @returns {HTMLInputElement[]} */
@@ -658,13 +712,16 @@
 
   let gridBuilt = false;
   let returnToUsersOnClose = false;
-  function openPerms(/** @type {string} */ preselect, /** @type {string} */ tab, /** @type {boolean=} */ returnToUsers) {
+  async function openPerms(/** @type {string} */ preselect, /** @type {string} */ tab, /** @type {boolean=} */ returnToUsers) {
     if (!permsOverlay) return;
     returnToUsersOnClose = !!returnToUsers;
     if (!gridBuilt) {
+      await ensureReports();
       const html = renderGrid() || '';
       if (permsGrid) permsGrid.innerHTML = html;
       if (permsTplGrid) permsTplGrid.innerHTML = html;
+      wireReportToggles(permsGrid);
+      wireReportToggles(permsTplGrid);
       gridBuilt = true;
     }
     permsOverlay.classList.remove('hidden');

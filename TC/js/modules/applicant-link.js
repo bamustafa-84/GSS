@@ -1299,7 +1299,8 @@ const canAckExam = () => canWriteSection('6.1');
 const loadExamPanelFields = (/** @type {Record<string, any> | null | undefined} */ record) => {
   const decision = record && record.exam_decision;
   document.querySelectorAll('input[name="Decision"][dbname="exam_decision"]').forEach((el) => {
-    /** @type {HTMLInputElement} */ (el).checked = decision != null && decision !== '' && el.value === String(decision);
+    const input = /** @type {HTMLInputElement} */ (el);
+    input.checked = decision != null && decision !== '' && input.value === String(decision);
   });
   const obs = byId('exam-observation');
   if (obs) obs.value = (record && record.exam_observations) || '';

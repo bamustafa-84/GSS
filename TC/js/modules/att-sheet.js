@@ -28,8 +28,10 @@
 (() => {
   'use strict';
 
+  //#region ATTENDANCE SHEET
+  // Monthly attendance modal: training selection, date navigation, cell editing, persistence, and export.
+  //#region SETUP AND SHARED HELPERS
   const overlay = document.getElementById('attSheetOverlay');
-  const openBtn = document.getElementById('attSheetBtn');
   const closeBtn = document.getElementById('attSheetClose');
   const exportBtn = document.getElementById('attSheetExport');
   const tabsWrap = document.getElementById('attSheetTabs');
@@ -47,7 +49,7 @@
   const instructorName = document.getElementById('attSheetInstructorName');
   const rangePills = document.getElementById('attSheetRangePills');
 
-  if (!overlay || !openBtn || !tabsWrap || !tbody || !theadRow || !yearInput) return;
+  if (!overlay || !tabsWrap || !tbody || !theadRow || !yearInput) return;
 
   // Selected year + month (0-based) driving the grid. Defaults to the current
   // month (Part 3); preserved across tab switches once the sheet is open.
@@ -58,8 +60,7 @@
   let titles = [];
   /** @type {string} currently active training-title code */
   let activeTitle = '';
-  /** @type {Record<string, { from: string, to: string, dateFrom: string, dateTo: string, trainer: string }>} title code → default times + date range */
-  let trainingMeta = {};
+  /** @type {Record<string, { title: string, from: string, to: string, dateFrom: string, dateTo: string, trainer: string }>} */ let trainingMeta = {};
 
   // Edit rights come from the Permissions matrix (section 10.2 Attendance
   // Sheet): anyone granted add/edit may tick / clear / save; view-only users
@@ -111,16 +112,21 @@
 
   const daysInMonth = (/** @type {number} */ year, /** @type {number} */ month) =>
     new Date(year, month + 1, 0).getDate();
+  //#endregion
 
+  //#region TRAINING CATALOG AND PARTICIPANTS
+  // Resolve the user's courses, distinguish sessions, and load assigned participants.
   // ── Resolve the instructor's training titles ───────────────────
   // Fallback: read the Training Title <select> options (kept in sync with the
   // dictionary) so the sheet still works when the API is unreachable.
+  /** @returns {{ code: string, label: string }[]} */
   const selectTitles = () => {
     const sel = document.getElementById('att-TrainingTitle');
     if (!sel) return [];
-    return Array.from(sel.querySelectorAll('option'))
-      .map((o) => ({ code: /** @type {HTMLOptionElement} */ (o).value, label: o.textContent || '' }))
-      .filter((x) => x.code);
+    const options = /** @type {HTMLOptionElement[]} */ (Array.from(sel.querySelectorAll('option')));
+    return options
+      .map((option) => ({ code: option.value, label: option.textContent || '' }))
+      .filter((title) => title.code);
   };
 
   const dictTitles = () =>
@@ -128,12 +134,13 @@
       .then((r) => r.json())
       .then((data) => {
         const useFr = lang() === 'fr';
-        const items = Array.isArray(data.items) ? data.items : [];
+        const items = /** @type {any[]} */ (Array.isArray(data.items) ? data.items : []);
         const mapped = items.map((/** @type {any} */ it) => ({
           code: it.code || it.en_title || it.label || '',
           label: (useFr ? it.fr_title : it.en_title) || it.label || it.en_title || it.fr_title || '',
-        })).filter((x) => x.code);
-        return mapped.length ? mapped : selectTitles();
+        }));
+        const validMapped = /** @type {{ code: string, label: string }[]} */ (mapped.filter((/** @type {any} */ title) => title.code));
+        return validMapped.length ? validMapped : selectTitles();
       })
       .catch(() => selectTitles());
 
@@ -157,7 +164,7 @@
     try {
       const data = await fetch(`${API_BASE}/api/training${query}`, { headers: { Accept: 'application/json' } })
         .then((r) => r.json());
-      const rows = Array.isArray(data.trainings) ? data.trainings : [];
+      const rows = /** @type {any[]} */ (Array.isArray(data.trainings) ? data.trainings : []);
       // Same title can now appear more than once (different dates/times are
       // separate sessions). Count titles so duplicates can be disambiguated by
       // their date range in the tab label.
@@ -184,8 +191,9 @@
           ? `${title} · ${rangeLabel(row.date_from, row.date_to)}`
           : title;
         return { code, label };
-      }).filter((x) => x.code);
-      if (mapped.length) return mapped;
+      });
+      const validMapped = /** @type {{ code: string, label: string }[]} */ (mapped.filter((/** @type {any} */ title) => title.code));
+      if (validMapped.length) return validMapped;
     } catch (_) { /* fall through to dictionary */ }
 
     // No training rows: privileged roles still see every dictionary title; a
@@ -223,17 +231,19 @@
   /**
    * The students assigned to a training as { id, name } pairs. A student is
    * "assigned" once they have attendance for the training (see training_students).
-   * `id` is the candidate_no used to persist attendance.
-   * @param {string} titleCode
+  * `id` is the candidate_no used to persist attendance.
    * @returns {Promise<{ id: string, name: string }[]>}
    */
-  const getParticipants = (code) => {
+  const getParticipants = (/** @type {string} */ code) => {
     const title = (trainingMeta[code] && trainingMeta[code].title) || code;
     return fetch(`${API_BASE}/api/training/students?training_id=${encodeURIComponent(code)}&title=${encodeURIComponent(title)}`, { headers: { Accept: 'application/json' } })
       .then((r) => r.json())
-      .then((data) => (Array.isArray(data.students) ? data.students : [])
-        .map((/** @type {any} */ s) => ({ id: s.candidate_no != null ? String(s.candidate_no) : '', name: s.full_name || '' }))
-        .filter((p) => p.id && p.name))
+      .then((data) => {
+        const students = /** @type {any[]} */ (Array.isArray(data.students) ? data.students : []);
+        return students
+          .map((/** @type {any} */ student) => ({ id: student.candidate_no != null ? String(student.candidate_no) : '', name: student.full_name || '' }))
+          .filter((/** @type {{ id: string, name: string }} */ participant) => participant.id && participant.name);
+      })
       .catch(() => []);
   };
 
@@ -255,7 +265,10 @@
     });
     return kept;
   };
+  //#endregion
 
+  //#region ATTENDANCE DATA AND SCHEDULING
+  // Store attendance by participant/day and enforce the active training's date range.
   // ── Attendance data store (DB-backed, per title + month) ──────
   // records[candidateNo][day] = { status, arrival, departure, observation }
   /** @type {Record<string, Record<string, { status: string, arrival: string, departure: string, observation: string }>>} */
@@ -373,7 +386,10 @@
       body: JSON.stringify(body),
     }).catch(() => { /* best-effort */ });
   };
+  //#endregion
 
+  //#region CALENDAR NAVIGATION AND COURSE TABS
+  // Classify courses by completion/month and render year, month, and course selectors.
   // ── Tabs ───────────────────────────────────────────────────────
 
   /** A course is "completed" once its training end date is before today. */
@@ -548,7 +564,10 @@
       tabsWrap.appendChild(btn);
     });
   };
+  //#endregion
 
+  //#region DAILY GRID RENDERING
+  // Render participant-by-day cells, status indicators, exclusion locks, and select-all headers.
   // ── Grid (participants × days) ─────────────────────────────────
 
   /** Localized status label for a code (uses PRES_STATUS_OPTS from translations). */
@@ -759,14 +778,17 @@
 
     for (let d = 1; d <= total; d++) syncDayHeader(d);
   };
+  //#endregion
 
+  //#region BULK DAY UPDATES
+  // Apply select-all/clear-all changes for one day and persist the affected cells.
   // ── Part 4: tick / untick every student for one day ─────────────
   const toggleDay = async (/** @type {number} */ day, /** @type {boolean} */ checked) => {
     if (!canEdit() || !activeTitle) return;
     if (!isDayInTrainingRange(day)) return;
     const { arrival, departure } = defaultTimes();
     const buttons = Array.from(tbody.querySelectorAll(`button[data-day="${day}"]`));
-    const jobs = [];
+    const jobs = /** @type {Promise<unknown>[]} */ ([]);
     buttons.forEach((el) => {
       const btn = /** @type {HTMLButtonElement} */ (el);
       const key = btn.dataset.key || '';
@@ -793,7 +815,10 @@
     });
     await Promise.all(jobs);
   };
+  //#endregion
 
+  //#region CELL EDITOR AND PERMISSION MODE
+  // Edit one attendance cell, save/reset it, and show editable or view-only controls.
   // ── Cell editor modal ──────────────────────────────────────────
   const cellOverlay = document.getElementById('attCellOverlay');
   const cellStatus = /** @type {HTMLSelectElement | null} */ (document.getElementById('attCellStatus'));
@@ -917,7 +942,10 @@
       badge.classList.add('hidden');
     }
   };
+  //#endregion
 
+  //#region MODAL LIFECYCLE AND CONTROLS
+  // Open/close the sheet and respond to year, clear, save, and language changes.
   // ── Open / close ───────────────────────────────────────────────
   const isOpen = () => !overlay.classList.contains('hidden');
 
@@ -960,7 +988,7 @@
     overlay.setAttribute('aria-hidden', 'true');
   };
 
-  openBtn.addEventListener('click', open);
+  /** @type {any} */ (window).GSSAttendanceSheet = { open, close };
   closeBtn?.addEventListener('click', close);
   // The attendance sheet closes only via the Close button — clicking the
   // backdrop or pressing Escape is intentionally disabled to avoid losing the
@@ -979,7 +1007,7 @@
   // Clear every cell for the active title + month (deletes the stored rows).
   clearBtn?.addEventListener('click', async () => {
     if (!canEdit() || !activeTitle) return;
-    const jobs = [];
+    const jobs = /** @type {Promise<unknown>[]} */ ([]);
     Object.keys(records).forEach((key) => {
       const id = key.indexOf('n:') === 0 ? '' : key;
       Object.keys(records[key] || {}).forEach((day) => {
@@ -1006,7 +1034,10 @@
   document.querySelectorAll('[data-lang]').forEach((b) =>
     b.addEventListener('click', () => { if (isOpen()) { applyMonthRange(); renderTabs(); renderGrid(); } })
   );
+  //#endregion
 
+  //#region XLSX EXPORT SUPPORT
+  // Build the ZIP/XML workbook parts used by the attendance export action.
   // ── Export the current sheet to a real .xlsx workbook ──────────
   // Minimal Office Open XML writer (store/no-compression ZIP) — no external deps.
   const xmlEsc = (/** @type {any} */ s) => String(s == null ? '' : s)
@@ -1199,7 +1230,10 @@
     document.body.removeChild(link);
     URL.revokeObjectURL(link.href);
   };
+  //#endregion
 
+  //#region XLSX EXPORT ACTION
+  // Assemble the current course/month grid and download it with a status legend.
   /**
    * Export the currently displayed attendance sheet (active training title +
    * selected month) to a styled Excel workbook: a "No." + Name grid with one
@@ -1282,4 +1316,6 @@
   };
 
   exportBtn?.addEventListener('click', exportToExcel);
+  //#endregion
+  //#endregion // ATTENDANCE SHEET
 })();

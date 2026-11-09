@@ -1,5 +1,6 @@
 ﻿// @ts-check
 /// <reference path="../utils/translation.js" />
+/// <reference path="../permissions-engine.js" />
 /**
  * GSS · Exam configuration (Admin)
  * ------------------------------------------------------------------
@@ -16,7 +17,6 @@
   'use strict';
 
   const overlay = document.getElementById('examOverlay');
-  const openBtn = document.getElementById('examConfigBtn');
   const closeBtn = document.getElementById('examClose');
   const cancelBtn = document.getElementById('examCancel');
   const saveBtn = document.getElementById('examSave');
@@ -41,7 +41,7 @@
     try { const s = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null; return s ? (s.user_id || s.login_id || null) : null; } catch (_) { return null; }
   };
 
-  if (!overlay || !openBtn || !trainingSelect || !libraryEl || !dropzone) return;
+  if (!overlay || !trainingSelect || !libraryEl || !dropzone) return;
 
   /** @type {Map<number, string>} training_id → trainer/instructor name */
   const trainerById = new Map();
@@ -88,11 +88,20 @@
     try {
       const data = await fetch(`${API_BASE}/api/training`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
       const rows = Array.isArray(data.trainings) ? data.trainings : [];
+      const hasCandidates = await Promise.all(rows.map(async (/** @type {any} */ row) => {
+        try {
+          const response = await fetch(`${API_BASE}/api/training/students?training_id=${encodeURIComponent(String(row.training_id))}`, { headers: { Accept: 'application/json' } });
+          if (!response.ok) return true;
+          const roster = await response.json();
+          return !Array.isArray(roster.students) || roster.students.length > 0;
+        } catch (_) { return true; }
+      }));
+      const eligibleRows = rows.filter((/** @type {any} */ _, /** @type {number} */ index) => hasCandidates[index]);
       const current = trainingSelect.value;
       trainerById.clear();
       titleById.clear();
       trainingSelect.innerHTML = `<option value="">${t('examPickCourse', 'Select a course…')}</option>`;
-      rows.forEach((/** @type {any} */ row) => {
+      eligibleRows.forEach((/** @type {any} */ row) => {
         const opt = document.createElement('option');
         opt.value = String(row.training_id);
         const title = row.training_title || row.title || '';
@@ -719,11 +728,12 @@
   });
 
   // ── Save the whole template ────────────────────────────────────
-  const setStatus = (/** @type {string} */ msg, /** @type {boolean} */ ok) => {
+  const setStatus = (/** @type {string} */ msg, /** @type {boolean | undefined} */ ok) => {
     if (!statusEl) return;
     statusEl.textContent = msg;
-    statusEl.classList.toggle('text-red-600', !ok);
-    statusEl.classList.toggle('text-emerald-600', ok);
+    statusEl.classList.toggle('text-red-600', ok === false);
+    statusEl.classList.toggle('text-emerald-600', ok === true);
+    statusEl.classList.toggle('text-slate-500', ok === undefined);
   };
 
   const save = async (/** @type {boolean} */ quiet) => {
@@ -861,6 +871,7 @@
   // One-time modal listing the freshly generated credentials (plaintext shown
   // once here so the admin can copy them; passwords are hashed at rest).
   const showPublishResult = (/** @type {any} */ data) => {
+    /** @type {{ candidate_no: string | number, candidate_name?: string, username: string, password: string }[]} */
     const rows = Array.isArray(data.created) ? data.created : [];
     const wrap = document.createElement('div');
     wrap.className = 'fixed inset-0 z-[1300] flex items-center justify-center bg-black/50 p-4';
@@ -927,7 +938,7 @@
     overlay.setAttribute('aria-hidden', 'true');
   };
 
-  openBtn.addEventListener('click', open);
+  /** @type {any} */ (window).GSSExamConfig = { open, close };
   closeBtn?.addEventListener('click', close);
   cancelBtn?.addEventListener('click', close);
   trainingSelect.addEventListener('change', () => { setStatus('', true); renderInstructor(); loadQuestions(); });

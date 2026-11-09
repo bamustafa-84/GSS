@@ -197,6 +197,46 @@ const GSSPerms = (() => {
     return canSection('10.1', 'view');
   };
 
+  /**
+   * True when the user has at least one granular per-report grant
+   * (section_no starting with "10.1." — e.g. "10.1.attendance-sheet").
+   * Used to decide whether the legacy umbrella "10.1" grant still applies.
+   * @returns {boolean}
+   */
+  const hasReportOverride = () => Object.keys(permMap).some((k) => k.indexOf('10.1.') === 0);
+
+  /**
+   * Derive a report key (its folder name) from a report page URL, e.g.
+   * …/reports/attendance-sheet/attendance-sheet.html → "attendance-sheet".
+   * @returns {string}
+   */
+  const reportKeyFromUrl = () => {
+    try {
+      const parts = location.pathname.split('/').filter(Boolean);
+      const i = parts.lastIndexOf('reports');
+      if (i !== -1 && parts[i + 1]) return decodeURIComponent(parts[i + 1]);
+    } catch (_) { /* noop */ }
+    return '';
+  };
+
+  /**
+   * Per-report gate (Reports = section 10.1, each report = "10.1.<key>").
+   * The granular grant is the source of truth. A legacy umbrella "10.1"
+   * grant with NO granular overrides keeps full access (migration-safe).
+   * Permissive when ungoverned or not yet loaded (the server still enforces
+   * every protected endpoint).
+   * @param {string} key    report folder name
+   * @param {string} [action='view']
+   * @returns {boolean}
+   */
+  const canViewReport = (key, action = 'view') => {
+    if (isUngoverned() || !loaded) return true;
+    if (!key) return canViewReports();
+    if (canSection(`10.1.${key}`, action)) return true;
+    if (action === 'view' && !hasReportOverride() && canSection('10.1', 'view')) return true;
+    return false;
+  };
+
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refresh);
     else refresh();
@@ -208,6 +248,7 @@ const GSSPerms = (() => {
 
   return {
     can, refresh, ensure, apply, ready, canSection, canViewReports,
+    canViewReport, reportKeyFromUrl,
     canAccessModule, canViewTab, canAdd, canEdit, canDelete,
     get loaded() { return loaded; },
     get map() { return permMap; },
