@@ -1,0 +1,31 @@
+{
+  "name": "gss-tc-server",
+  "version": "1.0.0",
+  "description": "GSS Training Centre backend - reusable PostgreSQL data layer.",
+  "main": "index.js",
+  "type": "commonjs",
+
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+
+    "pm2:start": "pm2 start index.js --name gss-tc",
+    "pm2:stop": "pm2 stop gss-tc",
+    "pm2:restart": "pm2 restart gss-tc",
+    "pm2:logs": "pm2 logs gss-tc",
+    "pm2:save": "pm2 save"
+  },
+
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "pg": "^8.12.0"
+  },
+
+  "optionalDependencies": {
+    "nodemailer": "^6.9.14"
+  },
+
+  "devDependencies": {
+    "pm2": "^7.0.3"
+  }
+}
