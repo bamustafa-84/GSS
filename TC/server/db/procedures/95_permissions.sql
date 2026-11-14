@@ -38,7 +38,7 @@ IMMUTABLE
 AS $$
 DECLARE
   r     text   := lower(coalesce(p_role, ''));
-  secs  text[] := ARRAY['1.1','1.2','2.1','3.1','4.1','5.1','6.1','7.1','7.2','8.1','9.1','10.1','10.2','10.3','10.4','10.5','10.6'];
+  secs  text[] := ARRAY['1.1','1.2','2.1','3.1','4.1','5.1','6.1','7.1','7.2','8.1','9.1','10.1','10.2','10.3','10.4'];
   s     text;
   acts  text[];
   out   jsonb  := '{}'::jsonb;
@@ -60,7 +60,6 @@ BEGIN
         WHEN '6.1'  THEN ARRAY['view']
         WHEN '7.1'  THEN ARRAY['view']
         WHEN '7.2'  THEN ARRAY['view','add','edit']
-        WHEN '10.2' THEN ARRAY['view','add','edit','print']
         ELSE ARRAY[]::text[]
       END;
 
@@ -68,18 +67,13 @@ BEGIN
       acts := ARRAY['view','print'];
       IF s IN ('6.1','7.1','7.2') THEN acts := acts || ARRAY['add','edit']; END IF;
       IF s = '6.1' THEN acts := acts || ARRAY['approve']; END IF;
-      IF s IN ('10.3','10.5','10.6') THEN acts := ARRAY[]::text[]; END IF;
-      IF s = '10.4' THEN acts := ARRAY['view']; END IF;
+      IF s IN ('10.1','10.3','10.4') THEN acts := ARRAY[]::text[]; END IF;
+      IF s = '10.2' THEN acts := ARRAY['view']; END IF;
 
     ELSIF r = 'secretary' THEN
       IF s IN ('1.1','1.2','2.1','3.1') THEN
         acts := ARRAY['view','add','edit','print'];
-      ELSIF s = '10.1' THEN
-        acts := ARRAY['view','print'];
-      ELSIF s = '10.2' THEN
-        -- Secretary records attendance for assigned courses (sheet editing).
-        acts := ARRAY['view','add','edit','print'];
-      ELSIF s IN ('10.3','10.6') THEN
+      ELSIF s IN ('10.1','10.4') THEN
         acts := ARRAY[]::text[];
       ELSE
         acts := ARRAY['view'];
@@ -352,11 +346,9 @@ AS $$
   ));
 $$;
 
--- ── One-time migration: System Features 10.3–10.6 ───────────────
--- Grants the new sections to existing logins so their toolbar access is
--- unchanged (Signatures/Exams: Admin; Pending to Reviews: Admin, Head of
--- Training, Secretary; Applicants to Process: Admin, Secretary). Runs once;
--- afterwards the matrix alone decides and revocations are never undone.
+-- ── One-time migration: System Features 10.1–10.4 ───────────────
+-- Grants the current sections on fresh installs. Existing databases with the
+-- previous migration marker are handled by the renumbering migration below.
 CREATE TABLE IF NOT EXISTS permission_migration (
   name       text PRIMARY KEY,
   applied_at timestamptz NOT NULL DEFAULT now()
@@ -364,14 +356,21 @@ CREATE TABLE IF NOT EXISTS permission_migration (
 
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM permission_migration WHERE name = 'system_features_10_3_to_10_6') THEN
+  IF NOT EXISTS (
+    SELECT 1 FROM permission_migration
+    WHERE name IN (
+      'system_features_10_3_to_10_6',
+      'system_features_10_2_to_10_5',
+      'system_features_10_1_to_10_4'
+    )
+  ) THEN
     INSERT INTO user_permission (login_id, section_no, action, allowed, updated_by)
     SELECT l.login_id, s.sec, a.act, true, 'MIGRATION'
     FROM login l
     JOIN (VALUES
-      ('admin','10.3'),('admin','10.4'),('admin','10.5'),('admin','10.6'),
-      ('head of training','10.4'),
-      ('secretary','10.4'),('secretary','10.5')
+      ('admin','10.1'),('admin','10.2'),('admin','10.3'),('admin','10.4'),
+      ('head of training','10.2'),
+      ('secretary','10.2'),('secretary','10.3')
     ) AS s(role_name, sec) ON lower(coalesce(l.role,'')) = s.role_name
     CROSS JOIN LATERAL (
       SELECT unnest(CASE WHEN s.role_name = 'admin'
@@ -379,25 +378,58 @@ BEGIN
                          ELSE ARRAY['view'] END) AS act
     ) a
     ON CONFLICT (login_id, section_no, action) DO NOTHING;
-    INSERT INTO permission_migration (name) VALUES ('system_features_10_3_to_10_6');
+    INSERT INTO permission_migration (name) VALUES ('system_features_10_1_to_10_4');
   END IF;
 END $$;
 
--- ── One-time migration: Secretary attendance-sheet editing (10.2) ──
--- The attendance sheet now derives its edit rights from the matrix (section
--- 10.2) instead of a hardcoded role list. Secretaries previously had implicit
--- edit access, so grant existing Secretary logins add/edit on 10.2 to keep
--- their behaviour unchanged. Runs once; later matrix edits are authoritative.
+-- Repoint saved permissions from the former System Features and Reports IDs.
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM permission_migration WHERE name = 'secretary_attendance_edit_10_2') THEN
-    INSERT INTO user_permission (login_id, section_no, action, allowed, updated_by)
-    SELECT l.login_id, '10.2', a.act, true, 'MIGRATION'
-    FROM login l
-    CROSS JOIN (VALUES ('add'), ('edit')) AS a(act)
-    WHERE lower(coalesce(l.role,'')) = 'secretary'
-    ON CONFLICT (login_id, section_no, action) DO NOTHING;
-    INSERT INTO permission_migration (name) VALUES ('secretary_attendance_edit_10_2');
+  IF NOT EXISTS (SELECT 1 FROM permission_migration WHERE name = 'permissions_resection_11_1') THEN
+    IF EXISTS (SELECT 1 FROM permission_migration WHERE name = 'system_features_10_3_to_10_6') THEN
+      DELETE FROM user_permission WHERE section_no IN ('10.1', '10.2');
+
+      UPDATE user_permission SET section_no = '__gss_20261114_sf_10_3' WHERE section_no = '10.3';
+      UPDATE user_permission SET section_no = '__gss_20261114_sf_10_4' WHERE section_no = '10.4';
+      UPDATE user_permission SET section_no = '__gss_20261114_sf_10_5' WHERE section_no = '10.5';
+      UPDATE user_permission SET section_no = '__gss_20261114_sf_10_6' WHERE section_no = '10.6';
+
+      UPDATE user_permission SET section_no = '10.2' WHERE section_no = '__gss_20261114_sf_10_3';
+      UPDATE user_permission SET section_no = '10.3' WHERE section_no = '__gss_20261114_sf_10_4';
+      UPDATE user_permission SET section_no = '10.4' WHERE section_no = '__gss_20261114_sf_10_5';
+      UPDATE user_permission SET section_no = '10.5' WHERE section_no = '__gss_20261114_sf_10_6';
+
+      UPDATE user_permission
+         SET section_no = '11.1.' || substring(section_no FROM 6)
+       WHERE section_no LIKE '10.1.%';
+    END IF;
+
+    INSERT INTO permission_migration (name) VALUES ('permissions_resection_11_1');
+  END IF;
+END $$;
+
+-- Shift the already-renumbered System Features rows down once more so they
+-- begin at 10.1, preserving existing user grants and removing the gap.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM permission_migration WHERE name = 'permissions_system_features_10_1_to_10_4') THEN
+    IF EXISTS (SELECT 1 FROM permission_migration WHERE name = 'system_features_10_2_to_10_5')
+       OR (
+         EXISTS (SELECT 1 FROM permission_migration WHERE name = 'system_features_10_3_to_10_6')
+         AND EXISTS (SELECT 1 FROM permission_migration WHERE name = 'permissions_resection_11_1')
+       ) THEN
+      UPDATE user_permission SET section_no = '__gss_20261114_sf_10_2' WHERE section_no = '10.2';
+      UPDATE user_permission SET section_no = '__gss_20261114_sf_10_3' WHERE section_no = '10.3';
+      UPDATE user_permission SET section_no = '__gss_20261114_sf_10_4' WHERE section_no = '10.4';
+      UPDATE user_permission SET section_no = '__gss_20261114_sf_10_5' WHERE section_no = '10.5';
+
+      UPDATE user_permission SET section_no = '10.1' WHERE section_no = '__gss_20261114_sf_10_2';
+      UPDATE user_permission SET section_no = '10.2' WHERE section_no = '__gss_20261114_sf_10_3';
+      UPDATE user_permission SET section_no = '10.3' WHERE section_no = '__gss_20261114_sf_10_4';
+      UPDATE user_permission SET section_no = '10.4' WHERE section_no = '__gss_20261114_sf_10_5';
+    END IF;
+
+    INSERT INTO permission_migration (name) VALUES ('permissions_system_features_10_1_to_10_4');
   END IF;
 END $$;
 -- Seed the matrix once for logins that predate it (new users: see server).

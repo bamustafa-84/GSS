@@ -20,7 +20,7 @@ STABLE
 AS $$
   SELECT coalesce(jsonb_agg(t.row ORDER BY t.candidate_no DESC), '[]'::jsonb)
   FROM (
-    SELECT a.candidate_no, (to_jsonb(a.*) - 'candidate_photo') AS row
+    SELECT a.candidate_no, to_jsonb(a.*) AS row
     FROM applicant a
     WHERE coalesce(p_search, '') = ''
        OR to_jsonb(a.*)::text ILIKE '%' || p_search || '%'

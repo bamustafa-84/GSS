@@ -41,7 +41,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS permission_template_role_sys_uidx
 
 CREATE TABLE IF NOT EXISTS permission_template_item (
   template_id bigint NOT NULL REFERENCES permission_template(template_id) ON DELETE CASCADE,
-  section_no  text   NOT NULL,   -- e.g. '1.1', '10.6'
+  section_no  text   NOT NULL,   -- e.g. '1.1', '10.4', '11.1.<report-id>'
   action      text   NOT NULL,   -- view | add | edit | delete | approve | print | export | …
   PRIMARY KEY (template_id, section_no, action)
 );
@@ -374,6 +374,56 @@ $$;
 
 -- ── Seed system templates now, then backfill template links ────
 SELECT permission_templates_seed_system();
+
+-- Keep saved templates aligned with the System Features and Reports sections.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM permission_migration WHERE name = 'permission_templates_resection_11_1') THEN
+    IF EXISTS (SELECT 1 FROM permission_migration WHERE name = 'system_features_10_3_to_10_6') THEN
+      DELETE FROM permission_template_item WHERE section_no IN ('10.1', '10.2');
+
+      UPDATE permission_template_item SET section_no = '__gss_20261114_sf_10_3' WHERE section_no = '10.3';
+      UPDATE permission_template_item SET section_no = '__gss_20261114_sf_10_4' WHERE section_no = '10.4';
+      UPDATE permission_template_item SET section_no = '__gss_20261114_sf_10_5' WHERE section_no = '10.5';
+      UPDATE permission_template_item SET section_no = '__gss_20261114_sf_10_6' WHERE section_no = '10.6';
+
+      UPDATE permission_template_item SET section_no = '10.2' WHERE section_no = '__gss_20261114_sf_10_3';
+      UPDATE permission_template_item SET section_no = '10.3' WHERE section_no = '__gss_20261114_sf_10_4';
+      UPDATE permission_template_item SET section_no = '10.4' WHERE section_no = '__gss_20261114_sf_10_5';
+      UPDATE permission_template_item SET section_no = '10.5' WHERE section_no = '__gss_20261114_sf_10_6';
+
+      UPDATE permission_template_item
+         SET section_no = '11.1.' || substring(section_no FROM 6)
+       WHERE section_no LIKE '10.1.%';
+    END IF;
+
+    INSERT INTO permission_migration (name) VALUES ('permission_templates_resection_11_1');
+  END IF;
+END $$;
+
+-- Move the current System Features template IDs from 10.2–10.5 to 10.1–10.4.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM permission_migration WHERE name = 'permission_templates_system_features_10_1_to_10_4') THEN
+    IF EXISTS (SELECT 1 FROM permission_migration WHERE name = 'system_features_10_2_to_10_5')
+       OR (
+         EXISTS (SELECT 1 FROM permission_migration WHERE name = 'system_features_10_3_to_10_6')
+         AND EXISTS (SELECT 1 FROM permission_migration WHERE name = 'permission_templates_resection_11_1')
+       ) THEN
+      UPDATE permission_template_item SET section_no = '__gss_20261114_sf_10_2' WHERE section_no = '10.2';
+      UPDATE permission_template_item SET section_no = '__gss_20261114_sf_10_3' WHERE section_no = '10.3';
+      UPDATE permission_template_item SET section_no = '__gss_20261114_sf_10_4' WHERE section_no = '10.4';
+      UPDATE permission_template_item SET section_no = '__gss_20261114_sf_10_5' WHERE section_no = '10.5';
+
+      UPDATE permission_template_item SET section_no = '10.1' WHERE section_no = '__gss_20261114_sf_10_2';
+      UPDATE permission_template_item SET section_no = '10.2' WHERE section_no = '__gss_20261114_sf_10_3';
+      UPDATE permission_template_item SET section_no = '10.3' WHERE section_no = '__gss_20261114_sf_10_4';
+      UPDATE permission_template_item SET section_no = '10.4' WHERE section_no = '__gss_20261114_sf_10_5';
+    END IF;
+
+    INSERT INTO permission_migration (name) VALUES ('permission_templates_system_features_10_1_to_10_4');
+  END IF;
+END $$;
 
 -- One-time: rename any legacy system templates ('<Role> (Default)') to the
 -- plain role name, unless a different template already owns that name.

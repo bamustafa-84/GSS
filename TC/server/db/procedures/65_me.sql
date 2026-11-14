@@ -16,9 +16,7 @@ AS $$
     'username', l.username,
     'full_name', l.full_name,
     'role', l.role,
-    'is_active', l.is_active,
-    'has_avatar', (l.profile_image IS NOT NULL),
-    'avatar_ver', coalesce(extract(epoch FROM coalesce(l.updated_at, l.created_at))::bigint, 0)
+    'is_active', l.is_active
   )
   FROM login l
   WHERE lower(l.username) = lower(p_username)

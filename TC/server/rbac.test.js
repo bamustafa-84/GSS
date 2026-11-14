@@ -20,6 +20,16 @@ test('resolver denies by default and never infers from view', () => {
   assert.strictEqual(rbac.can(null, '1.1', 'view'), false);
 });
 
+test('report permissions are exact and support export independently', () => {
+  const perms = {
+    '11.1.training-register': { view: true, export: true },
+    '11.1.attendance-sheet': { view: true },
+  };
+  assert.strictEqual(rbac.can(perms, '11.1.training-register', 'export'), true);
+  assert.strictEqual(rbac.can(perms, '11.1.attendance-sheet', 'export'), false);
+  assert.strictEqual(rbac.can(perms, '11.1.training-register', 'print'), false);
+});
+
 test('column to section mapping', () => {
   const m = rbac.sectionForColumn;
   assert.strictEqual(m('full_name'), '1.1');
@@ -31,9 +41,6 @@ test('column to section mapping', () => {
   assert.strictEqual(m('exam_score'), '6.1');
   assert.strictEqual(m('eval_presence_discipline'), '7.1');
   assert.strictEqual(m('eval_final_decision'), '7.2');
-  // Instructor grid sign-off → 7.1 (stage 1); Admin final sign-off → 7.2 (stage 2).
-  assert.strictEqual(m('eval_instructor_ack'), '7.1');
-  assert.strictEqual(m('eval_admin_ack'), '7.2');
   assert.strictEqual(m('updated_by'), null);
   assert.strictEqual(m('ack_dossier'), '9.1');
   assert.strictEqual(m('ack_mensuration'), '8.1');

@@ -167,8 +167,6 @@ const actorIsAdmin = (req) => {
  * Mandatory Admin-only gate (System Management). Independent of the Permission
  * Matrix: requires a valid token AND a live Admin role in the database, so a
  * demoted user loses access immediately. Sends 401/403 and returns false.
- * @param {http.IncomingMessage} req
- * @param {http.ServerResponse} res
  * @returns {Promise<boolean>}
  */
 const requireAdmin = async (req, res) => {
@@ -202,10 +200,6 @@ const actorCan = async (req, section, action) => {
  * Enforce { section, action } requirements. Sends 401 when the caller is not
  * authenticated and 403 when any requirement is not granted. Every role,
  * Candidate included, is resolved from the saved Permission Matrix.
- * @param {http.IncomingMessage} req
- * @param {http.ServerResponse} res
- * @param {{ section: string, action: string }[]} requirements
- * @param {Record<string, any>} [opts]
  * @returns {Promise<boolean>} true when the request may proceed
  */
 const authorize = async (req, res, requirements, opts = {}) => {
@@ -219,6 +213,19 @@ const authorize = async (req, res, requirements, opts = {}) => {
   }
   return true;
 };
+
+const authorizeReport = async (req, res, reportId, action) => {
+  if (!listReportPages().some((report) => report.id === reportId)) {
+    sendJson(res, 404, { ok: false, status: 'report_not_found' });
+    return false;
+  }
+  if (!['view', 'print', 'export'].includes(action)) {
+    sendJson(res, 400, { ok: false, status: 'invalid_report_action' });
+    return false;
+  }
+  return authorize(req, res, [{ section: `11.1.${reportId}`, action }]);
+};
+
 /** @type {Map<string, { dataType: string, insertable: boolean }> | null} */
 let columnMetaCache = null;
 /** @type {string | null} The identity/primary key column (e.g. candidate_no). */
@@ -296,9 +303,7 @@ const readJsonBody = (req) =>
     let raw = '';
     req.on('data', (chunk) => {
       raw += chunk;
-      // ~4 MB guard: large enough for a 1 MB candidate photo (base64 ≈ 1.37 MB)
-      // plus the signature data URL and the rest of the form, yet still bounded.
-      if (raw.length > 4 * 1024 * 1024) reject(new Error('Payload too large'));
+      if (raw.length > 1e6) reject(new Error('Payload too large')); // ~1 MB guard
     });
     req.on('end', () => {
       if (!raw) return resolve({});
@@ -321,6 +326,28 @@ const sendJson = (res, status, payload) => {
   const body = JSON.stringify(payload);
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(body);
+};
+
+const listReportPages = () => {
+  const reportsRoot = path.join(STATIC_ROOT, 'reports');
+  const reports = [];
+  const folders = fs.readdirSync(reportsRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && /^[a-z0-9][a-z0-9-]*$/i.test(entry.name));
+  for (const entry of folders) {
+    const pages = fs.readdirSync(path.join(reportsRoot, entry.name), { withFileTypes: true })
+      .filter((file) => file.isFile() && file.name.toLowerCase().endsWith('.html'))
+      .map((file) => file.name)
+      .sort();
+    const expectedEntry = `${entry.name}.html`;
+    const page = pages.includes(expectedEntry) ? expectedEntry : pages[0];
+    if (!page) continue;
+    reports.push({
+      id: entry.name,
+      title: entry.name.split('-').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' '),
+      url: `./reports/${encodeURIComponent(entry.name)}/${encodeURIComponent(page)}`,
+    });
+  }
+  return reports.sort((a, b) => a.title.localeCompare(b.title));
 };
 
 /**
@@ -378,33 +405,6 @@ const dataUrlToBuffer = (raw) => {
     : Buffer.from(decodeURIComponent(payload), 'utf8');
 
   return buffer.length ? { buffer, contentType } : null;
-};
-
-/** Profile-image upload constraints (mirrors the client-side validation). */
-const AVATAR_ALLOWED_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
-const AVATAR_MAX_BYTES = 1.5 * 1024 * 1024; // decoded image ceiling (~1.5 MB)
-
-/**
- * Validate and normalise a profile image on a user-management payload.
- * Converts a `profile_image` data URL into the hex string + MIME type the
- * `login_user_update` procedure expects, enforcing allowed types and a size
- * cap. A truthy `clear_profile_image` flag is passed through untouched (it
- * removes the avatar). Absent/blank values leave the avatar unchanged.
- * @param {Record<string, any>} body
- * @returns {{ ok: true } | { ok: false, status: string }}
- */
-const prepareProfileImage = (body) => {
-  if (!body || typeof body !== 'object') return { ok: true };
-  if (body.clear_profile_image) { delete body.profile_image; delete body.profile_image_type; return { ok: true }; }
-  const raw = body.profile_image;
-  if (raw == null || raw === '') { delete body.profile_image; delete body.profile_image_type; return { ok: true }; }
-  const image = dataUrlToBuffer(typeof raw === 'string' ? raw : '');
-  if (!image) return { ok: false, status: 'invalid_image' };
-  if (!AVATAR_ALLOWED_TYPES.has(String(image.contentType).toLowerCase())) return { ok: false, status: 'invalid_image_type' };
-  if (image.buffer.length > AVATAR_MAX_BYTES) return { ok: false, status: 'image_too_large' };
-  body.profile_image = image.buffer.toString('hex');
-  body.profile_image_type = image.contentType.slice(0, 100);
-  return { ok: true };
 };
 
 /**
@@ -645,36 +645,15 @@ const createApplicant = async (res, body, actor) => {
     row.applicant_name = row.full_name;
   }
 
-  // Determine insert vs update up-front so photo rules can depend on it.
-  const idRaw = body && (body.candidate_no || body.CandidateNo);
-  const id = Number.parseInt(String(idRaw), 10);
-  const isUpdate = Number.isFinite(id);
-
-  // The candidate photo is mandatory when registering a NEW applicant. On
-  // update the stored photo is preserved when the client doesn't resend it.
-  if (!isUpdate && (typeof row.candidate_photo !== 'string' || row.candidate_photo.trim() === '')) {
-    sendJson(res, 400, { error: 'A candidate photo is required to register an applicant.' });
-    return;
-  }
-
-  // Validate the candidate photo when provided: must be an image data URL ≤ 1 MB.
-  if (typeof row.candidate_photo === 'string' && row.candidate_photo !== '') {
-    const match = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i.exec(row.candidate_photo.trim());
-    if (!match) {
-      sendJson(res, 400, { error: 'The candidate photo must be a valid image.' });
-      return;
-    }
-    const bytes = Buffer.from(match[2], 'base64');
-    if (bytes.length === 0 || bytes.length > 1024 * 1024) {
-      sendJson(res, 400, { error: 'The candidate photo must not exceed 1 MB.' });
-      return;
-    }
-  }
-
   if (Object.keys(row).length === 0) {
     sendJson(res, 400, { error: 'No applicant data provided.' });
     return;
   }
+
+  // Update when a candidate number is supplied, otherwise insert.
+  const idRaw = body && (body.candidate_no || body.CandidateNo);
+  const id = Number.parseInt(String(idRaw), 10);
+  const isUpdate = Number.isFinite(id);
 
   // Stamp audit fields from the acting user (client-supplied values are never
   // trusted for these). created_by is set only on insert; updated_by always.
@@ -847,6 +826,22 @@ const server = http.createServer(async (req, res) => {
   }
 
   try {
+    const requestUrl = new URL(url, 'http://localhost');
+    const decodedPathname = decodeURIComponent(requestUrl.pathname);
+    const reportApiMatch = requestUrl.pathname.match(/^\/api\/reports\/([a-z0-9][a-z0-9-]*)(?:\/|$)/i);
+    if (reportApiMatch && !['list', 'authorize'].includes(reportApiMatch[1].toLowerCase())) {
+      let reportId = reportApiMatch[1];
+      if (reportId === 'training-register' && requestUrl.searchParams.get('report') === 'attendance-sheet') {
+        reportId = 'attendance-sheet';
+      }
+      const reportApiAction = /(?:^|\/)export(?:\/|$)/i.test(requestUrl.pathname.slice(reportApiMatch[0].length))
+        ? 'export'
+        : /(?:^|\/)print(?:\/|$)/i.test(requestUrl.pathname.slice(reportApiMatch[0].length))
+          ? 'print'
+          : 'view';
+      if (!(await authorizeReport(req, res, reportId, reportApiAction))) return;
+    }
+
     if (method === 'GET' && url === '/api/health') {
       const result = await db.query('SELECT 1 AS ok');
       sendJson(res, 200, { ok: true, db: result.rows[0].ok === 1 });
@@ -855,46 +850,10 @@ const server = http.createServer(async (req, res) => {
 
     if (method === 'POST' && url === '/api/applicants') {
       const body = await readJsonBody(req);
-      // Authentication is mandatory for any save.
-      const actor = rbac.verifyToken(rbac.bearerOf(req));
-      if (!actor) { sendJson(res, 401, { ok: false, status: 'unauthenticated' }); return; }
-
       const idRaw = body && (body.candidate_no || body.CandidateNo);
       const isUpdate = Number.isFinite(Number.parseInt(String(idRaw), 10));
-      const action = isUpdate ? 'edit' : 'add';
-
-      // Classify each posted column by module section, then keep only the
-      // sections the actor may write. Columns in sections the actor lacks
-      // permission on are DROPPED from the payload (never applied) rather than
-      // rejecting the whole request — so a registration clerk can create a
-      // Pending applicant even though the "For Administration Use Only" fields
-      // (interview_result default 'Pending', remarks) map to section 1.2 which
-      // they cannot write. This fixes the spurious 403 without weakening
-      // security: unauthorized values are silently ignored, and a clear 403 is
-      // still returned when the actor may not write to ANY touched section.
-      const postedCols = Object.keys(body || {}).filter((k) => body[k] !== '' && body[k] != null);
-      const sectionsNeeded = new Set();
-      for (const col of postedCols) {
-        const s = rbac.sectionForColumn(col);
-        if (s) sectionsNeeded.add(s);
-      }
-      const deniedSections = new Set();
-      let allowedCount = 0;
-      for (const s of sectionsNeeded) {
-        if (await actorCan(req, s, action)) allowedCount += 1;
-        else deniedSections.add(s);
-      }
-      if (sectionsNeeded.size > 0 && allowedCount === 0) {
-        const first = [...deniedSections].sort()[0];
-        sendJson(res, 403, { ok: false, status: 'forbidden', section: first, action });
-        return;
-      }
-      if (deniedSections.size > 0) {
-        for (const col of postedCols) {
-          const s = rbac.sectionForColumn(col);
-          if (s && deniedSections.has(s)) delete body[col];
-        }
-      }
+      const needs = rbac.requirementsForSave(Object.keys(body || {}).filter((k) => body[k] !== '' && body[k] != null), isUpdate);
+      if (!(await authorize(req, res, needs, {}))) return;
       await createApplicant(res, body, actorOf(req));
       return;
     }
@@ -962,6 +921,14 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (method === 'POST' && url === '/api/forgot-password') {
+      const body = await readJsonBody(req);
+      const username = String((body && (body.username || body.email)) || '').trim();
+      const result = await callProc('auth_forgot_password', '$1', [username]);
+      sendJson(res, 200, result || { ok: false, status: 'invalid' });
+      return;
+    }
+
     if (method === 'POST' && url === '/api/register') {
       const body = await readJsonBody(req);
       const username = String((body && (body.username || body.email)) || '').trim();
@@ -1016,29 +983,6 @@ const server = http.createServer(async (req, res) => {
     if (method === 'GET' && url.startsWith('/api/instructors')) {
       const rows = await callProc('instructors_list', '', []);
       sendJson(res, 200, { ok: true, instructors: Array.isArray(rows) ? rows : [] });
-      return;
-    }
-
-    // ── Reports: dynamic discovery of the /reports folder ──────
-    // Each report lives in reports/<key>/ and ships an entry page named
-    // <key>.html. The folder name is the stable key AND the display name
-    // (prettified). This lets the dropdown + permissions grid list reports
-    // without hardcoding them anywhere.
-    if (method === 'GET' && url.startsWith('/api/reports/list')) {
-      /** @type {Array<{key:string,label:string}>} */
-      let reports = [];
-      try {
-        const reportsDir = path.join(STATIC_ROOT, 'reports');
-        reports = fs.readdirSync(reportsDir, { withFileTypes: true })
-          .filter((d) => d.isDirectory() && d.name[0] !== '.')
-          .map((d) => d.name)
-          .filter((name) => fs.existsSync(path.join(reportsDir, name, `${name}.html`)))
-          .map((name) => ({
-            key: name,
-            label: name.replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).trim(),
-          }));
-      } catch (_) { reports = []; }
-      sendJson(res, 200, { ok: true, reports });
       return;
     }
 
@@ -1133,28 +1077,6 @@ const server = http.createServer(async (req, res) => {
 
     // ── Current user's live role/status (self-heals stale sessions) ──
     if (method === 'GET' && url.startsWith('/api/me')) {
-      // Profile picture stream (checked before the generic /api/me handler).
-      // Unauthenticated like /api/signatures/image because an <img> tag cannot
-      // attach the bearer token; avatars are low-sensitivity.
-      if (url.startsWith('/api/me/avatar')) {
-        const who = new URL(url, 'http://localhost').searchParams.get('username') || '';
-        const img = await callProc('auth_avatar', '$1', [who]);
-        const hex = img && img.image_hex;
-        if (!img || typeof hex !== 'string' || hex.length === 0) {
-          sendJson(res, 404, { ok: false, status: 'no_avatar' });
-          return;
-        }
-        const buffer = Buffer.from(hex, 'hex');
-        res.writeHead(200, {
-          'Content-Type': (img.content_type || 'image/png'),
-          'Content-Length': buffer.length,
-          // Immutable once the cache-busting `v` (avatar_ver) changes on update.
-          'Cache-Control': 'private, max-age=86400',
-          'ETag': '"' + String(img.avatar_ver || 0) + '"',
-        });
-        res.end(buffer);
-        return;
-      }
       const username = new URL(url, 'http://localhost').searchParams.get('username') || '';
       const info = await callProc('auth_user_role', '$1', [username]);
       sendJson(res, 200, info ? Object.assign({ ok: true }, info) : { ok: false });
@@ -1181,9 +1103,6 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       const lang = String((body && body.lang) || 'en');
-      // Validate / normalise any profile image before it reaches the procedures.
-      const imagePrep = prepareProfileImage(body);
-      if (!imagePrep.ok) { sendJson(res, 400, { ok: false, status: imagePrep.status }); return; }
       const idRaw = body && (body.login_id != null ? body.login_id : body.id);
       const id = Number.parseInt(String(idRaw), 10);
       if (Number.isFinite(id)) {
@@ -1218,23 +1137,6 @@ const server = http.createServer(async (req, res) => {
         const newId = Number.parseInt(String(newUser.user_id != null ? newUser.user_id : newUser.login_id), 10);
         if (Number.isFinite(newId)) await callProc('user_apply_role_template', '$1, $2', [newId, actorOf(req).name || 'ADMIN']);
         await callProc('permissions_seed_missing', '', []);
-        // Persist the "notify by email" preference and the optional profile
-        // picture in a single follow-up update (auth_register handles neither).
-        // The image was already validated + hex-encoded by prepareProfileImage.
-        if (Number.isFinite(newId)) {
-          /** @type {Record<string, any>} */
-          const extra = { notify_email: notifyWanted };
-          if (typeof body.profile_image === 'string' && body.profile_image) {
-            extra.profile_image = body.profile_image;
-            extra.profile_image_type = body.profile_image_type || 'image/png';
-          }
-          const imgResult = await callProc('login_user_update', '$1, $2::jsonb', [newId, JSON.stringify(extra)]);
-          if (imgResult && imgResult.user && result.user) {
-            result.user.has_avatar = imgResult.user.has_avatar;
-            result.user.avatar_ver = imgResult.user.avatar_ver;
-            result.user.notify_email = imgResult.user.notify_email;
-          }
-        }
       }
       // Notify only when the account was actually created and an address exists.
       /** @type {any} */
@@ -1250,7 +1152,7 @@ const server = http.createServer(async (req, res) => {
 
     // ── Applicant work-queue notifications ─────────────────────
     if (method === 'GET' && url.startsWith('/api/applicants/pending')) {
-      if (!(await authorize(req, res, [{ section: '10.4', action: 'view' }]))) return;
+      if (!(await authorize(req, res, [{ section: '10.2', action: 'view' }]))) return;
       const count = await callProc('applicant_pending_count', '', []);
       const rows = await callProc('applicant_pending_list', '', []);
       sendJson(res, 200, { ok: true, count: Number(count) || 0, applicants: Array.isArray(rows) ? rows : [] });
@@ -1258,7 +1160,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'GET' && url.startsWith('/api/applicants/secretary-queue')) {
-      if (!(await authorize(req, res, [{ section: '10.5', action: 'view' }]))) return;
+      if (!(await authorize(req, res, [{ section: '10.3', action: 'view' }]))) return;
       const count = await callProc('applicant_secretary_count', '', []);
       const rows = await callProc('applicant_secretary_list', '', []);
       sendJson(res, 200, { ok: true, count: Number(count) || 0, applicants: Array.isArray(rows) ? rows : [] });
@@ -1300,14 +1202,14 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'POST' && url.startsWith('/api/signatures')) {
-      if (!(await authorize(req, res, [{ section: '10.3', action: 'add' }]))) return;
+      if (!(await authorize(req, res, [{ section: '10.1', action: 'add' }]))) return;
       const body = await readJsonBody(req);
       await createSignature(res, body);
       return;
     }
 
     if (method === 'DELETE' && url.startsWith('/api/signatures')) {
-      if (!(await authorize(req, res, [{ section: '10.3', action: 'delete' }]))) return;
+      if (!(await authorize(req, res, [{ section: '10.1', action: 'delete' }]))) return;
       const id = new URL(url, 'http://localhost').searchParams.get('id');
       if (!id) {
         sendJson(res, 400, { error: 'Missing signature id' });
@@ -1318,9 +1220,28 @@ const server = http.createServer(async (req, res) => {
     }
 
     // ── Reports ────────────────────────────────────────────────
+    if (method === 'GET' && url.split('?')[0] === '/api/reports/list') {
+      sendJson(res, 200, { ok: true, reports: listReportPages() });
+      return;
+    }
+
+    if (method === 'GET' && url.split('?')[0] === '/api/reports/authorize') {
+      const q = new URL(url, 'http://localhost').searchParams;
+      const reportId = q.get('report') || '';
+      const action = q.get('action') || 'view';
+      if (!(await authorizeReport(req, res, reportId, action))) return;
+      sendJson(res, 200, { ok: true });
+      return;
+    }
+
     // Training Register dashboard data. All filters optional.
     if (method === 'GET' && url.startsWith('/api/reports/training-register')) {
       const q = new URL(url, 'http://localhost').searchParams;
+      const reportId = q.get('report') || 'training-register';
+      if (!['training-register', 'attendance-sheet'].includes(reportId)) {
+        sendJson(res, 400, { ok: false, status: 'invalid_report' });
+        return;
+      }
       const rows = await callProc('training_register_report', '$1, $2, $3, $4, $5', [
         q.get('from') || null,
         q.get('to') || null,
@@ -1463,7 +1384,7 @@ const server = http.createServer(async (req, res) => {
 
     // ── Exam configuration (questions per training) ───────────
     if (method === 'GET' && url.startsWith('/api/questions')) {
-      if (!(await authorize(req, res, [{ section: '10.6', action: 'view' }]))) return;
+      if (!(await authorize(req, res, [{ section: '10.4', action: 'view' }]))) return;
       const trainingId = new URL(url, 'http://localhost').searchParams.get('training_id') || '';
       const id = Number.parseInt(String(trainingId), 10);
       if (!Number.isFinite(id)) {
@@ -1478,7 +1399,7 @@ const server = http.createServer(async (req, res) => {
     // Create / edit a single library question (+ its answers).
     if (method === 'POST' && url.startsWith('/api/question/save')) {
       const body = await readJsonBody(req);
-      if (!(await authorize(req, res, [{ section: '10.6', action: body && body.question_id ? 'edit' : 'add' }]))) return;
+      if (!(await authorize(req, res, [{ section: '10.4', action: body && body.question_id ? 'edit' : 'add' }]))) return;
       injectActor(body, actorOf(req));
       const result = await callProc('question_save', '$1::jsonb', [JSON.stringify(body || {})]);
       sendJson(res, result && result.ok ? 200 : 400, result || { ok: false, status: 'invalid' });
@@ -1487,7 +1408,7 @@ const server = http.createServer(async (req, res) => {
 
     // Delete a single library question.
     if (method === 'POST' && url.startsWith('/api/question/delete')) {
-      if (!(await authorize(req, res, [{ section: '10.6', action: 'delete' }]))) return;
+      if (!(await authorize(req, res, [{ section: '10.4', action: 'delete' }]))) return;
       const body = await readJsonBody(req);
       const id = Number.parseInt(String(body && body.question_id), 10);
       if (!Number.isFinite(id)) { sendJson(res, 400, { error: 'question_id required' }); return; }
@@ -1498,7 +1419,7 @@ const server = http.createServer(async (req, res) => {
 
     // Save which questions belong to the exam (order/points/instructions).
     if (method === 'POST' && url.startsWith('/api/exam/config')) {
-      if (!(await authorize(req, res, [{ section: '10.6', action: 'edit' }]))) return;
+      if (!(await authorize(req, res, [{ section: '10.4', action: 'edit' }]))) return;
       const body = await readJsonBody(req);
       injectActor(body, actorOf(req));
       const result = await callProc('exam_config_save', '$1::jsonb', [JSON.stringify(body || {})]);
@@ -1508,7 +1429,7 @@ const server = http.createServer(async (req, res) => {
 
     // Admin "preview as candidate" (questions WITHOUT the answer key).
     if (method === 'GET' && url.startsWith('/api/exam/preview')) {
-      if (!(await authorize(req, res, [{ section: '10.6', action: 'view' }]))) return;
+      if (!(await authorize(req, res, [{ section: '10.4', action: 'view' }]))) return;
       const id = Number.parseInt(new URL(url, 'http://localhost').searchParams.get('training_id') || '', 10);
       if (!Number.isFinite(id)) { sendJson(res, 400, { error: 'training_id required' }); return; }
       const result = await callProc('exam_preview_for_training', '$1', [id]);
@@ -1518,7 +1439,7 @@ const server = http.createServer(async (req, res) => {
 
     // ── Publish an exam + generate temporary exam accounts ─────
     if (method === 'POST' && url.startsWith('/api/exam/publish')) {
-      if (!(await authorize(req, res, [{ section: '10.6', action: 'edit' }]))) return;
+      if (!(await authorize(req, res, [{ section: '10.4', action: 'approve' }]))) return;
       const body = await readJsonBody(req);
       injectActor(body, actorOf(req));
       const result = await callProc('exam_publish', '$1::jsonb', [JSON.stringify(body || {})]);
@@ -1528,7 +1449,7 @@ const server = http.createServer(async (req, res) => {
 
     // ── Credential management table (Admin / Instructor / Head of Training) ──
     if (method === 'GET' && url.startsWith('/api/exam/credentials')) {
-      if (!(await authorize(req, res, [{ section: '10.6', action: 'view' }]))) return;
+      if (!(await authorize(req, res, [{ section: '10.4', action: 'view' }]))) return;
       const p = new URL(url, 'http://localhost').searchParams;
       const payload = { exam_id: p.get('exam_id') || null, training_id: p.get('training_id') || null };
       const result = await callProc('exam_credentials_list', '$1::jsonb', [JSON.stringify(payload)]);
@@ -1537,7 +1458,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'POST' && url.startsWith('/api/exam/credential/reveal')) {
-      if (!(await authorize(req, res, [{ section: '10.6', action: 'view' }]))) return;
+      if (!(await authorize(req, res, [{ section: '10.4', action: 'view' }]))) return;
       const body = await readJsonBody(req);
       const id = Number.parseInt(String(body && body.access_id), 10);
       if (!Number.isFinite(id)) { sendJson(res, 400, { error: 'access_id required' }); return; }
@@ -1547,7 +1468,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'POST' && url.startsWith('/api/exam/credential/send')) {
-      if (!(await authorize(req, res, [{ section: '10.6', action: 'edit' }]))) return;
+      if (!(await authorize(req, res, [{ section: '10.4', action: 'edit' }]))) return;
       const body = await readJsonBody(req);
       injectActor(body, actorOf(req));
       const result = await callProc('exam_access_send', '$1::jsonb', [JSON.stringify(body || {})]);
@@ -1556,7 +1477,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (method === 'POST' && url.startsWith('/api/exam/credential/disable')) {
-      if (!(await authorize(req, res, [{ section: '10.6', action: 'edit' }]))) return;
+      if (!(await authorize(req, res, [{ section: '10.4', action: 'edit' }]))) return;
       const body = await readJsonBody(req);
       injectActor(body, actorOf(req));
       const result = await callProc('exam_access_disable', '$1::jsonb', [JSON.stringify(body || {})]);
@@ -1566,7 +1487,7 @@ const server = http.createServer(async (req, res) => {
 
     // ── Generate a credential for a single "Not Generated" candidate ──
     if (method === 'POST' && url.startsWith('/api/exam/credential/generate')) {
-      if (!(await authorize(req, res, [{ section: '10.6', action: 'add' }]))) return;
+      if (!(await authorize(req, res, [{ section: '10.4', action: 'add' }]))) return;
       const body = await readJsonBody(req);
       injectActor(body, actorOf(req));
       const result = await callProc('exam_access_generate', '$1::jsonb', [JSON.stringify(body || {})]);
@@ -1724,6 +1645,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     // Anything else → static assets (default to tc.html at the root).
+    const reportPageMatch = decodedPathname.match(/^\/reports\/([a-z0-9][a-z0-9-]*)\/.*\.html$/i);
+    if (reportPageMatch && !(await authorizeReport(req, res, reportPageMatch[1], 'view'))) return;
     serveStatic(res, url === '/' ? '/tc.html' : url);
   } catch (err) {
     // eslint-disable-next-line no-console
