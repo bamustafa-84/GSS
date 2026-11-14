@@ -26,7 +26,7 @@
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] || c));
 
   // ── Permission columns ─────────────────────────────────────────
-  const COLS = ['view', 'add', 'edit', 'delete'];
+  const COLS = ['view', 'add', 'edit', 'delete', 'approve', 'print', 'export'];
 
   // Section colour themes (group cell + row tint).
   // One distinct tint per module (indexed by section number).
@@ -60,7 +60,7 @@
     `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
 
   // ── Grid data ──────────────────────────────────────────────────
-  /** @type {Array<{n:number,title:string,color:string,icon:string,rows:Array<{no:string,label:string,remark:string}>}>} */
+  /** @type {Array<{n:number,title:string,color:string,icon:string,rows:Array<{no:string,label:string,remark:string,actions?:string[]|null,permissionId?:string}>}>} */
   const SECTIONS = [
     { n: 1, title: 'Registration', color: 'blue', icon: ICON.clipboard, rows: [
       { no: '1.1', label: 'General', remark: 'Register and update trainee registration information.' },
@@ -92,18 +92,22 @@
       { no: '9.1', label: 'General', remark: 'View and update the candidate checklist.' },
     ] },
     { n: 10, title: 'System Features', color: 'green', icon: ICON.lock, rows: [
-      { no: '10.1', label: 'Reports', remark: 'Access to reports.' },
-      { no: '10.2', label: 'Attendance Sheet', remark: 'Record attendance for assigned courses only.' },
-      { no: '10.3', label: 'Signatures', remark: 'Signatures manager (sigBtn).' },
-      { no: '10.4', label: 'Pending Candidates to Reviews', remark: 'Update the Pending-to-Review Queue (pendingBell) so that when a candidate submits the Registration form (the first tab), the application is automatically added to the queue for review.' },
-      { no: '10.5', label: 'Applicants to Process', remark: 'Update the Secretary Applicant Queue (secretaryBell) so that, once a candidate is accepted, the Secretary can proceed directly to the next form in the workflow: the Conditions tab.' },
-      { no: '10.6', label: 'Exams', remark: 'Exam configuration and credentials (examConfigBtn).' },
+      { no: '10.1', label: 'Signatures', remark: 'Signatures manager (sigBtn).' },
+      { no: '10.2', label: 'Pending Candidates to Reviews', remark: 'Update the Pending-to-Review Queue (pendingBell) so that when a candidate submits the Registration form (the first tab), the application is automatically added to the queue for review.' },
+      { no: '10.3', label: 'Applicants to Process', remark: 'Update the Secretary Applicant Queue (secretaryBell) so that, once a candidate is accepted, the Secretary can proceed directly to the next form in the workflow: the Conditions tab.' },
+      { no: '10.4', label: 'Exams', remark: 'Exam configuration and credentials (examConfigBtn).' },
+    ] },
+    { n: 11, title: 'Reports', color: 'blue', icon: ICON.chart, rows: [
+      { no: '11.1', label: 'No reports detected', remark: 'Use + to refresh available reports.', actions: null },
     ] },
   ];
+  let gridBuilt = false;
 
   // ── Elements ───────────────────────────────────────────────────
   const $ = (/** @type {string} */ id) => document.getElementById(id);
   const sysWrap = $('sysMgmtWrap');
+  const sysBtn = $('sysMgmtBtn');
+  const sysMenu = $('sysMgmtMenu');
   const openUsersBtn = $('openUsersBtn');
   const openPermsBtn = $('openPermsBtn');
   const openDictConfigBtn = $('openDictConfigBtn');
@@ -149,12 +153,7 @@
   /** @type {any} */ let currentUser = null;
   /** @type {any[]} */ let templatesCache = [];
   /** @type {any} */ let currentTpl = null;
-  /** @type {Array<{key:string,label:string}>} */ let reportsCatalog = [];
   /** @type {Set<number>} */ const applySelected = new Set();
-  // Monotonic request tokens: a slower/earlier fetch must never overwrite the
-  // grid for a newer selection (templates tab + per-user permissions tab).
-  let tplLoadSeq = 0;
-  let permLoadSeq = 0;
 
   // ── Password visibility toggles (Add-New-User form) ────────────
   document.querySelectorAll('[data-pw-toggle]').forEach((btn) => {
@@ -172,21 +171,20 @@
     const s = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
     return !!s && String(s.role || '').trim().toLowerCase() === 'admin';
   };
-  // Reveal the Admin-only entry point. This is the permission-management
-  // bootstrap (the tool that edits the matrix), so it stays role-gated here
-  // rather than via `data-perm`; the server mirrors it with requireAdmin.
-  const applyAdminVisibility = () => {
-    if (!sysWrap) return;
-    const on = isAdminRole();
-    sysWrap.classList.toggle('hidden', !on);
-    sysWrap.style.display = on ? 'inline-flex' : 'none';
-  };
-  applyAdminVisibility();
-  /** @type {any} */ (window).GSSSysMgmt = { applyAdminVisibility };
   const closeMenu = () => {
-    const nav = /** @type {any} */ (window).GSSNav;
-    if (nav && typeof nav.closeMenu === 'function') nav.closeMenu('sysMgmtBtn');
+    sysMenu?.classList.add('hidden');
+    sysBtn?.setAttribute('aria-expanded', 'false');
   };
+  const toggleMenu = () => {
+    if (!sysMenu || !isAdminRole()) return;
+    const willOpen = sysMenu.classList.contains('hidden');
+    sysMenu.classList.toggle('hidden', !willOpen);
+    sysBtn?.setAttribute('aria-expanded', String(willOpen));
+  };
+  sysBtn?.addEventListener('click', (e) => { e.stopPropagation(); toggleMenu(); });
+  document.addEventListener('click', (e) => {
+    if (sysWrap && !sysWrap.contains(/** @type {Node} */ (e.target))) closeMenu();
+  });
 
   openUsersBtn?.addEventListener('click', () => {
     closeMenu();
@@ -207,7 +205,10 @@
   };
   openDictConfigBtn?.addEventListener('click', () => { closeMenu(); if (isAdminRole()) openDictConfig(); });
   dictConfigClose?.addEventListener('click', closeDictConfig);
-  // Overlay closes only via its explicit Close button (no backdrop/Escape).
+  dictConfigOverlay?.addEventListener('click', (e) => { if (e.target === dictConfigOverlay) closeDictConfig(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && dictConfigOverlay && !dictConfigOverlay.classList.contains('hidden')) closeDictConfig();
+  });
   userViewPermsBtn?.addEventListener('click', () => {
     const uname = /** @type {HTMLInputElement | null} */ (document.getElementById('userUsername'));
     /** @type {any} */ (window).GSSAdmin?.closeUsers?.();
@@ -230,88 +231,29 @@
         const top = first ? 'border-t-2 border-t-slate-200' : 'border-t border-t-slate-100';
         html += `<tr class="group transition-colors ${theme.row}">`;
         if (first) {
-          html += `<td rowspan="${sec.rows.length}" data-module-group="${sec.n}" data-base-rows="${sec.rows.length}" class="w-[200px] border-r border-t-2 border-slate-200 px-4 py-3 align-middle ${theme.group}">` +
+          html += `<td rowspan="${sec.rows.length}" class="w-[200px] border-r border-t-2 border-slate-200 px-4 py-3 align-middle ${theme.group}">` +
             `<div class="flex items-center gap-3">` +
               `<span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${theme.icon}">${svg(sec.icon)}</span>` +
-              `<span class="text-[13px] font-bold leading-tight">${sec.n}. ${esc(t('permSecTitle_' + sec.n, sec.title))}</span>` +
+              `<span class="text-[13px] font-bold leading-tight">${esc(t('permSecTitle_' + sec.n, sec.title))}</span>` +
+              (sec.n === 11
+                ? `<button type="button" data-perms-add-report title="${esc(t('permsReportsAdd', 'Refresh detected reports'))}" aria-label="${esc(t('permsReportsAdd', 'Refresh detected reports'))}" class="ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-lg font-bold text-[#042F8D] shadow-sm hover:bg-blue-50">+</button>`
+                : '') +
             `</div></td>`;
         }
+        const permissionId = row.permissionId || row.no;
+        const isReport = !!row.permissionId;
         html += `<td class="whitespace-nowrap ${top} bg-white px-3 py-3 align-middle text-xs font-semibold tabular-nums text-slate-400 transition-colors group-hover:bg-transparent">${esc(row.no)}</td>`;
-        const rowLabel = esc(t('permRowLabel_' + row.no.replace('.', '_'), row.label));
-        const isReportsParent = sec.n === 10 && row.no === '10.1' && reportsCatalog.length > 0;
-        const labelInner = isReportsParent
-          ? `<button type="button" class="perms-report-toggle inline-flex items-center gap-2 text-left text-sm font-medium text-slate-700 transition-colors hover:text-[#042F8D]" data-expanded="false" aria-expanded="false">` +
-              `<span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-500">` +
-                `<span class="report-ic-plus">${svg('<path d="M12 5v14"/><path d="M5 12h14"/>')}</span>` +
-                `<span class="report-ic-minus hidden">${svg('<path d="M5 12h14"/>')}</span>` +
-              `</span>${rowLabel}` +
-              `<span class="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">${reportsCatalog.length}</span>` +
-            `</button>`
-          : rowLabel;
-        html += `<td class="whitespace-nowrap ${top} bg-white px-3 py-3 align-middle text-sm font-medium text-slate-700 transition-colors group-hover:bg-transparent">${labelInner}</td>`;
+        html += `<td class="whitespace-nowrap ${top} bg-white px-3 py-3 align-middle text-sm font-medium text-slate-700 transition-colors group-hover:bg-transparent">${esc(isReport ? row.label : t('permRowLabel_' + row.no.replace('.', '_'), row.label))}</td>`;
         COLS.forEach((col) => {
-          html += `<td class="${top} ${COL_TINT[col]} px-2 py-3 text-center align-middle"><input type="checkbox" data-no="${row.no}" data-col="${col}" class="block mx-auto h-4 w-4 cursor-pointer rounded border-slate-300 accent-[#042F8D] transition-transform hover:scale-110" /></td>`;
+          const enabled = row.actions === null ? false : (!row.actions || row.actions.includes(col));
+          html += `<td class="${top} ${COL_TINT[col]} px-2 py-3 text-center align-middle"><input type="checkbox" data-no="${permissionId}" data-col="${col}" ${enabled ? '' : 'disabled'} class="block mx-auto h-4 w-4 rounded border-slate-300 accent-[#042F8D] transition-transform ${enabled ? 'cursor-pointer hover:scale-110' : 'cursor-not-allowed opacity-30'}" /></td>`;
         });
-        html += `<td class="w-[260px] ${top} bg-white px-4 py-3 align-middle text-xs leading-snug text-slate-500 transition-colors group-hover:bg-transparent">${esc(t('permRowRemark_' + row.no.replace('.', '_'), row.remark))}</td>`;
+        html += `<td class="w-[260px] ${top} bg-white px-4 py-3 align-middle text-xs leading-snug text-slate-500 transition-colors group-hover:bg-transparent">${esc(isReport ? t('permsReportRemark', row.remark) : t('permRowRemark_' + row.no.replace('.', '_'), row.remark))}</td>`;
         html += '</tr>';
-        // Module 10 · Reports — collapsible child rows nested right under 10.1.
-        // They carry no first-column cell (covered by the module group cell,
-        // whose rowspan is widened on expand) and store each grant under
-        // section "10.1.<folder>" so save/load flows through the generic boxes.
-        if (sec.n === 10 && row.no === '10.1' && reportsCatalog.length) {
-          reportsCatalog.forEach((rep, i) => {
-            const no = `10.1.${rep.key}`;
-            const dispNo = `10.1.${i + 1}`;
-            const rtop = 'border-t border-t-slate-100';
-            html += `<tr class="group transition-colors ${theme.row} perms-report-row" data-report-row hidden>`;
-            html += `<td class="whitespace-nowrap ${rtop} bg-white px-3 py-2.5 align-middle text-xs font-semibold tabular-nums text-slate-400 transition-colors group-hover:bg-transparent">${esc(dispNo)}</td>`;
-            html += `<td class="whitespace-nowrap ${rtop} bg-white px-3 py-2.5 align-middle text-sm font-medium text-slate-600 transition-colors group-hover:bg-transparent">` +
-              `<span class="inline-flex items-center gap-2 pl-5"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-slate-300"></span>${esc(rep.label)}</span></td>`;
-            COLS.forEach((col) => {
-              html += `<td class="${rtop} ${COL_TINT[col]} px-2 py-2.5 text-center align-middle"><input type="checkbox" data-no="${esc(no)}" data-col="${col}" class="block mx-auto h-4 w-4 cursor-pointer rounded border-slate-300 accent-[#042F8D] transition-transform hover:scale-110" /></td>`;
-            });
-            html += `<td class="w-[260px] ${rtop} bg-white px-4 py-2.5 align-middle text-xs leading-snug text-slate-500 transition-colors group-hover:bg-transparent">${esc(t('permReportRemarkPre', 'Access to the') + ' ' + rep.label + ' ' + t('permReportRemarkPost', 'report.'))}</td>`;
-            html += '</tr>';
-          });
-        }
       });
     });
     return html;
   };
-
-  /** Fetch the available reports once (dynamic folder discovery). */
-  const ensureReports = async () => {
-    if (reportsCatalog.length) return;
-    try {
-      const d = await fetch(`${API_BASE}/api/reports/list`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
-      reportsCatalog = (d && Array.isArray(d.reports)) ? d.reports : [];
-    } catch (_) { reportsCatalog = []; }
-  };
-
-  /** Wire the Reports (10.1) +/− expander for a grid body (users + templates). */
-  const wireReportToggles = (/** @type {HTMLElement | null} */ grid) => {
-    if (!grid) return;
-    grid.addEventListener('click', (e) => {
-      const btn = /** @type {HTMLElement | null} */ (/** @type {HTMLElement} */ (e.target).closest('.perms-report-toggle'));
-      if (!btn || !grid.contains(btn)) return;
-      const next = btn.getAttribute('data-expanded') !== 'true';
-      btn.setAttribute('data-expanded', String(next));
-      btn.setAttribute('aria-expanded', String(next));
-      const rows = grid.querySelectorAll('tr[data-report-row]');
-      rows.forEach((tr) => { /** @type {HTMLElement} */ (tr).hidden = !next; });
-      // Widen the module group cell so its rowspan covers the revealed rows.
-      const groupCell = /** @type {HTMLTableCellElement | null} */ (grid.querySelector('[data-module-group="10"]'));
-      if (groupCell) {
-        const base = Number(groupCell.getAttribute('data-base-rows')) || 0;
-        groupCell.rowSpan = next ? base + rows.length : base;
-      }
-      const plus = btn.querySelector('.report-ic-plus');
-      const minus = btn.querySelector('.report-ic-minus');
-      if (plus) plus.classList.toggle('hidden', next);
-      if (minus) minus.classList.toggle('hidden', !next);
-    });
-  };
-
   /** @returns {HTMLInputElement[]} */
   const boxesIn = (/** @type {HTMLElement | null} */ tbody) => Array.from(tbody ? tbody.querySelectorAll('input[type="checkbox"]') : []);
   /** @returns {HTMLInputElement[]} */
@@ -323,10 +265,31 @@
     boxesIn(tbody).forEach((cb) => {
       const no = cb.getAttribute('data-no') || '';
       const col = cb.getAttribute('data-col') || '';
-      cb.checked = Array.isArray(m[no]) && m[no].indexOf(col) !== -1;
+      cb.checked = !cb.disabled && Array.isArray(m[no]) && m[no].indexOf(col) !== -1;
     });
   };
   const applyPermMap = (/** @type {Record<string, string[]>} */ map) => applyMapInto(permsGrid, map);
+  const checkedMap = (/** @type {HTMLElement | null} */ tbody) => {
+    /** @type {Record<string, string[]>} */
+    const map = {};
+    boxesIn(tbody).forEach((cb) => {
+      if (!cb.checked || cb.disabled) return;
+      const no = cb.getAttribute('data-no') || '';
+      const action = cb.getAttribute('data-col') || '';
+      if (no && action) (map[no] || (map[no] = [])).push(action);
+    });
+    return map;
+  };
+  const rebuildGrids = () => {
+    const userMap = checkedMap(permsGrid);
+    const templateMap = checkedMap(permsTplGrid);
+    const html = renderGrid() || '';
+    if (permsGrid) permsGrid.innerHTML = html;
+    if (permsTplGrid) permsTplGrid.innerHTML = html;
+    applyMapInto(permsGrid, userMap);
+    applyMapInto(permsTplGrid, templateMap);
+    gridBuilt = true;
+  };
 
   const clearAll = () => {
     boxes().forEach((cb) => { cb.checked = false; });
@@ -389,14 +352,12 @@
 
   // Load the user's saved permission set (the matrix is the only source).
   const loadStoredPerms = async (/** @type {any} */ u) => {
-    const seq = ++permLoadSeq;
     if (!u || u.login_id == null) { clearAll(); return; }
     try {
       const d = await fetch(`${API_BASE}/api/permissions?login_id=${encodeURIComponent(u.login_id)}`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
-      if (seq !== permLoadSeq) return; // a newer selection won the race
       if (d && d.ok) applyPermMap(d.permissions || {});
       else clearAll();
-    } catch (_) { if (seq === permLoadSeq) clearAll(); }
+    } catch (_) { clearAll(); }
   };
 
   const onUserChange = () => {
@@ -434,6 +395,44 @@
     if (!permsStatusMsg) return;
     permsStatusMsg.textContent = msg;
     permsStatusMsg.className = 'mr-1 min-h-5 text-sm font-semibold ' + (ok ? 'text-emerald-600' : 'text-red-600');
+  };
+
+  const refreshReportCatalog = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/reports/list`, { headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error(`Reports request failed (${response.status})`);
+      const data = await response.json();
+      if (!data || !Array.isArray(data.reports)) throw new Error('Invalid reports response');
+      const section = SECTIONS.find((item) => item.n === 11);
+      if (!section) throw new Error('Reports permission section is missing');
+
+      const rows = data.reports
+        .filter((/** @type {any} */ report) =>
+          report && typeof report.id === 'string' && /^[a-z0-9][a-z0-9-]*$/i.test(report.id) &&
+          typeof report.title === 'string' && report.title.trim())
+        .map((/** @type {{ id: string, title: string }} */ report, index) => ({
+          no: `11.${index + 1}`,
+          permissionId: `11.1.${report.id}`,
+          label: report.title,
+          remark: t('permsReportRemark', 'View, export, or print this report.'),
+          actions: ['view', 'print', 'export'],
+        }));
+      section.rows = rows.length ? rows : [
+        { no: '11.1', label: t('permsReportsEmpty', 'No reports detected'), remark: t('permsReportsAdd', 'Use + to refresh available reports.'), actions: null },
+      ];
+      if (gridBuilt) rebuildGrids();
+      return true;
+    } catch (error) {
+      console.error('Unable to discover report permissions:', error);
+      return false;
+    }
+  };
+
+  const discoverReports = async () => {
+    const loaded = await refreshReportCatalog();
+    setMsg(loaded
+      ? t('permsReportsUpdated', 'Available reports refreshed.')
+      : t('permsReportsLoadError', 'Could not load available reports.'), loaded);
   };
 
   // ── Permission templates ───────────────────────────────────────
@@ -545,7 +544,6 @@
 
   const loadTemplate = async (/** @type {string|number} */ id) => {
     const tid = Number.parseInt(String(id), 10);
-    const seq = ++tplLoadSeq;
     if (!Number.isFinite(tid)) {
       currentTpl = null; applySelected.clear();
       renderAssignedList(); renderApplyList();
@@ -555,8 +553,6 @@
     if (permsTplUserList) permsTplUserList.innerHTML = listNote(t('permsTplLoading', 'Loading…'));
     try {
       const d = await fetch(`${API_BASE}/api/permission-templates?template_id=${encodeURIComponent(tid)}`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
-      // Ignore a stale response: the admin already picked another template.
-      if (seq !== tplLoadSeq) return;
       if (!d || !d.ok) {
         currentTpl = null; applySelected.clear();
         renderAssignedList(); renderApplyList();
@@ -581,7 +577,6 @@
       renderApplyList();
       setTplMsg('', true);
     } catch (_) {
-      if (seq !== tplLoadSeq) return; // stale failure: keep the newer selection
       currentTpl = null; applySelected.clear();
       renderAssignedList(); renderApplyList();
     }
@@ -710,24 +705,19 @@
     b.addEventListener('click', () => setTab(b.getAttribute('data-perms-tab') || 'permissions'));
   });
 
-  let gridBuilt = false;
   let returnToUsersOnClose = false;
   async function openPerms(/** @type {string} */ preselect, /** @type {string} */ tab, /** @type {boolean=} */ returnToUsers) {
     if (!permsOverlay) return;
     returnToUsersOnClose = !!returnToUsers;
-    if (!gridBuilt) {
-      await ensureReports();
-      const html = renderGrid() || '';
-      if (permsGrid) permsGrid.innerHTML = html;
-      if (permsTplGrid) permsTplGrid.innerHTML = html;
-      wireReportToggles(permsGrid);
-      wireReportToggles(permsTplGrid);
-      gridBuilt = true;
-    }
     permsOverlay.classList.remove('hidden');
     permsOverlay.setAttribute('aria-hidden', 'false');
     setTab('permissions');
-    setMsg('', true);
+    setMsg(t('permsReportsLoading', 'Detecting available reports...'), true);
+    const reportsLoaded = await refreshReportCatalog();
+    if (!gridBuilt) {
+      rebuildGrids();
+    }
+    setMsg(reportsLoaded ? '' : t('permsReportsLoadError', 'Could not load available reports.'), reportsLoaded);
     setTplMsg('', true);
     setApplyMsg('', true);
     applySelected.clear();
@@ -791,7 +781,14 @@
     if (cb.checked) applySelected.add(id); else applySelected.delete(id);
     updateSelectedCount();
   });
-  // Overlay closes only via its explicit Close button (no backdrop/Escape).
+  permsOverlay?.addEventListener('click', (e) => {
+    const addReports = e.target instanceof Element ? e.target.closest('[data-perms-add-report]') : null;
+    if (addReports) { void discoverReports(); return; }
+    if (e.target === permsOverlay) closePerms();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && permsOverlay && !permsOverlay.classList.contains('hidden')) closePerms();
+  });
 
   /** @type {any} */ (window).GSSSystemMgmt = {
     openPerms,

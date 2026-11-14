@@ -850,7 +850,11 @@
     setTimeout(() => URL.revokeObjectURL(link.href), 1000);
   };
 
-  const exportExcel = () => {
+  const exportExcel = async () => {
+    if (!(await GSSReportAccess.authorizeReport('training-register', 'export'))) {
+      window.alert(t('reportActionDenied', 'You are not allowed to export this report.'));
+      return;
+    }
     const ST = { header: 1, no: 2, left: 3, center: 4, banner: 5, subtitle: 6 };
     const headerKeys = ['trColNo', 'trColCode', 'trColTitle', 'trColTrainer', 'trColStartDate', 'trColEndDate', 'trColStartTime', 'trColEndTime', 'trColRegistered', 'trColRecommended', 'trColNonRecommended', 'trColStatus'];
     const totalCols = 1 + headerKeys.length; // A spacer + data columns
@@ -913,7 +917,11 @@
     downloadXlsx(`training-register-${stamp}.xlsx`, t('trReportTitle', 'Training Register'), rows, { cols, merges, rowHeights });
   };
 
-  const doPrint = () => {
+  const doPrint = async () => {
+    if (!(await GSSReportAccess.authorizeReport('training-register', 'print'))) {
+      window.alert(t('reportActionDenied', 'You are not allowed to print this report.'));
+      return;
+    }
     printing = true;
     expandAllSections();      // collapsed sections would be omitted from the PDF
     renderTable();            // render every row (no lazy loading in print)
@@ -1026,8 +1034,23 @@
     lang = saved === 'fr' || saved === 'en' ? saved : 'en';
 
     applyLang();
-    await GSSPerms.ensure();
-    if (!GSSPerms.canViewReport('training-register')) { denyAccess(); return; }
+    document.body.dataset.gssPrintAllowed = 'false';
+    document.body.dataset.gssPrintMessage = t('reportActionDenied', 'You are not allowed to print this report.');
+    if (!(await GSSReportAccess.authorizeReport('training-register', 'view'))) { denyAccess(); return; }
+    const [canExport, canPrint] = await Promise.all([
+      GSSReportAccess.authorizeReport('training-register', 'export'),
+      GSSReportAccess.authorizeReport('training-register', 'print'),
+    ]);
+    const excelButton = /** @type {HTMLButtonElement|null} */ ($('btnExcel'));
+    const printButton = /** @type {HTMLButtonElement|null} */ ($('btnPrint'));
+    if (excelButton) {
+      excelButton.disabled = !canExport;
+      excelButton.setAttribute('aria-disabled', String(!canExport));
+    }
+    if (printButton) {
+      printButton.disabled = !canPrint;
+      printButton.setAttribute('aria-disabled', String(!canPrint));
+    }
 
     wire();
     initStatsGroups();

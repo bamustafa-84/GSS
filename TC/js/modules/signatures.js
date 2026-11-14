@@ -1,6 +1,5 @@
 // @ts-check
 /// <reference path="../utils/translation.js" />
-/// <reference path="../permissions-engine.js" />
 /**
  * GSS · Signature manager
  * ------------------------------------------------------------------
@@ -15,9 +14,7 @@
 (() => {
   'use strict';
 
-  //#region SIGNATURE MANAGER
-  // Owns the signature modal, create/list/delete actions, and Training Officer designation.
-  //#region DOM AND SHARED HELPERS
+  const btn = document.getElementById('sigBtn');
   const overlay = document.getElementById('sigOverlay');
   const closeBtn = document.getElementById('sigClose');
   const form = /** @type {HTMLFormElement | null} */ (document.getElementById('sigForm'));
@@ -35,7 +32,7 @@
   const officerCheck = /** @type {HTMLInputElement | null} */ (document.getElementById('sigIsTrainingOfficer'));
   const officerLocked = document.getElementById('sigOfficerLocked');
 
-  if (!overlay || !form || !nameInput || !dataInput || !list) return;
+  if (!btn || !overlay || !form || !nameInput || !dataInput || !list) return;
 
   // Signature list is lazy: first PAGE_SIZE rows, then searched server-side.
   const PAGE_SIZE = 10;
@@ -54,13 +51,11 @@
     status.textContent = msg;
     status.className = 'min-h-5 text-sm font-semibold ' + (ok ? 'text-emerald-600' : 'text-red-600');
   };
-  //#endregion
 
-  //#region MODAL ACCESS
-  // Enforce view permission and keep the signature pad sized to its visible modal.
+  // ── Open / close ───────────────────────────────────────────────
   const isOpen = () => !overlay.classList.contains('hidden');
   const open = () => {
-    if (!GSSPerms.canSection('10.3', 'view')) return;
+    if (!GSSPerms.canSection('10.1', 'view')) return;
     overlay.classList.remove('hidden');
     overlay.setAttribute('aria-hidden', 'false');
     // Nudge the signature pad to (re)size now that it is visible.
@@ -72,13 +67,16 @@
     overlay.setAttribute('aria-hidden', 'true');
   };
 
-  /** @type {any} */ (window).GSSSignatures = { open, close, isOpen };
+  btn.addEventListener('click', () => (isOpen() ? close() : open()));
   closeBtn?.addEventListener('click', close);
-  // Overlay closes only via its explicit Close button (no backdrop/Escape).
-  //#endregion
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) close();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isOpen()) close();
+  });
 
-  //#region IMAGE UPLOAD
-  // Validate an uploaded image, store its data URL, and preview it on the signature pad.
+  // ── Upload an image → data URL (fills the hidden pad input) ─────
   upload?.addEventListener('change', () => {
     const file = upload.files && upload.files[0];
     if (!file) return;
@@ -114,13 +112,11 @@
     };
     reader.readAsDataURL(file);
   });
-  //#endregion
 
-  //#region CREATE AND SAVE
-  // Validate and submit a drawn or uploaded signature, including officer designation.
+  // ── Save ───────────────────────────────────────────────────────
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!GSSPerms.canSection('10.3', 'add')) return;
+    if (!GSSPerms.canSection('10.1', 'add')) return;
     const name = nameInput.value.trim();
     const image = dataInput.value.trim();
     if (!name) {
@@ -160,10 +156,8 @@
       if (saveBtn) saveBtn.disabled = false;
     }
   });
-  //#endregion
 
-  //#region SAVED SIGNATURE DATA
-  // Normalize signature records and provide permission-checked deletion/loading.
+  // ── List saved signatures ──────────────────────────────────────
   const idOf = (/** @type {any} */ row) =>
     row && (row.signature_id ?? row.id ?? row.signatureId);
 
@@ -172,7 +166,7 @@
 
   // ── Delete a saved signature (with confirmation) ───────────────
   const deleteSignature = async (/** @type {any} */ id) => {
-    if (id == null || !GSSPerms.canSection('10.3', 'delete')) return;
+    if (id == null || !GSSPerms.canSection('10.1', 'delete')) return;
     if (!window.confirm(t('confirmDeleteSignature', 'Delete this signature? This action cannot be undone.'))) return;
     try {
       const res = await fetch(`${API_BASE}/api/signatures?id=${encodeURIComponent(String(id))}`, {
@@ -221,10 +215,7 @@
       }
     }
   };
-  //#endregion
 
-  //#region SIGNATURE LIST RENDERING
-  // Render thumbnails, officer badges, delete actions, and empty/list-limit states.
   const renderList = (/** @type {any[]} */ rows) => {
     list.innerHTML = '';
     if (listMore) listMore.classList.add('hidden');
@@ -305,10 +296,8 @@
       listMore.classList.remove('hidden');
     }
   };
-  //#endregion
 
-  //#region SEARCH AND REFRESH
-  // Debounce server-side search, refresh on demand, and relabel an open list after language changes.
+  // Debounced incremental search across the whole signature table.
   let searchTimer = 0;
   searchInput?.addEventListener('input', () => {
     window.clearTimeout(searchTimer);
@@ -323,6 +312,4 @@
       if (isOpen()) window.setTimeout(loadSignatures, 0);
     })
   );
-  //#endregion
-  //#endregion // SIGNATURE MANAGER
 })();

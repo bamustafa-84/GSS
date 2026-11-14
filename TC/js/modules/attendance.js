@@ -5,8 +5,6 @@
 // plain text (no inputs, no per-row Remove button). Rows are fed in via
 // window.GSSPresences.setRows(...) once applicant data is available.
 
-//#region READ-ONLY ATTENDANCE HISTORY
-// Date/status formatting, summary counts, and rendering of applicant attendance rows.
 function getPresDayName(/** @type {string} */ dateValue) {
   if (!dateValue) return '';
   // The date field may hold dd/MM/yyyy (masked) or ISO — normalise to ISO.
@@ -133,10 +131,7 @@ function setPresenceRows(rows) {
   (Array.isArray(rows) ? rows : []).forEach(renderPresenceRow);
   updatePresenceSummary();
 }
-//#endregion
 
-//#region ATTENDANCE PUBLIC API
-// Expose history updates and completion state for applicant and exam modules.
 // Exposed so applicant loading / other modules can feed read-only rows.
 /**
  * Mark the Attendance (presences) panel as completed: green tab checkmark +
@@ -165,10 +160,7 @@ function markPresencesComplete() {
   markComplete: markPresencesComplete,
   setReadonly: setPresencesReadonly,
 };
-//#endregion
 
-//#region TRAINING DROPDOWN HOOKS
-// Allow the shared dictionary manager to populate Training Title and Trainer selects.
 // ── Dictionary-backed dropdown hooks (Training Title & Trainer) ──
 // Mirror the registration module's GSSEducationLevel contract so the
 // shared Dictionary manager can (re)populate these selects from the DB.
@@ -208,9 +200,9 @@ function makeSelectHook(select) {
   (async () => {
     try {
       const d = await fetch(`${API_BASE}/api/instructors`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
-      const list = /** @type {any[]} */ ((d && Array.isArray(d.instructors)) ? d.instructors : []);
+      const list = (d && Array.isArray(d.instructors)) ? d.instructors : [];
       if (list.length) {
-        /** @type {any} */ (window).GSSTrainer.setOptions(list.map((/** @type {any} */ instructor) => ({ label: String(instructor.full_name || instructor.username || '') })));
+        /** @type {any} */ (window).GSSTrainer.setOptions(list.map((u) => ({ label: String(u.full_name || u.username || '') })));
       }
     } catch (_) { /* keep static fallback */ }
   })();
@@ -220,10 +212,7 @@ function makeSelectHook(select) {
 
   wirePresencesAck();
 }());
-//#endregion
 
-//#region TRAINING UPSERT ON ACKNOWLEDGEMENT
-// Validate the Attendance Report acknowledgement and persist its training session and assignment.
 // ── Training upsert on Attendance Report acknowledgement ──────────
 // When ack-presences is checked, persist the Training Title, Trainer and the
 // From / To period into the `training` table so the attendance tick sheet and
@@ -352,10 +341,7 @@ function wirePresencesAck() {
     }
   });
 }
-//#endregion
 
-//#region READ-ONLY AND WORKFLOW COMPLETION
-// Lock completed attendance data, set the instructor default, and advance the workflow.
 /**
  * Make the whole Individual Attendance Report panel read-only.
  * @param {boolean} ro
@@ -416,23 +402,12 @@ function markPresencesDone(ack) {
   // Lock the panel.
   setPresencesReadonly(true);
 
-  // Move focus off the checkbox before any panel/overlay is hidden so no
-  // focused element is left inside an aria-hidden ancestor (a11y requirement).
-  try { if (ack && typeof ack.blur === 'function') ack.blur(); } catch (_) { /* noop */ }
-
-  // Advance to the next panel the user may actually open (skips locked /
-  // permission-denied tabs such as Exam for roles without exam access).
+  // Advance to the next panel in the flow.
   try {
-    const tabs = /** @type {any} */ (window).GSSTabs;
-    if (tabs && typeof tabs.advanceAfter === 'function') {
-      tabs.advanceAfter('presences');
-    } else {
-      const order = (typeof TAB_ORDER !== 'undefined' && Array.isArray(TAB_ORDER)) ? TAB_ORDER : null;
-      if (order && typeof switchTab === 'function') {
-        const next = order[order.indexOf('presences') + 1];
-        if (next) switchTab(next);
-      }
+    const order = (typeof TAB_ORDER !== 'undefined' && Array.isArray(TAB_ORDER)) ? TAB_ORDER : null;
+    if (order && typeof switchTab === 'function') {
+      const next = order[order.indexOf('presences') + 1];
+      if (next) switchTab(next);
     }
   } catch (_) { /* noop */ }
 }
-//#endregion

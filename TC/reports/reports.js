@@ -2,16 +2,50 @@
 /**
  * GSS · Reports dropdown
  * ==================================================================
- * Wires the "Reports" toolbar dropdown (tc.html). The report list is
- * discovered dynamically from the server (/api/reports/list — one entry
- * per folder under /reports), so new reports appear automatically without
- * touching this file or tc.html.
- *
- * Per-report visibility is governed by the Permissions matrix: each report
- * is section "10.1.<folder>" and is shown only when the signed-in user has
- * View on it (GSSPerms.canViewReport). The whole dropdown hides when no
- * report is viewable. The server still enforces access on every report page.
+ * Builds the Reports dropdown from available report pages and the signed-in
+ * user's report-specific grants in the shared permission matrix.
  */
+const GSSReportAccess = Object.freeze({
+  /**
+   * @param {string} reportId
+   * @param {'view'|'print'|'export'} action
+   * @returns {Promise<boolean>}
+   */
+  async authorizeReport(reportId, action = 'view') {
+    if (!/^[a-z0-9][a-z0-9-]*$/i.test(reportId) || !['view', 'print', 'export'].includes(action)) return false;
+    const session = GSSSession.get();
+    if (!session || !session.token) return false;
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/reports/authorize?report=${encodeURIComponent(reportId)}&action=${encodeURIComponent(action)}`,
+        { headers: { Accept: 'application/json' } }
+      );
+      if (!response.ok) {
+        if (action === 'print' && document.body) document.body.dataset.gssPrintAllowed = 'false';
+        return false;
+      }
+      const data = await response.json();
+      const allowed = !!(data && data.ok);
+      if (action === 'print' && document.body) document.body.dataset.gssPrintAllowed = String(allowed);
+      return allowed;
+    } catch (error) {
+      console.error(`Unable to authorize ${action} for report ${reportId}:`, error);
+      if (action === 'print' && document.body) document.body.dataset.gssPrintAllowed = 'false';
+      return false;
+    }
+  },
+});
+
+(() => {
+  if (typeof document === 'undefined' || !document.head ||
+    !/(?:^|\/)reports\/[a-z0-9][a-z0-9-]*\/[^/]+\.html$/i.test(window.location.pathname) ||
+    document.getElementById('gssReportPrintPermission')) return;
+  const style = document.createElement('style');
+  style.id = 'gssReportPrintPermission';
+  style.textContent = '@media print { body:not([data-gss-print-allowed="true"]) > * { display: none !important; } body:not([data-gss-print-allowed="true"])::after { content: attr(data-gss-print-message); display: block; padding: 2rem; color: #334155; font: 16px sans-serif; } }';
+  document.head.appendChild(style);
+})();
+
 (() => {
   'use strict';
 
@@ -24,69 +58,74 @@
     return fallback;
   };
 
-  const esc = (/** @type {any} */ s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => (
-    /** @type {any} */ ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] || c));
-
-  /** Entry page for a report folder. */
-  const reportUrl = (/** @type {string} */ key) => `./reports/${key}/${key}.html`;
-
-  /** May the current user view/open a specific report? (permissive if no engine) */
-  const canViewReport = (/** @type {string} */ key) => {
-    const gp = /** @type {any} */ (window).GSSPerms;
-    if (!gp || typeof gp.canViewReport !== 'function') return true;
-    return gp.canViewReport(key);
-  };
-
-  const ICON = '<svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h3"/></svg>';
-
-  /** @type {Array<{key:string,label:string}>} */
-  let catalog = [];
-
-  /** Render the dropdown items for every report the user may view. */
-  const renderMenu = (/** @type {HTMLElement} */ menu, /** @type {HTMLElement} */ wrap) => {
-    const allowed = catalog.filter((r) => canViewReport(r.key));
-    if (!allowed.length) {
-      menu.innerHTML = '';
-      wrap.classList.add('hidden');
-      return;
-    }
-    wrap.classList.remove('hidden');
-    menu.innerHTML = allowed.map((r) =>
-      `<button type="button" role="menuitem" data-report="${esc(r.key)}"` +
-      ` class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus:bg-slate-50 focus:outline-none">` +
-      `<span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#042F8D]/10 text-[#042F8D]">${ICON}</span>` +
-      `<span>${esc(r.label)}</span></button>`
-    ).join('');
-  };
-
-  const init = async () => {
+  const init = () => {
     const wrap = document.getElementById('reportsMenu');
+    const btn = document.getElementById('reportsBtn');
     const menu = document.getElementById('reportsDropdown');
-    if (!wrap || !menu) return;
+    if (!wrap || !btn || !menu) return;
 
-    // Route each item (delegated — the list is rendered dynamically).
-    menu.addEventListener('click', (e) => {
-      const item = /** @type {HTMLElement | null} */ (/** @type {HTMLElement} */ (e.target).closest('[data-report]'));
-      if (!item || !menu.contains(item)) return;
-      const key = item.dataset.report || '';
-      const nav = /** @type {any} */ (window).GSSNav;
-      if (nav && typeof nav.closeMenu === 'function') nav.closeMenu('reportsBtn');
-      if (!canViewReport(key)) { showToast(t('trReportNoAccess', 'You do not have access to this report.')); return; }
-      window.open(reportUrl(key), '_blank', 'noopener');
+    const setOpen = (/** @type {boolean} */ open) => {
+      menu.classList.toggle('hidden', !open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    };
+    const isOpen = () => !menu.classList.contains('hidden');
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setOpen(!isOpen());
     });
 
-    // Discover reports, then build the menu once permissions are known.
-    try {
-      const d = await fetch(`${API_BASE}/api/reports/list`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
-      catalog = (d && Array.isArray(d.reports)) ? d.reports : [];
-    } catch (_) { catalog = []; }
+    // Close on outside click / Escape.
+    document.addEventListener('click', (e) => {
+      if (isOpen() && !wrap.contains(/** @type {Node} */ (e.target))) setOpen(false);
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && isOpen()) { setOpen(false); btn.focus(); }
+    });
 
-    const gp = /** @type {any} */ (window).GSSPerms;
-    const build = () => renderMenu(menu, wrap);
-    if (gp && gp.ready && typeof gp.ready.then === 'function') gp.ready.then(build).catch(build);
-    build();
-    // Re-evaluate when the tab regains focus (admin may have changed perms).
-    window.addEventListener('focus', build);
+    void loadReports(wrap, menu, setOpen);
+  };
+
+  /**
+   * @param {HTMLElement} wrap
+   * @param {HTMLElement} menu
+   * @param {(open: boolean) => void} setOpen
+   */
+  const loadReports = async (wrap, menu, setOpen) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/reports/list`, { headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error(`Reports request failed (${response.status})`);
+      const data = await response.json();
+      if (!data || !Array.isArray(data.reports)) throw new Error('Invalid reports response');
+
+      const reports = await Promise.all(data.reports.map(async (/** @type {any} */ report) => {
+        if (!report || typeof report.id !== 'string' || typeof report.url !== 'string' ||
+          !/^[a-z0-9][a-z0-9-]*$/i.test(report.id)) return null;
+        const allowed = await GSSReportAccess.authorizeReport(report.id, 'view');
+        return allowed ? report : null;
+      }));
+      menu.replaceChildren();
+      reports.filter(Boolean).forEach((/** @type {any} */ report) => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.setAttribute('role', 'menuitem');
+        item.dataset.report = report.id;
+        item.className = 'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus:bg-slate-50 focus:outline-none';
+        const label = document.createElement('span');
+        label.textContent = report.title;
+        item.appendChild(label);
+        item.addEventListener('click', () => {
+          setOpen(false);
+          window.open(report.url, '_blank', 'noopener');
+        });
+        menu.appendChild(item);
+      });
+      wrap.classList.toggle('hidden', !menu.childElementCount);
+    } catch (error) {
+      console.error('Unable to load reports menu:', error);
+      wrap.classList.add('hidden');
+      showToast(t('trReportLoadErr', 'Reports could not be loaded.'));
+    }
   };
 
   /** Minimal transient toast (Tailwind classes, no persistent DOM). */

@@ -29,10 +29,7 @@
     /** @type {boolean} */ collapsed
   ) => {
     body.forEach((el) => el.classList.toggle('hidden', collapsed));
-    // Down chevron when expanded, up chevron when collapsed.
-    if (chevron) chevron.innerHTML = collapsed
-      ? '<polyline points="6 15 12 9 18 15"></polyline>'
-      : '<polyline points="6 9 12 15 18 9"></polyline>';
+    if (chevron) chevron.classList.toggle('-rotate-90', collapsed);
     legend.setAttribute('aria-expanded', String(!collapsed));
   };
 

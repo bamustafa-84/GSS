@@ -117,18 +117,9 @@
     try {
       const data = await fetch(`${API_BASE}/api/training`, { headers: { Accept: 'application/json' } }).then((r) => r.json());
       const rows = Array.isArray(data.trainings) ? data.trainings : [];
-      const hasCandidates = await Promise.all(rows.map(async (/** @type {any} */ row) => {
-        try {
-          const response = await fetch(`${API_BASE}/api/training/students?training_id=${encodeURIComponent(String(row.training_id))}`, { headers: { Accept: 'application/json' } });
-          if (!response.ok) return true;
-          const roster = await response.json();
-          return !Array.isArray(roster.students) || roster.students.length > 0;
-        } catch (_) { return true; }
-      }));
-      const eligibleRows = rows.filter((/** @type {any} */ _, /** @type {number} */ index) => hasCandidates[index]);
       const cur = trainingSelect.value;
       trainingSelect.innerHTML = `<option value="">${t('examPickCourse', 'Select a course…')}</option>`;
-      eligibleRows.forEach((/** @type {any} */ row) => {
+      rows.forEach((/** @type {any} */ row) => {
         const opt = document.createElement('option');
         opt.value = String(row.training_id);
         opt.textContent = row.training_title || row.title;

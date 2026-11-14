@@ -1,22 +1,54 @@
-﻿
-/* ------------------------------------------------------------------
- * Dashboard statistic: real number of trainees who completed training.
- * Replaces the hard-coded placeholder (+250) when the stat element is present.
- * ---------------------------------------------------------------- */
-(() => {
-  if (typeof document === 'undefined') return;
-  const fill = () => {
-    const el = document.getElementById('statTraineesTrained');
-    if (!el) return;
-    fetch(`${API_BASE}/api/stats/trainees-trained`, { headers: { Accept: 'application/json' } })
-      .then((r) => r.json())
-      .then((d) => { if (d && typeof d.count === 'number') el.textContent = '+' + d.count; })
-      .catch(() => { /* keep the static fallback */ });
-  };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fill);
-  else fill();
-})();
+﻿// @ts-check
+/// <reference path="./modules/registration.js" />
+/// <reference path="./modules/applicant-link.js" />
 
+// ── Authenticated session guard ────────────────────────────────
+// Redirect to the login page when there is no active session, and wire the
+// header user chip + logout button. GSSSession lives in js/global.js.
+(() => {
+  const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
+  if (!session) {
+    window.location.replace('./login.html');
+    return;
+  }
+  // Render the current role as a fancy header badge. Exposed on window so
+  // admin.js can refresh it once the live role is fetched from the server.
+  const applyRoleBadge = (/** @type {string | undefined} */ roleName) => {
+    const badge = document.getElementById('userChipRole');
+    const text = document.getElementById('userChipRoleText');
+    const current = (typeof GSSSession !== 'undefined' ? GSSSession.get() : null) || {};
+    const r = String(roleName || current.role || '').trim();
+    if (!badge || !text) return;
+    if (!r) { badge.classList.add('hidden'); badge.classList.remove('inline-flex'); return; }
+    let label = r;
+    try {
+      const lang = document.documentElement.lang || 'en';
+      const key = 'role' + r.replace(/[^a-z]/gi, '');
+      const dict = /** @type {any} */ (typeof translations !== 'undefined' ? translations : null);
+      if (dict && dict[lang] && dict[lang][key]) label = dict[lang][key];
+    } catch (_) { /* noop */ }
+    text.textContent = label;
+    badge.classList.remove('hidden');
+    badge.classList.add('inline-flex');
+  };
+  /** @type {any} */ (window).GSSChip = { applyRoleBadge };
+  const applyChip = () => {
+    const chip = document.getElementById('userChip');
+    const name = document.getElementById('userChipName');
+    if (name) name.textContent = session.full_name || session.username || 'User';
+    if (chip) { chip.classList.remove('hidden'); chip.classList.add('flex'); }
+    applyRoleBadge(session.role);
+    const btn = document.getElementById('logoutBtn');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        if (typeof GSSSession !== 'undefined') GSSSession.clear();
+        window.location.replace('./login.html');
+      });
+    }
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyChip);
+  else applyChip();
+})();
 
 const modal = document.getElementById('formModal');
 const openFormBtn = document.getElementById('openFormBtn');
@@ -25,7 +57,9 @@ const closeModalBtn = document.getElementById('closeModalBtn');
 // ── Tab state ──────────────────────────────────────────────
 /** @type {Record<string, boolean>} */
 const tabState = { registration: false, conditions: false, reglement: false, engagement: false, presences: false, 
-                   evaluation: false, exam: false, mensuration: false, dossier: false };
+                   evaluation: false, exam: false, mensuration: false, 
+                   // lettre: false, uniforme: false, 
+                   dossier: false };
 
 let defaultTab = Object.keys(tabState)[0];; //'registration';
 
@@ -138,58 +172,24 @@ const applyInstructorStepGates = () => {
   });
 };
 
-/** Localized "Access denied" label for permission-denied tabs. */
-const accessDeniedLabel = () => {
-  try {
-    const lang = document.documentElement.lang || 'en';
-    const dict = /** @type {any} */ (typeof translations !== 'undefined' ? translations : null);
-    if (dict && dict[lang] && dict[lang].accessDenied) return dict[lang].accessDenied;
-  } catch (_) { /* noop */ }
-  return 'Access denied';
-};
-
-/** Dim + disable every tab that is not yet unlocked or is permission-denied. */
+/** Dim + disable every tab that is not yet unlocked. */
 const updateTabLocks = () => {
   TAB_ORDER.forEach((name) => {
     const btn = document.getElementById(`tab-btn-${name}`);
     if (!btn) return;
-    // Permission-denied (module with no view/add/edit/delete) vs. the sequential
-    // workflow lock. Denied tabs keep pointer events so their tooltip shows.
-    const denied = btn.dataset.permDenied === '1';
-    const seqLocked = !isTabUnlocked(name);
-    const dim = denied || seqLocked;
-    btn.classList.toggle('opacity-40', dim);
-    btn.classList.toggle('cursor-not-allowed', dim);
-    btn.classList.toggle('pointer-events-none', seqLocked && !denied);
-    btn.setAttribute('aria-disabled', String(dim));
-    if (denied) {
-      btn.setAttribute('title', accessDeniedLabel());
-    } else if (btn.getAttribute('title') === accessDeniedLabel()) {
-      btn.removeAttribute('title');
-    }
+    const locked = !isTabUnlocked(name);
+    btn.classList.toggle('opacity-40', locked);
+    btn.classList.toggle('cursor-not-allowed', locked);
+    btn.classList.toggle('pointer-events-none', locked);
+    btn.setAttribute('aria-disabled', String(locked));
   });
   applyInstructorStepGates();
-};
-
-/** Whether a tab can actually be opened right now: sequentially unlocked,
- *  not permission-denied, and viewable per RBAC. Mirrors switchTab's guards. */
-/** @param {string} name @returns {boolean} */
-const isTabOpenable = (name) => {
-  if (!isTabUnlocked(name)) return false;
-  const btn = document.getElementById(`tab-btn-${name}`);
-  if (btn && btn.dataset.permDenied === '1') return false;
-  const perms = /** @type {any} */ (window).GSSPerms;
-  if (perms && perms.loaded && typeof perms.canViewTab === 'function' && !perms.canViewTab(name)) return false;
-  return true;
 };
 
 /** @param {string} tabName */
 const switchTab = (tabName) => {
   // Enforce the sequential workflow: locked tabs cannot be opened.
   if (!isTabUnlocked(tabName)) return;
-  // Permission-denied module (no view/add/edit/delete): never openable.
-  const denyBtn = document.getElementById(`tab-btn-${tabName}`);
-  if (denyBtn && denyBtn.dataset.permDenied === '1') return;
 
   // RBAC: a tab the user may not view can never be opened (nav, deep link, programmatic).
   const perms = /** @type {any} */ (window).GSSPerms;
@@ -317,7 +317,6 @@ updateTabLocks();
 // locked/unlocked independently of the sequential flow, then refresh the UI.
 /** @type {any} */ (window).GSSTabs = {
   switchTab: (/** @type {string} */ tab) => switchTab(tab),
-  refreshLocks: () => updateTabLocks(),
   setForcedLock: (/** @type {string} */ tab, /** @type {boolean} */ locked) => {
     if (locked) forcedLockedTabs.add(tab);
     else forcedLockedTabs.delete(tab);
@@ -327,16 +326,6 @@ updateTabLocks();
     if (unlocked) forcedUnlockedTabs.add(tab);
     else forcedUnlockedTabs.delete(tab);
     updateTabLocks();
-  },
-  // Open the first openable tab after `name` (skips locked / permission-denied
-  // tabs). Returns true when a tab was opened.
-  advanceAfter: (/** @type {string} */ name) => {
-    const idx = TAB_ORDER.indexOf(name);
-    if (idx < 0) return false;
-    for (let i = idx + 1; i < TAB_ORDER.length; i++) {
-      if (isTabOpenable(TAB_ORDER[i])) { switchTab(TAB_ORDER[i]); return true; }
-    }
-    return false;
   },
 };
 //#endregion
@@ -366,7 +355,6 @@ async function initializeApp() {
         await Promise.all([
             initInscriptionForm(),
             initSignaturePads(),
-            initCandidatePhoto(),
             
             initApplicantForm()
         ]);

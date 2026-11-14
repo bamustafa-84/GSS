@@ -7,8 +7,9 @@
  * A standalone, Tailwind-only modal that lets an Instructor (or Admin)
  * tick daily attendance for the participants of each training they run.
  *
- *   • Matrix-gated trigger     — the #attSheetBtn button is shown via the
- *                                Permissions matrix (section 10.2, data-perm).
+ *   • Role-gated trigger       — the #attSheetBtn button is only shown to
+ *                                Admin / Instructor / Secretary / Head of
+ *                                Training via admin.js `data-role-any`.
  *   • Training-title tabs      — one tab per title the instructor teaches, so
  *                                an instructor with several trainings switches
  *                                between their sheets without leaving the modal.
@@ -28,10 +29,8 @@
 (() => {
   'use strict';
 
-  //#region ATTENDANCE SHEET
-  // Monthly attendance modal: training selection, date navigation, cell editing, persistence, and export.
-  //#region SETUP AND SHARED HELPERS
   const overlay = document.getElementById('attSheetOverlay');
+  const openBtn = document.getElementById('attSheetBtn');
   const closeBtn = document.getElementById('attSheetClose');
   const exportBtn = document.getElementById('attSheetExport');
   const tabsWrap = document.getElementById('attSheetTabs');
@@ -49,7 +48,7 @@
   const instructorName = document.getElementById('attSheetInstructorName');
   const rangePills = document.getElementById('attSheetRangePills');
 
-  if (!overlay || !tabsWrap || !tbody || !theadRow || !yearInput) return;
+  if (!overlay || !openBtn || !tabsWrap || !tbody || !theadRow || !yearInput) return;
 
   // Selected year + month (0-based) driving the grid. Defaults to the current
   // month (Part 3); preserved across tab switches once the sheet is open.
@@ -60,16 +59,16 @@
   let titles = [];
   /** @type {string} currently active training-title code */
   let activeTitle = '';
-  /** @type {Record<string, { title: string, from: string, to: string, dateFrom: string, dateTo: string, trainer: string }>} */ let trainingMeta = {};
+  /** @type {Record<string, { from: string, to: string, dateFrom: string, dateTo: string, trainer: string }>} title code → default times + date range */
+  let trainingMeta = {};
 
-  // Edit rights come from the Permissions matrix (section 10.2 Attendance
-  // Sheet): anyone granted add/edit may tick / clear / save; view-only users
-  // (e.g. Head of Training by default) open the sheet strictly read-only.
-  const canEdit = () => {
-    const gp = /** @type {any} */ (window).GSSPerms;
-    if (!gp || typeof gp.can !== 'function') return true; // no engine → server enforces
-    return gp.can('10.2', 'edit') || gp.can('10.2', 'add');
+  // Instructor, Admin and Secretary may edit (tick / clear / save). Head of
+  // Training can open the sheet but sees it strictly read-only.
+  const currentRole = () => {
+    const session = (typeof GSSSession !== 'undefined') ? GSSSession.get() : null;
+    return session && session.role ? String(session.role) : '';
   };
+  const canEdit = () => ['Instructor', 'Admin', 'Secretary'].includes(currentRole());
 
   // ── i18n helper ────────────────────────────────────────────────
   const t = (/** @type {string} */ key, /** @type {string} */ fallback) => {
@@ -81,16 +80,6 @@
     return fallback;
   };
   const lang = () => (document.documentElement.lang === 'fr' ? 'fr' : 'en');
-
-  // Reveal the illustrated empty-state card, swapping only its heading + subtitle.
-  const showEmpty = (/** @type {string} */ titleKey, /** @type {string} */ titleFallback, /** @type {string} */ subKey, /** @type {string} */ subFallback) => {
-    if (!emptyEl) return;
-    const titleEl = emptyEl.querySelector('#attSheetEmptyTitle');
-    const subEl = emptyEl.querySelector('#attSheetEmptySub');
-    if (titleEl) { titleEl.setAttribute('data-i18n', titleKey); titleEl.textContent = t(titleKey, titleFallback); }
-    if (subEl) { subEl.setAttribute('data-i18n', subKey); subEl.textContent = t(subKey, subFallback); }
-    emptyEl.classList.remove('hidden');
-  };
 
   // ── Date helpers ───────────────────────────────────────────────
   const pad = (/** @type {number} */ n) => String(n).padStart(2, '0');
@@ -112,21 +101,16 @@
 
   const daysInMonth = (/** @type {number} */ year, /** @type {number} */ month) =>
     new Date(year, month + 1, 0).getDate();
-  //#endregion
 
-  //#region TRAINING CATALOG AND PARTICIPANTS
-  // Resolve the user's courses, distinguish sessions, and load assigned participants.
   // ── Resolve the instructor's training titles ───────────────────
   // Fallback: read the Training Title <select> options (kept in sync with the
   // dictionary) so the sheet still works when the API is unreachable.
-  /** @returns {{ code: string, label: string }[]} */
   const selectTitles = () => {
     const sel = document.getElementById('att-TrainingTitle');
     if (!sel) return [];
-    const options = /** @type {HTMLOptionElement[]} */ (Array.from(sel.querySelectorAll('option')));
-    return options
-      .map((option) => ({ code: option.value, label: option.textContent || '' }))
-      .filter((title) => title.code);
+    return Array.from(sel.querySelectorAll('option'))
+      .map((o) => ({ code: /** @type {HTMLOptionElement} */ (o).value, label: o.textContent || '' }))
+      .filter((x) => x.code);
   };
 
   const dictTitles = () =>
@@ -134,13 +118,12 @@
       .then((r) => r.json())
       .then((data) => {
         const useFr = lang() === 'fr';
-        const items = /** @type {any[]} */ (Array.isArray(data.items) ? data.items : []);
+        const items = Array.isArray(data.items) ? data.items : [];
         const mapped = items.map((/** @type {any} */ it) => ({
           code: it.code || it.en_title || it.label || '',
           label: (useFr ? it.fr_title : it.en_title) || it.label || it.en_title || it.fr_title || '',
-        }));
-        const validMapped = /** @type {{ code: string, label: string }[]} */ (mapped.filter((/** @type {any} */ title) => title.code));
-        return validMapped.length ? validMapped : selectTitles();
+        })).filter((x) => x.code);
+        return mapped.length ? mapped : selectTitles();
       })
       .catch(() => selectTitles());
 
@@ -164,7 +147,7 @@
     try {
       const data = await fetch(`${API_BASE}/api/training${query}`, { headers: { Accept: 'application/json' } })
         .then((r) => r.json());
-      const rows = /** @type {any[]} */ (Array.isArray(data.trainings) ? data.trainings : []);
+      const rows = Array.isArray(data.trainings) ? data.trainings : [];
       // Same title can now appear more than once (different dates/times are
       // separate sessions). Count titles so duplicates can be disambiguated by
       // their date range in the tab label.
@@ -191,9 +174,8 @@
           ? `${title} · ${rangeLabel(row.date_from, row.date_to)}`
           : title;
         return { code, label };
-      });
-      const validMapped = /** @type {{ code: string, label: string }[]} */ (mapped.filter((/** @type {any} */ title) => title.code));
-      if (validMapped.length) return validMapped;
+      }).filter((x) => x.code);
+      if (mapped.length) return mapped;
     } catch (_) { /* fall through to dictionary */ }
 
     // No training rows: privileged roles still see every dictionary title; a
@@ -231,19 +213,17 @@
   /**
    * The students assigned to a training as { id, name } pairs. A student is
    * "assigned" once they have attendance for the training (see training_students).
-  * `id` is the candidate_no used to persist attendance.
+   * `id` is the candidate_no used to persist attendance.
+   * @param {string} titleCode
    * @returns {Promise<{ id: string, name: string }[]>}
    */
-  const getParticipants = (/** @type {string} */ code) => {
+  const getParticipants = (code) => {
     const title = (trainingMeta[code] && trainingMeta[code].title) || code;
     return fetch(`${API_BASE}/api/training/students?training_id=${encodeURIComponent(code)}&title=${encodeURIComponent(title)}`, { headers: { Accept: 'application/json' } })
       .then((r) => r.json())
-      .then((data) => {
-        const students = /** @type {any[]} */ (Array.isArray(data.students) ? data.students : []);
-        return students
-          .map((/** @type {any} */ student) => ({ id: student.candidate_no != null ? String(student.candidate_no) : '', name: student.full_name || '' }))
-          .filter((/** @type {{ id: string, name: string }} */ participant) => participant.id && participant.name);
-      })
+      .then((data) => (Array.isArray(data.students) ? data.students : [])
+        .map((/** @type {any} */ s) => ({ id: s.candidate_no != null ? String(s.candidate_no) : '', name: s.full_name || '' }))
+        .filter((p) => p.id && p.name))
       .catch(() => []);
   };
 
@@ -265,10 +245,7 @@
     });
     return kept;
   };
-  //#endregion
 
-  //#region ATTENDANCE DATA AND SCHEDULING
-  // Store attendance by participant/day and enforce the active training's date range.
   // ── Attendance data store (DB-backed, per title + month) ──────
   // records[candidateNo][day] = { status, arrival, departure, observation }
   /** @type {Record<string, Record<string, { status: string, arrival: string, departure: string, observation: string }>>} */
@@ -386,10 +363,7 @@
       body: JSON.stringify(body),
     }).catch(() => { /* best-effort */ });
   };
-  //#endregion
 
-  //#region CALENDAR NAVIGATION AND COURSE TABS
-  // Classify courses by completion/month and render year, month, and course selectors.
   // ── Tabs ───────────────────────────────────────────────────────
 
   /** A course is "completed" once its training end date is before today. */
@@ -454,14 +428,11 @@
 
   /** Base colour classes for a month pill by its course state. */
   const monthStateClasses = (/** @type {'active'|'completed'|'none'} */ state) => {
-    // All pills share the same grey border; hover lifts to a lighter blue gradient.
-    const base = 'bg-white ring-1 ring-[#042F8D]/10';
     switch (state) {
-      case 'active':
-      case 'completed':
-        return `${base} text-[#042F8D] hover:bg-gradient-to-b hover:from-[#5b93f5] hover:to-[#3f74e3] hover:text-white hover:ring-0`;
-      // 'none' months carry no course but stay clickable (show the empty state).
-      default: return `${base} text-[#042F8D]/80 hover:bg-gradient-to-b hover:from-[#5b93f5] hover:to-[#3f74e3] hover:text-white hover:ring-0`;
+      case 'active': return 'bg-orange-100 text-orange-700 ring-1 ring-orange-300 hover:bg-orange-200';
+      case 'completed': return 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-300 hover:bg-emerald-200';
+      // 'none' months are dimmed and disabled (Part 4).
+      default: return 'bg-slate-50 text-slate-300 ring-1 ring-slate-200 cursor-not-allowed opacity-60';
     }
   };
 
@@ -492,28 +463,17 @@
 
     if (!rangePills) return;
     rangePills.innerHTML = '';
-    const now = new Date();
     for (let m = 0; m < 12; m++) {
       const state = monthState(selectedYear, m);
+      const disabled = state === 'none';
       const selected = m === selectedMonth;
-      // Months without a course are dimmed + disabled, except the current
-      // calendar month (always reachable) and the selected one.
-      const isCurrentMonth = selectedYear === now.getFullYear() && m === now.getMonth();
-      const disabled = state === 'none' && !selected && !isCurrentMonth;
       const pill = document.createElement('button');
       pill.type = 'button';
       pill.dataset.month = String(m);
       pill.disabled = disabled;
-      // Selected month = solid blue pill; others are white, colour-ringed by state.
-      pill.className = selected
-        ? 'rounded-xl px-2.5 py-2 text-[11px] font-bold uppercase tracking-wide shadow-[0_6px_16px_rgba(27,79,212,0.35)] transition bg-gradient-to-b from-[#2f74f0] to-[#1c54d6] text-white'
-        : disabled
-          ? 'rounded-xl px-2.5 py-2 text-[11px] font-bold uppercase tracking-wide shadow-sm transition bg-white ring-1 ring-[#042F8D]/10 text-[#042F8D]/70 cursor-default opacity-40'
-          : `rounded-xl px-2.5 py-2 text-[11px] font-bold uppercase tracking-wide shadow-sm transition ${monthStateClasses(state)}`;
+      pill.className = `rounded-lg px-2 py-1 text-[11px] font-semibold transition ${monthStateClasses(state)} ${selected ? 'outline outline-2 outline-offset-1 outline-[#042F8D]' : ''}`;
       pill.textContent = (monthNames[lang()][m] || '').slice(0, 3);
-      pill.title = disabled
-        ? t('attSheetNoCourseTip', 'No scheduled courses')
-        : `${monthNames[lang()][m]} ${selectedYear}`;
+      pill.title = `${monthNames[lang()][m]} ${selectedYear}`;
       if (!disabled) {
         pill.addEventListener('click', () => {
           if (m === selectedMonth) return;
@@ -551,7 +511,7 @@
       } else if (done) {
         btn.className = 'rounded-full border border-emerald-300 bg-emerald-50 px-3.5 py-1.5 text-xs font-semibold text-emerald-700 transition hover:border-emerald-500 hover:bg-emerald-100';
       } else {
-        btn.className = 'rounded-full border border-[#042F8D]/20 bg-white px-3.5 py-1.5 text-xs font-semibold text-[#042F8D]/70 shadow-sm transition hover:border-[#042F8D] hover:bg-[#eaf4fb] hover:text-[#042F8D]';
+        btn.className = 'rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-[#042F8D] hover:text-[#042F8D]';
       }
       btn.textContent = (done ? '✓ ' : '') + (title.label || title.code);
       if (done) btn.title = t('attSheetCompleted', 'Completed course');
@@ -564,10 +524,7 @@
       tabsWrap.appendChild(btn);
     });
   };
-  //#endregion
 
-  //#region DAILY GRID RENDERING
-  // Render participant-by-day cells, status indicators, exclusion locks, and select-all headers.
   // ── Grid (participants × days) ─────────────────────────────────
 
   /** Localized status label for a code (uses PRES_STATUS_OPTS from translations). */
@@ -581,28 +538,23 @@
     return status;
   };
 
-  /** Icon colour for a cell by status; every cell renders the same faint box. */
+  /** Visual classes for a cell button by status (present = tick). */
   const cellClasses = (/** @type {string} */ status) => {
-    const box = 'border border-[#042F8D]/15 hover:border-[#042F8D]/40';
     switch (status) {
-      case 'AH': return `text-[#042F8D] ${box}`;
-      case 'AR': return `text-emerald-500 ${box}`;
-      case 'ABS': return `text-red-500 ${box}`;
-      case 'EX': return `text-slate-400 ${box}`;
-      default: return `text-transparent ${box}`;
+      case 'AH': return 'bg-emerald-50 text-emerald-700 ring-emerald-300';
+      case 'AR': return 'bg-amber-50 text-amber-700 ring-amber-300';
+      case 'ABS': return 'bg-red-50 text-red-600 ring-red-300';
+      case 'EX': return 'bg-slate-100 text-slate-500 ring-slate-300';
+      default: return 'bg-white text-slate-300 ring-slate-200';
     }
   };
 
-  /** SVG icon shown inside a cell: check (on time), clock (late), cross
-   *  (absent) or dash (excluded). Colour is applied via `cellClasses`. */
+  /** Glyph shown inside a cell button. Present statuses show a tick; the
+   *  status meaning is conveyed by colour and explained in the legend below. */
   const cellGlyph = (/** @type {string} */ status) => {
-    const svg = (/** @type {string} */ body, /** @type {number} */ w = 3) =>
-      `<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
     switch (status) {
-      case 'AH': return svg('<path d="M20 6 9 17l-5-5"/>');
-      case 'AR': return svg('<circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/>', 2.5);
-      case 'ABS': return svg('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>');
-      case 'EX': return svg('<line x1="6" y1="12" x2="18" y2="12"/>');
+      case 'AH': return '✓';
+      case 'AR': return '✓';
       default: return '';
     }
   };
@@ -613,7 +565,7 @@
     const day = btn.dataset.day || '';
     const cell = records[key] && records[key][day];
     const status = cell ? cell.status : '';
-    btn.innerHTML = cellGlyph(status);
+    btn.textContent = cellGlyph(status);
     const inRange = isDayInTrainingRange(Number(day));
     // Excluded candidates: every cell except the EX cell itself is locked.
     const locked = isExcluded(key) && status !== 'EX';
@@ -623,7 +575,7 @@
       : locked
         ? 'cursor-not-allowed opacity-40'
         : (canEdit() ? 'cursor-pointer hover:scale-110' : 'cursor-default opacity-95');
-    btn.className = `mx-auto flex h-6 w-6 items-center justify-center rounded-md transition ${cellClasses(status)} ${stateClass}`;
+    btn.className = `mx-auto flex h-6 w-6 items-center justify-center rounded-md text-xs font-bold ring-1 transition ${cellClasses(status)} ${stateClass}`;
     btn.disabled = !editable;
     btn.setAttribute('aria-label', `${btn.dataset.name || ''} · ${day}${status ? ' · ' + status : ''}`);
     if (locked) btn.title = t('attSheetExcludedLock', 'Candidate excluded — attendance locked');
@@ -684,7 +636,8 @@
       if (tableWrap) tableWrap.classList.add('hidden');
       if (instructorBar) { instructorBar.classList.add('hidden'); instructorBar.classList.remove('flex'); }
       if (emptyEl) {
-        showEmpty('attSheetNoCoursesMonth', 'No courses scheduled for this month.', 'attSheetNoCoursesMonthSub', 'Pick another month, or check back once a course is scheduled.');
+        emptyEl.textContent = t('attSheetNoCoursesMonth', 'No courses scheduled for this month.');
+        emptyEl.classList.remove('hidden');
       }
       return;
     }
@@ -706,23 +659,22 @@
 
     // Header: Name + one column per day (with a select-all checkbox per day).
     theadRow.innerHTML =
-      `<th class="sticky left-0 z-20 whitespace-nowrap rounded-tl-2xl border-b-2 border-[#042F8D] bg-gradient-to-b from-[#0b4dc2] to-[#042F8D] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">${t('attSheetColName', 'Name')}</th>`;
+      `<th class="sticky left-0 z-10 whitespace-nowrap rounded-tl-2xl border-b-2 border-slate-200 bg-slate-100 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">${t('attSheetColName', 'Name')}</th>`;
     for (let d = 1; d <= total; d++) {
       const weekday = new Date(year, month, d).getDay();
+      const isWeekend = weekday === 0 || weekday === 6;
       const th = document.createElement('th');
-      // Days 1–30: navy gradient header with white text.
-      th.className = 'w-10 min-w-10 border-b-2 border-[#042F8D] bg-gradient-to-b from-[#0b4dc2] to-[#042F8D] px-1 py-2 text-center text-[11px] font-semibold text-white';
+      th.className = `w-10 min-w-10 border-b-2 border-slate-200 px-1 py-2 text-center text-[11px] font-semibold ${isWeekend ? 'bg-[#042F8D]/10 text-[#042F8D]' : 'bg-slate-100 text-slate-600'}`;
 
       const label = document.createElement('div');
-      // Day-of-week sits on a sky-blue chip with navy text.
-      label.innerHTML = `${d}<span class="mx-auto mt-0.5 block w-fit rounded-sm text-white px-1 text-[9px] font-semibold text-[#042F8D]">${li[weekday]}</span>`;
+      label.innerHTML = `${d}<span class="mt-0.5 block text-[9px] font-normal ${isWeekend ? 'text-[#042F8D]/60' : 'text-slate-400'}">${li[weekday]}</span>`;
       th.appendChild(label);
 
-      // Part 4: per-day select/deselect all students (navy checkbox, white tick — Permissions panel style).
+      // Part 4: per-day select/deselect all students.
       const all = document.createElement('input');
       all.type = 'checkbox';
       all.dataset.dayAll = String(d);
-      all.className = 'mt-1 h-3.5 w-3.5 cursor-pointer rounded border-slate-300 bg-white accent-[#042F8D] transition-transform hover:scale-110';
+      all.className = 'mt-1 h-3.5 w-3.5 rounded border-slate-300 accent-[#0a6b3c]';
       all.title = t('attSheetSelectAllDay', 'Select/deselect all students for this day');
       all.setAttribute('aria-label', `${t('attSheetSelectAllDay', 'Select all')} · ${d}`);
       if (!editable || !isDayInTrainingRange(d)) all.disabled = true;
@@ -744,9 +696,9 @@
     participants.forEach((p) => {
       const key = p.id || ('n:' + p.name);
       const tr = document.createElement('tr');
-      tr.className = 'transition-colors hover:bg-[#EAF4FB]';
+      tr.className = 'hover:bg-slate-50/60';
       const nameTd = document.createElement('td');
-      nameTd.className = 'sticky left-0 z-10 whitespace-nowrap border-r border-[#042F8D]/10 bg-white px-4 py-2 text-left font-semibold text-[#042F8D]';
+      nameTd.className = 'sticky left-0 z-10 whitespace-nowrap border-r border-slate-100 bg-white px-4 py-2 text-left font-medium text-slate-800';
       nameTd.textContent = p.name;
       tr.appendChild(nameTd);
 
@@ -754,22 +706,18 @@
         const td = document.createElement('td');
         const weekday = new Date(year, month, d).getDay();
         const isWeekend = weekday === 0 || weekday === 6;
-        // No cell background — just a faint box per cell (see cellClasses).
-        td.className = 'px-1 py-1.5 text-center';
+        td.className = `px-1 py-1.5 text-center ${isWeekend ? 'bg-[#042F8D]/[0.05]' : ''}`;
 
-        // Weekends (Sat/Sun) get no attendance cell.
-        if (!isWeekend) {
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.dataset.key = key;
-          btn.dataset.cand = p.id;
-          btn.dataset.name = p.name;
-          btn.dataset.day = String(d);
-          paintCell(btn);
-          if (editable && isDayInTrainingRange(d)) btn.addEventListener('click', () => openCellEditor(key, p.id, p.name, d));
-          else btn.disabled = true;
-          td.appendChild(btn);
-        }
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.dataset.key = key;
+        btn.dataset.cand = p.id;
+        btn.dataset.name = p.name;
+        btn.dataset.day = String(d);
+        paintCell(btn);
+        if (editable && isDayInTrainingRange(d)) btn.addEventListener('click', () => openCellEditor(key, p.id, p.name, d));
+        else btn.disabled = true;
+        td.appendChild(btn);
         tr.appendChild(td);
       }
       tbody.appendChild(tr);
@@ -778,17 +726,14 @@
 
     for (let d = 1; d <= total; d++) syncDayHeader(d);
   };
-  //#endregion
 
-  //#region BULK DAY UPDATES
-  // Apply select-all/clear-all changes for one day and persist the affected cells.
   // ── Part 4: tick / untick every student for one day ─────────────
   const toggleDay = async (/** @type {number} */ day, /** @type {boolean} */ checked) => {
     if (!canEdit() || !activeTitle) return;
     if (!isDayInTrainingRange(day)) return;
     const { arrival, departure } = defaultTimes();
     const buttons = Array.from(tbody.querySelectorAll(`button[data-day="${day}"]`));
-    const jobs = /** @type {Promise<unknown>[]} */ ([]);
+    const jobs = [];
     buttons.forEach((el) => {
       const btn = /** @type {HTMLButtonElement} */ (el);
       const key = btn.dataset.key || '';
@@ -815,10 +760,7 @@
     });
     await Promise.all(jobs);
   };
-  //#endregion
 
-  //#region CELL EDITOR AND PERMISSION MODE
-  // Edit one attendance cell, save/reset it, and show editable or view-only controls.
   // ── Cell editor modal ──────────────────────────────────────────
   const cellOverlay = document.getElementById('attCellOverlay');
   const cellStatus = /** @type {HTMLSelectElement | null} */ (document.getElementById('attCellStatus'));
@@ -942,10 +884,7 @@
       badge.classList.add('hidden');
     }
   };
-  //#endregion
 
-  //#region MODAL LIFECYCLE AND CONTROLS
-  // Open/close the sheet and respond to year, clear, save, and language changes.
   // ── Open / close ───────────────────────────────────────────────
   const isOpen = () => !overlay.classList.contains('hidden');
 
@@ -966,7 +905,8 @@
 
     if (!hasTitles) {
       if (emptyEl) {
-        showEmpty('attSheetNoTitles', 'No training titles are assigned to you yet.', 'attSheetNoTitlesSub', 'Once training titles are assigned, they will appear here for attendance tracking.');
+        emptyEl.textContent = t('attSheetNoTitles', 'No training titles are assigned to you yet.');
+        emptyEl.classList.remove('hidden');
       }
       if (tableWrap) tableWrap.classList.add('hidden');
       tabsWrap.innerHTML = '';
@@ -988,7 +928,7 @@
     overlay.setAttribute('aria-hidden', 'true');
   };
 
-  /** @type {any} */ (window).GSSAttendanceSheet = { open, close };
+  openBtn.addEventListener('click', open);
   closeBtn?.addEventListener('click', close);
   // The attendance sheet closes only via the Close button — clicking the
   // backdrop or pressing Escape is intentionally disabled to avoid losing the
@@ -1007,7 +947,7 @@
   // Clear every cell for the active title + month (deletes the stored rows).
   clearBtn?.addEventListener('click', async () => {
     if (!canEdit() || !activeTitle) return;
-    const jobs = /** @type {Promise<unknown>[]} */ ([]);
+    const jobs = [];
     Object.keys(records).forEach((key) => {
       const id = key.indexOf('n:') === 0 ? '' : key;
       Object.keys(records[key] || {}).forEach((day) => {
@@ -1034,10 +974,7 @@
   document.querySelectorAll('[data-lang]').forEach((b) =>
     b.addEventListener('click', () => { if (isOpen()) { applyMonthRange(); renderTabs(); renderGrid(); } })
   );
-  //#endregion
 
-  //#region XLSX EXPORT SUPPORT
-  // Build the ZIP/XML workbook parts used by the attendance export action.
   // ── Export the current sheet to a real .xlsx workbook ──────────
   // Minimal Office Open XML writer (store/no-compression ZIP) — no external deps.
   const xmlEsc = (/** @type {any} */ s) => String(s == null ? '' : s)
@@ -1230,10 +1167,7 @@
     document.body.removeChild(link);
     URL.revokeObjectURL(link.href);
   };
-  //#endregion
 
-  //#region XLSX EXPORT ACTION
-  // Assemble the current course/month grid and download it with a status legend.
   /**
    * Export the currently displayed attendance sheet (active training title +
    * selected month) to a styled Excel workbook: a "No." + Name grid with one
@@ -1316,6 +1250,4 @@
   };
 
   exportBtn?.addEventListener('click', exportToExcel);
-  //#endregion
-  //#endregion // ATTENDANCE SHEET
 })();

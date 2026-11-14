@@ -144,7 +144,7 @@
   // ── Data ─────────────────────────────────────────────────
   const load = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/reports/training-register`, { headers: { Accept: 'application/json' } });
+      const res = await fetch(`${API_BASE}/api/reports/training-register?report=attendance-sheet`, { headers: { Accept: 'application/json' } });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = /** @type {any} */ (await res.json());
       sessions = Array.isArray(data && data.trainings) ? data.trainings : [];
@@ -747,7 +747,11 @@
     setTimeout(() => URL.revokeObjectURL(link.href), 1000);
   };
 
-  const exportExcel = () => {
+  const exportExcel = async () => {
+    if (!(await GSSReportAccess.authorizeReport('attendance-sheet', 'export'))) {
+      window.alert(t('reportActionDenied', 'You are not allowed to export this report.'));
+      return;
+    }
     if (!current) { window.alert(t('arSelectCourse', 'Select a month and a course to view attendance details.')); return; }
     const ST = { metaLabel: 1, metaVal: 2, header: 3, candNo: 4, blank: 9, legendTitle: 10, banner: 11, subtitle: 12 };
     const statusStyle = (/** @type {string} */ s) => s === 'AH' ? 5 : s === 'AR' ? 6 : s === 'ABS' ? 7 : s === 'EX' ? 8 : ST.blank;
@@ -826,7 +830,11 @@
     downloadXlsx(`attendance-${safe}-${stamp}.xlsx`, t('arReportTitle', 'Attendance Report'), rows, { cols, merges, rowHeights });
   };
 
-  const doPrint = () => {
+  const doPrint = async () => {
+    if (!(await GSSReportAccess.authorizeReport('attendance-sheet', 'print'))) {
+      window.alert(t('reportActionDenied', 'You are not allowed to print this report.'));
+      return;
+    }
     printing = true;
     window.print();
     printing = false;
@@ -905,8 +913,23 @@
     lang = saved === 'fr' || saved === 'en' ? saved : 'en';
 
     applyLang();
-    await GSSPerms.ensure();
-    if (!GSSPerms.canViewReport('attendance-sheet')) { denyAccess(); return; }
+    document.body.dataset.gssPrintAllowed = 'false';
+    document.body.dataset.gssPrintMessage = t('reportActionDenied', 'You are not allowed to print this report.');
+    if (!(await GSSReportAccess.authorizeReport('attendance-sheet', 'view'))) { denyAccess(); return; }
+    const [canExport, canPrint] = await Promise.all([
+      GSSReportAccess.authorizeReport('attendance-sheet', 'export'),
+      GSSReportAccess.authorizeReport('attendance-sheet', 'print'),
+    ]);
+    const excelButton = /** @type {HTMLButtonElement|null} */ ($('btnExcel'));
+    const printButton = /** @type {HTMLButtonElement|null} */ ($('btnPrint'));
+    if (excelButton) {
+      excelButton.disabled = !canExport;
+      excelButton.setAttribute('aria-disabled', String(!canExport));
+    }
+    if (printButton) {
+      printButton.disabled = !canPrint;
+      printButton.setAttribute('aria-disabled', String(!canPrint));
+    }
 
     wire();
     initCollapsible();

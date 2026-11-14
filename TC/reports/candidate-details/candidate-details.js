@@ -828,7 +828,11 @@
     setTimeout(() => URL.revokeObjectURL(link.href), 1000);
   };
 
-  const exportExcel = () => {
+  const exportExcel = async () => {
+    if (!(await GSSReportAccess.authorizeReport('candidate-details', 'export'))) {
+      window.alert(t('reportActionDenied', 'You are not allowed to export this report.'));
+      return;
+    }
     if (!filtered.length) { window.alert(t('cdNoCandidates', 'No candidates enrolled.')); return; }
     const ST = { metaLabel: 1, metaVal: 2, group: 3, rowNo: 4, data: 5, sub: 6, banner: 7 };
     const cols = flatCols();
@@ -894,7 +898,13 @@
     downloadXlsx(`candidate-details-${stamp}.xlsx`, t('cdReportTitle', 'Candidate Details Report'), rows, { cols: xcols, merges, rowHeights });
   };
 
-  const doPrint = () => { window.print(); };
+  const doPrint = async () => {
+    if (!(await GSSReportAccess.authorizeReport('candidate-details', 'print'))) {
+      window.alert(t('reportActionDenied', 'You are not allowed to print this report.'));
+      return;
+    }
+    window.print();
+  };
 
   // ── Collapsible sections ─────────────────────────────────
   const initCollapsible = () => {
@@ -988,8 +998,23 @@
     lang = saved === 'fr' || saved === 'en' ? saved : 'en';
 
     applyLang();
-    await GSSPerms.ensure();
-    if (!GSSPerms.canViewReport('candidate-details')) { denyAccess(); return; }
+    document.body.dataset.gssPrintAllowed = 'false';
+    document.body.dataset.gssPrintMessage = t('reportActionDenied', 'You are not allowed to print this report.');
+    if (!(await GSSReportAccess.authorizeReport('candidate-details', 'view'))) { denyAccess(); return; }
+    const [canExport, canPrint] = await Promise.all([
+      GSSReportAccess.authorizeReport('candidate-details', 'export'),
+      GSSReportAccess.authorizeReport('candidate-details', 'print'),
+    ]);
+    const excelButton = /** @type {HTMLButtonElement|null} */ ($('btnExcel'));
+    const printButton = /** @type {HTMLButtonElement|null} */ ($('btnPrint'));
+    if (excelButton) {
+      excelButton.disabled = !canExport;
+      excelButton.setAttribute('aria-disabled', String(!canExport));
+    }
+    if (printButton) {
+      printButton.disabled = !canPrint;
+      printButton.setAttribute('aria-disabled', String(!canPrint));
+    }
 
     wire();
     initFilters();
